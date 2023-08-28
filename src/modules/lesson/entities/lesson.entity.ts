@@ -1,18 +1,22 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { BeforeInsert, BeforeUpdate, Column, Entity, OneToMany } from 'typeorm';
+import slugify from 'slugify';
 
-import { Base } from '#/common/entities/base.entity';
+import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { LessonSchedule } from './lesson-schedule.entity';
 
 @Entity()
-export class Lesson extends Base {
-  @Column({ type: 'varchar', length: 255 })
-  title: string;
-
+export class Lesson extends BaseEntity {
   @Column({ type: 'int', default: 0 })
   status: number;
 
   @Column({ type: 'int', unique: true })
   orderNumber: number;
+
+  @Column({ type: 'varchar', length: 255 })
+  title: string;
+
+  @Column({ type: 'varchar', length: 255, unique: true })
+  slug: string;
 
   @Column({ type: 'varchar', length: 255 })
   videoUrl: number;
@@ -25,4 +29,11 @@ export class Lesson extends Base {
 
   @OneToMany(() => LessonSchedule, (lessonSchedule) => lessonSchedule.lesson)
   schedules: LessonSchedule[];
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  generateSlug() {
+    const value = `${this.orderNumber} ${this.title}`;
+    this.slug = slugify(value, { lower: true, strict: true });
+  }
 }
