@@ -1,34 +1,38 @@
 import {
-  IsDateString,
-  IsInt,
   IsNumber,
+  Min,
+  Max,
   IsOptional,
+  IsInt,
   IsPositive,
   IsString,
-  IsUrl,
-  Max,
-  MaxLength,
-  Min,
   MinLength,
+  MaxLength,
+  IsUrl,
+  IsDateString,
 } from 'class-validator';
 
-export class LessonCreateDto {
+export class LessonUpdateDto {
   @IsNumber()
   @Min(0)
   @Max(1)
+  @IsOptional()
   status: number;
 
   @IsInt()
   @IsPositive()
+  @IsOptional()
   orderNumber: number;
 
   @IsString()
   @MinLength(1)
   @MaxLength(255)
+  @IsOptional()
   title: string;
 
   @IsUrl()
   @MaxLength(255)
+  @IsOptional()
   videoUrl: number;
 
   @IsInt()
@@ -43,7 +47,4 @@ export class LessonCreateDto {
   @IsDateString()
   @IsOptional()
   startDate: Date;
-
-  //TEMP
-  // students for schedule
 }

@@ -1,5 +1,7 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+
 import { BaseResponseDto } from '#/common/dtos/base-response.dto';
+import { LessonScheduleResponseDto } from './lesson-schedule-response.dto';
 
 export class LessonResponseDto extends BaseResponseDto {
   @Expose()
@@ -22,4 +24,8 @@ export class LessonResponseDto extends BaseResponseDto {
 
   @Expose()
   description: number;
+
+  @Expose()
+  @Type(() => LessonScheduleResponseDto)
+  schedules: LessonScheduleResponseDto[];
 }

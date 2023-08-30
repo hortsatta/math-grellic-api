@@ -1,15 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Lesson } from './entities/lesson.entity';
 import { LessonCreateDto } from './dtos/lesson-create.dto';
+import { LessonUpdateDto } from './dtos/lesson-update.dto';
+import { LessonScheduleService } from './lesson-schedule.service';
 
 @Injectable()
 export class LessonService {
-  constructor(@InjectRepository(Lesson) private repo: Repository<Lesson>) {}
+  constructor(
+    @InjectRepository(Lesson) private repo: Repository<Lesson>,
+    @Inject(forwardRef(() => LessonScheduleService))
+    private lessonScheduleService: LessonScheduleService,
+  ) {}
 
-  // TEMP make pagination
+  // TODO make pagination
   async findAll(): Promise<Lesson[]> {
     return this.repo.find({
       where: { isActive: true },
@@ -17,8 +28,22 @@ export class LessonService {
     });
   }
 
+  async findOneById(id: number): Promise<Lesson> {
+    return this.repo.findOne({ where: { id, isActive: true } });
+  }
+
   async findOneBySlug(slug: string): Promise<Lesson> {
-    return this.repo.findOne({ where: { slug, isActive: true } });
+    try {
+      const lesson = await this.repo
+        .createQueryBuilder('lesson')
+        .leftJoinAndSelect('lesson.schedules', 'schedule')
+        .where({ slug, isActive: true })
+        .getOneOrFail();
+
+      return lesson;
+    } catch (error) {
+      throw new NotFoundException('Lesson not found');
+    }
   }
 
   async create(lessonDto: LessonCreateDto): Promise<Lesson> {
@@ -31,9 +56,34 @@ export class LessonService {
       return newLesson;
     }
 
-    // const
+    // If startDate is present then create schedule, convert from instance to plain
+    // and return it with new lesson
+    const schedule = await this.lessonScheduleService.create({
+      startDate,
+      lessonId: newLesson.id,
+    });
 
-    // return this.repo.save(lesson);
-    return lesson;
+    return { ...newLesson, schedules: [schedule] } as Lesson;
+  }
+
+  async update(id: number, lessonDto: LessonUpdateDto): Promise<Lesson> {
+    const lesson = await this.findOneById(id);
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    return this.repo.save({ ...lesson, ...lessonDto });
+  }
+
+  async delete(id: number): Promise<void> {
+    const lesson = await this.findOneById(id);
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    await this.repo.save({ ...lesson, isActive: false });
+    return;
   }
 }
