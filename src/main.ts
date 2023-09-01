@@ -4,16 +4,27 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import cookieParser from 'cookie-parser';
 
 import { AppModule } from './modules/app.module';
+import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
-    { cors: true },
   );
 
+  // Get config service to access cross origins variable
+  // enable and assign origins
+  const configService = app.get<ConfigService>(ConfigService);
+  app.enableCors({
+    origin: JSON.parse(configService.get<string>('CORS_ORIGINS')),
+    credentials: true,
+  });
+  // Initialize cookie with cookie secret
+  app.use(cookieParser(configService.get<string>('COOKIE_SECRET')));
   // Append api prefix to your base url
   app.setGlobalPrefix('api');
   // Enable versioning on this api
@@ -33,6 +44,8 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  // Catch database specific errors/exception
+  app.useGlobalFilters(new DatabaseExceptionFilter());
 
   await app.listen(3001);
 }

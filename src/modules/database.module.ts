@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
+import { User } from './user/entities/user.entity';
+import { TeacherUserAccount } from './user/entities/teacher-user-account.entity';
+import { StudentUserAccount } from './user/entities/student-user-account.entity';
 import { Lesson } from './lesson/entities/lesson.entity';
 import { LessonSchedule } from './lesson/entities/lesson-schedule.entity';
 
@@ -19,7 +22,13 @@ import { LessonSchedule } from './lesson/entities/lesson-schedule.entity';
         database: configService.get<string>('DATABASE_NAME'),
         // Use snake_case for databse column names
         namingStrategy: new SnakeNamingStrategy(),
-        entities: [Lesson, LessonSchedule],
+        entities: [
+          User,
+          TeacherUserAccount,
+          StudentUserAccount,
+          Lesson,
+          LessonSchedule,
+        ],
         synchronize: process.env.NODE_ENV !== 'production',
       }),
     }),
