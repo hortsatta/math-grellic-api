@@ -21,29 +21,25 @@ export class LessonService {
   ) {}
 
   // TODO make pagination
-  async findAll(): Promise<Lesson[]> {
+  findAll(): Promise<Lesson[]> {
     return this.repo.find({
       where: { isActive: true },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOneById(id: number): Promise<Lesson> {
+  findOneById(id: number): Promise<Lesson> {
     return this.repo.findOne({ where: { id, isActive: true } });
   }
 
   async findOneBySlug(slug: string): Promise<Lesson> {
-    try {
-      const lesson = await this.repo
-        .createQueryBuilder('lesson')
-        .leftJoinAndSelect('lesson.schedules', 'schedule')
-        .where({ slug, isActive: true })
-        .getOneOrFail();
+    const lesson = await this.repo.findOne({ where: { slug, isActive: true } });
 
-      return lesson;
-    } catch (error) {
+    if (!lesson) {
       throw new NotFoundException('Lesson not found');
     }
+
+    return lesson;
   }
 
   async create(lessonDto: LessonCreateDto): Promise<Lesson> {
@@ -63,7 +59,7 @@ export class LessonService {
       lessonId: newLesson.id,
     });
 
-    return { ...newLesson, schedules: [schedule] } as Lesson;
+    return { ...newLesson, schedules: [schedule] };
   }
 
   async update(id: number, lessonDto: LessonUpdateDto): Promise<Lesson> {

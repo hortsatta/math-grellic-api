@@ -22,7 +22,7 @@ export class LessonController {
 
   @Get()
   @SerializeInterceptor(LessonResponseDto)
-  // TEMP
+  // TODO
   // @UseInterceptors(FilterFieldsInterceptor)
   findAll(): Promise<Lesson[]> {
     return this.lessonService.findAll();
@@ -43,7 +43,7 @@ export class LessonController {
 
   @Patch('/:id')
   @SerializeInterceptor(LessonResponseDto)
-  update(
+  async update(
     @Param('id') id: number,
     @Body() body: LessonUpdateDto,
   ): Promise<Lesson> {

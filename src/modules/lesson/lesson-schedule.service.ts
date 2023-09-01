@@ -20,13 +20,13 @@ export class LessonScheduleService {
     private lessonService: LessonService,
   ) {}
 
-  async findByLessonId(lessonId: number): Promise<LessonSchedule[]> {
+  findByLessonId(lessonId: number): Promise<LessonSchedule[]> {
     return this.repo.find({
       where: { lesson: { id: lessonId }, isActive: true },
     });
   }
 
-  async findOneById(id: number): Promise<LessonSchedule> {
+  findOneById(id: number): Promise<LessonSchedule> {
     return this.repo.findOne({ where: { id, isActive: true } });
   }
 

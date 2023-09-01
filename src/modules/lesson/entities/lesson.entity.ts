@@ -1,13 +1,17 @@
-import { BeforeInsert, BeforeUpdate, Column, Entity, OneToMany } from 'typeorm';
-import slugify from 'slugify';
+import { Column, Entity, OneToMany } from 'typeorm';
 
+import { ContentStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { LessonSchedule } from './lesson-schedule.entity';
 
 @Entity()
 export class Lesson extends BaseEntity {
-  @Column({ type: 'int', default: 0 })
-  status: number;
+  @Column({
+    type: 'enum',
+    enum: ContentStatus,
+    default: ContentStatus.Draft,
+  })
+  status: ContentStatus;
 
   @Column({ type: 'int', unique: true })
   orderNumber: number;
@@ -19,21 +23,16 @@ export class Lesson extends BaseEntity {
   slug: string;
 
   @Column({ type: 'varchar', length: 255 })
-  videoUrl: number;
+  videoUrl: string;
 
   @Column({ type: 'int', nullable: true })
   durationSeconds: number;
 
   @Column({ type: 'text', nullable: true })
-  description: number;
+  description: string;
 
-  @OneToMany(() => LessonSchedule, (lessonSchedule) => lessonSchedule.lesson)
+  @OneToMany(() => LessonSchedule, (lessonSchedule) => lessonSchedule.lesson, {
+    eager: true,
+  })
   schedules: LessonSchedule[];
-
-  @BeforeInsert()
-  @BeforeUpdate()
-  generateSlug() {
-    const value = `${this.orderNumber} ${this.title}`;
-    this.slug = slugify(value, { lower: true, strict: true });
-  }
 }
