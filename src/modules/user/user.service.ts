@@ -6,7 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { generatePublicId } from '#/common/helpers/user.helper';
+import { generatePublicId } from '#/modules/user/helpers/user.helper';
 import { SupabaseService } from './supabase.service';
 import { User } from './entities/user.entity';
 import { TeacherUserAccount } from './entities/teacher-user-account.entity';
