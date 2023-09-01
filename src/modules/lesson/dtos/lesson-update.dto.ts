@@ -1,7 +1,6 @@
 import {
   IsNumber,
   Min,
-  Max,
   IsOptional,
   IsInt,
   IsPositive,
@@ -10,14 +9,15 @@ import {
   MaxLength,
   IsUrl,
   IsDateString,
+  IsEnum,
 } from 'class-validator';
+import { ContentStatus } from '#/common/enums/content.enum';
 
 export class LessonUpdateDto {
   @IsNumber()
-  @Min(0)
-  @Max(1)
+  @IsEnum(ContentStatus)
   @IsOptional()
-  status: number;
+  status: ContentStatus;
 
   @IsInt()
   @IsPositive()
@@ -33,7 +33,7 @@ export class LessonUpdateDto {
   @IsUrl()
   @MaxLength(255)
   @IsOptional()
-  videoUrl: number;
+  videoUrl: string;
 
   @IsInt()
   @Min(0)
@@ -42,7 +42,7 @@ export class LessonUpdateDto {
 
   @IsString()
   @IsOptional()
-  description: number;
+  description: string;
 
   @IsDateString()
   @IsOptional()

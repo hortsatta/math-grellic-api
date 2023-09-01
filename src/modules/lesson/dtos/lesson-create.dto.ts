@@ -1,22 +1,21 @@
 import {
   IsDateString,
+  IsEnum,
   IsInt,
-  IsNumber,
   IsOptional,
   IsPositive,
   IsString,
   IsUrl,
-  Max,
   MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
+import { ContentStatus } from '#/common/enums/content.enum';
 
 export class LessonCreateDto {
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  status: number;
+  @IsEnum(ContentStatus)
+  @IsOptional()
+  status: ContentStatus;
 
   @IsInt()
   @IsPositive()
@@ -29,7 +28,7 @@ export class LessonCreateDto {
 
   @IsUrl()
   @MaxLength(255)
-  videoUrl: number;
+  videoUrl: string;
 
   @IsInt()
   @Min(0)
@@ -38,12 +37,12 @@ export class LessonCreateDto {
 
   @IsString()
   @IsOptional()
-  description: number;
+  description: string;
 
   @IsDateString()
   @IsOptional()
   startDate: Date;
 
-  //TEMP
+  // TODO
   // students for schedule
 }
