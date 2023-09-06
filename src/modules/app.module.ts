@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { DatabaseModule } from './database.module';
+import { CoreModule } from './core/core.module';
 import { UserModule } from './user/user.module';
 import { LessonModule } from './lesson/lesson.module';
 
@@ -9,6 +10,7 @@ import { LessonModule } from './lesson/lesson.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
+    CoreModule,
     UserModule,
     LessonModule,
   ],
