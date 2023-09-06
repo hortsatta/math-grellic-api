@@ -30,6 +30,7 @@ import { LessonSchedule } from './lesson/entities/lesson-schedule.entity';
           LessonSchedule,
         ],
         synchronize: process.env.NODE_ENV !== 'production',
+        ssl: process.env.NODE_ENV === 'production',
       }),
     }),
   ],
