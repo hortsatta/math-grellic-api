@@ -35,7 +35,7 @@ export class UserService {
     // Create and save user base details
     const newUser = this.userRepo.create({
       ...user,
-      role: UserRole.Teacher,
+      role,
       publicId,
     } as User);
     return this.userRepo.save(newUser);

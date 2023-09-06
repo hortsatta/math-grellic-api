@@ -5,6 +5,7 @@ import {
   InsertEvent,
   UpdateEvent,
 } from 'typeorm';
+import dayjs from 'dayjs';
 
 import { User } from '../entities/user.entity';
 import { UserApprovalStatus } from '../enums/user.enum';
@@ -22,10 +23,13 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
   beforeInsert(event: InsertEvent<User>) {
     // Automatically set approval date if status is not pending,
     // else set date to null
-    if (event.entity.approvalStatus === UserApprovalStatus.Pending) {
+    if (
+      !event.entity.approvalStatus ||
+      event.entity.approvalStatus === UserApprovalStatus.Pending
+    ) {
       event.entity.approvalDate = null;
     } else {
-      event.entity.approvalDate = new Date();
+      event.entity.approvalDate = dayjs().toDate();
     }
   }
 
@@ -37,10 +41,13 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
     // Check previous data and automatically set approval date
     // if status is not pending, else set date to null
     if (prevUser.approvalStatus !== event.entity.approvalStatus) {
-      if (event.entity.approvalStatus === UserApprovalStatus.Pending) {
+      if (
+        !event.entity.approvalStatus ||
+        event.entity.approvalStatus === UserApprovalStatus.Pending
+      ) {
         event.entity.approvalDate = null;
       } else {
-        event.entity.approvalDate = new Date();
+        event.entity.approvalDate = dayjs().toDate();
       }
     }
   }

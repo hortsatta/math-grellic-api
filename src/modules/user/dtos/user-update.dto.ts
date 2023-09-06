@@ -8,9 +8,10 @@ import {
   MaxDate,
   MaxLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import dayjs from 'dayjs';
 
 import { UserApprovalStatus, UserGender } from '../enums/user.enum';
-import { Type } from 'class-transformer';
 
 export abstract class UserUpdateDto {
   // @IsEmail()
@@ -59,7 +60,7 @@ export abstract class UserUpdateDto {
 
   @Type(() => Date)
   @IsDate()
-  @MaxDate(new Date())
+  @MaxDate(dayjs().toDate())
   @IsOptional()
   birthDate: Date;
 

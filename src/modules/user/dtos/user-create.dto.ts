@@ -10,9 +10,10 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import dayjs from 'dayjs';
 
 import { UserApprovalStatus, UserGender } from '../enums/user.enum';
-import { Type } from 'class-transformer';
 
 export abstract class UserCreateDto {
   @IsEmail()
@@ -30,6 +31,7 @@ export abstract class UserCreateDto {
   profileImageUrl: string;
 
   @IsEnum(UserApprovalStatus)
+  @IsOptional()
   approvalStatus: UserApprovalStatus;
 
   @IsString()
@@ -47,7 +49,7 @@ export abstract class UserCreateDto {
 
   @Type(() => Date)
   @IsDate()
-  @MaxDate(new Date())
+  @MaxDate(dayjs().toDate())
   birthDate: Date;
 
   @IsPhoneNumber('PH')
