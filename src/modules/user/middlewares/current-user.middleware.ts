@@ -21,11 +21,7 @@ export class CurrentUserMiddleware implements NestMiddleware {
     next: () => void,
   ) {
     // Get cookie and parse token
-    const [token] = JSON.parse(
-      (req as any).cookies[
-        this.configService.get<string>('COOKIE_TOKEN_KEY')
-      ] || '[]',
-    );
+    const token = req.headers.authorization?.split(' ').pop();
     // Verify token using jwtService
     if (!!token) {
       try {

@@ -4,7 +4,6 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-import cookieParser from 'cookie-parser';
 
 import { AppModule } from './modules/app.module';
 import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
@@ -23,8 +22,6 @@ async function bootstrap() {
     origin: JSON.parse(configService.get<string>('CORS_ORIGINS')),
     credentials: true,
   });
-  // Initialize cookie with cookie secret
-  app.use(cookieParser(configService.get<string>('COOKIE_SECRET')));
   // Append api prefix to your base url
   app.setGlobalPrefix('api');
   // Enable versioning on this api
