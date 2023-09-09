@@ -15,9 +15,9 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
-  // Get config service to access cross origins variable
-  // enable and assign origins
+  // Get config service to access env variables
   const configService = app.get<ConfigService>(ConfigService);
+  // Enable and assign origins
   app.enableCors({
     origin: JSON.parse(configService.get<string>('CORS_ORIGINS')),
     credentials: true,
@@ -36,7 +36,7 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       forbidUnknownValues: true,
-      disableErrorMessages: process.env.NODE_ENV === 'production',
+      disableErrorMessages: configService.get('NODE_ENV') === 'production',
       // Automatically transform payloads to be objects typed according to their DTO classes
       transform: true,
     }),
