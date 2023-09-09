@@ -30,6 +30,7 @@ export class LessonService {
   ): Promise<[Lesson[], number]> {
     return this.repo.findAndCount({
       where: { teacher: { id: teacherId }, isActive: true },
+      relations: { schedules: true },
       order,
       skip,
       take,
@@ -37,11 +38,17 @@ export class LessonService {
   }
 
   findOneById(id: number): Promise<Lesson> {
-    return this.repo.findOne({ where: { id, isActive: true } });
+    return this.repo.findOne({
+      where: { id, isActive: true },
+      relations: { schedules: true },
+    });
   }
 
   async findOneBySlug(slug: string): Promise<Lesson> {
-    const lesson = await this.repo.findOne({ where: { slug, isActive: true } });
+    const lesson = await this.repo.findOne({
+      where: { slug, isActive: true },
+      relations: { schedules: true },
+    });
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
@@ -53,13 +60,13 @@ export class LessonService {
   async create(lessonDto: LessonCreateDto, user: User): Promise<Lesson> {
     const { startDate, studentIds, ...moreLessonDto } = lessonDto;
 
-    const isValid = await this.lessonScheduleService.validateScheduleCreation(
-      startDate,
-      studentIds,
-    );
+    if (startDate) {
+      const isValid =
+        await this.lessonScheduleService.validateScheduleCreation(studentIds);
 
-    if (!isValid) {
-      throw new BadRequestException('Schedule is invalid');
+      if (!isValid) {
+        throw new BadRequestException('Schedule is invalid');
+      }
     }
 
     const lesson = this.repo.create({

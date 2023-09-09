@@ -22,27 +22,18 @@ export class LessonScheduleService {
     @Inject(UserService) private userService: UserService,
   ) {}
 
-  async validateScheduleCreation(
-    startDate?: Date,
-    studentIds?: number[],
-  ): Promise<boolean> {
-    // For schedule, check if both start date and student ids are present,
-    // return error if one is null. Both should be present or none at all
-    if (
-      (startDate && (!studentIds || !studentIds.length)) ||
-      (studentIds && studentIds.length && !startDate)
-    ) {
-      return false;
+  async validateScheduleCreation(studentIds?: number[]): Promise<boolean> {
+    if (!studentIds || !studentIds.length) {
+      return true;
+    } else {
+      // Check if all specified student ids are valid
+      const students = await this.userService.findStudentsByIds(studentIds);
+      if (students.length !== studentIds.length) {
+        return false;
+      }
+
+      return true;
     }
-
-    const students =
-      await this.userService.findStudentUserAccountByIds(studentIds);
-
-    if (students.length !== studentIds.length) {
-      return false;
-    }
-
-    return true;
   }
 
   findByLessonId(lessonId: number): Promise<LessonSchedule[]> {
@@ -64,9 +55,12 @@ export class LessonScheduleService {
       throw new NotFoundException('Lesson not found');
     }
 
+    const students =
+      studentIds && studentIds.length ? studentIds.map((id) => ({ id })) : null;
+
     const lessonSchedule = this.repo.create({
       ...moreLessonScheduleDto,
-      students: studentIds.map((id) => ({ id })),
+      students,
       lesson,
     });
 

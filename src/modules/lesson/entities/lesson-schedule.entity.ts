@@ -15,7 +15,8 @@ export class LessonSchedule extends BaseEntity {
   @ManyToMany(
     () => StudentUserAccount,
     (studentUserAccount) => studentUserAccount.lessonSchedules,
+    { nullable: true },
   )
   @JoinTable({ name: 'lesson_schedule_students' })
-  students: StudentUserAccount[];
+  students: StudentUserAccount[] | null;
 }

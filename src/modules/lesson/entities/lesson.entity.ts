@@ -32,9 +32,7 @@ export class Lesson extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @OneToMany(() => LessonSchedule, (lessonSchedule) => lessonSchedule.lesson, {
-    eager: true,
-  })
+  @OneToMany(() => LessonSchedule, (lessonSchedule) => lessonSchedule.lesson)
   schedules: LessonSchedule[];
 
   @ManyToOne(

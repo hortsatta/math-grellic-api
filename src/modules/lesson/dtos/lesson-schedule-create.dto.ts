@@ -4,6 +4,7 @@ import {
   IsArray,
   IsDateString,
   IsInt,
+  IsOptional,
   IsPositive,
 } from 'class-validator';
 
@@ -20,5 +21,6 @@ export class LessonScheduleCreateDto {
   @ArrayMinSize(1)
   @IsInt({ each: true })
   @IsPositive({ each: true })
+  @IsOptional()
   studentIds: number[];
 }
