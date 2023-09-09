@@ -1,11 +1,11 @@
 import { CanActivate, ExecutionContext, UseGuards } from '@nestjs/common';
 import { UserApprovalStatus, UserRole } from '#/modules/user/enums/user.enum';
 
-export function AuthGuard(roles?: UserRole | UserRole[]) {
-  return UseGuards(new AuthRoleGuard(roles));
+export function UseAuthGuard(roles?: UserRole | UserRole[]) {
+  return UseGuards(new AuthGuard(roles));
 }
 
-class AuthRoleGuard implements CanActivate {
+class AuthGuard implements CanActivate {
   constructor(private roles: UserRole | UserRole[]) {}
 
   canActivate(context: ExecutionContext) {

@@ -10,8 +10,9 @@ import {
   Query,
 } from '@nestjs/common';
 
-import { SerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-import { AuthGuard } from '#/common/guards/auth.guard';
+import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
+import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
+import { UseAuthGuard } from '#/common/guards/auth.guard';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user/enums/user.enum';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
@@ -25,10 +26,11 @@ import { LessonService } from './lesson.service';
 export class LessonController {
   constructor(private readonly lessonService: LessonService) {}
 
-  @Get('/teacher/:teacherId')
-  @AuthGuard([UserRole.Admin, UserRole.Teacher])
-  // @UseInterceptors(FilterFieldsInterceptor)
-  @SerializeInterceptor(LessonResponseDto)
+  // Fetch lessons of a particular teacher using its id
+  @Get('/teachers/:teacherId')
+  @UseAuthGuard([UserRole.Admin, UserRole.Teacher])
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(LessonResponseDto)
   findByTeacherId(
     @Param('teacherId') teacherId: number,
     @Query('sort') sort?: string,
@@ -50,15 +52,16 @@ export class LessonController {
   }
 
   @Get('/:slug')
-  @SerializeInterceptor(LessonResponseDto)
-  // @UseInterceptors(FilterFieldsInterceptor)
+  @UseAuthGuard()
+  @UseSerializeInterceptor(LessonResponseDto)
+  @UseFilterFieldsInterceptor()
   findOneBySlug(@Param('slug') slug: string): Promise<Lesson> {
     return this.lessonService.findOneBySlug(slug);
   }
 
   @Post()
-  @AuthGuard(UserRole.Teacher)
-  @SerializeInterceptor(LessonResponseDto)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(LessonResponseDto)
   create(
     @Body() body: LessonCreateDto,
     @CurrentUser() user: User,
@@ -67,8 +70,8 @@ export class LessonController {
   }
 
   @Patch('/:id')
-  @AuthGuard(UserRole.Teacher)
-  @SerializeInterceptor(LessonResponseDto)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(LessonResponseDto)
   update(
     @Param('id') id: number,
     @Body() body: LessonUpdateDto,
@@ -77,7 +80,7 @@ export class LessonController {
   }
 
   @Delete('/:id')
-  @AuthGuard(UserRole.Teacher)
+  @UseAuthGuard(UserRole.Teacher)
   @HttpCode(204)
   delete(@Param('id') id: number): Promise<unknown> {
     return this.lessonService.delete(id);
