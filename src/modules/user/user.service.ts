@@ -41,9 +41,22 @@ export class UserService {
     return this.userRepo.save(newUser);
   }
 
-  findStudentUserAccountByIds(ids: number[]): Promise<StudentUserAccount[]> {
+  findStudentsByIds(ids: number[]): Promise<StudentUserAccount[]> {
     return this.studentUserAccountRepo.find({
       where: { id: In(ids), isActive: true },
+    });
+  }
+
+  async findStudentsByTeacherId(id: number): Promise<StudentUserAccount[]> {
+    return this.studentUserAccountRepo.find({
+      where: { teacherUser: { id }, isActive: true },
+      loadEagerRelations: false,
+      relations: { user: true },
+      select: {
+        user: {
+          publicId: true,
+        },
+      },
     });
   }
 
