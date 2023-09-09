@@ -1,17 +1,18 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
-import { ContentStatus } from '#/common/enums/content.enum';
+import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { LessonSchedule } from './lesson-schedule.entity';
+import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
 
 @Entity()
 export class Lesson extends BaseEntity {
   @Column({
     type: 'enum',
-    enum: ContentStatus,
-    default: ContentStatus.Draft,
+    enum: RecordStatus,
+    default: RecordStatus.Draft,
   })
-  status: ContentStatus;
+  status: RecordStatus;
 
   @Column({ type: 'int', unique: true })
   orderNumber: number;
@@ -35,4 +36,11 @@ export class Lesson extends BaseEntity {
     eager: true,
   })
   schedules: LessonSchedule[];
+
+  @ManyToOne(
+    () => TeacherUserAccount,
+    (teacherUserAccount) => teacherUserAccount.lessons,
+  )
+  @JoinColumn()
+  teacher: TeacherUserAccount;
 }

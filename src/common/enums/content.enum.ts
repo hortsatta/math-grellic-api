@@ -1,4 +1,4 @@
-export enum ContentStatus {
+export enum RecordStatus {
   Draft = 'draft',
   Published = 'published',
 }

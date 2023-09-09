@@ -20,6 +20,7 @@ import { StudentUserAccount } from './entities/student-user-account.entity';
   ],
   controllers: [UserController],
   providers: [UserSubscriber, SupabaseService, UserService],
+  exports: [UserService],
 })
 export class UserModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

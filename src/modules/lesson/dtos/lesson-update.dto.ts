@@ -11,13 +11,13 @@ import {
   IsDateString,
   IsEnum,
 } from 'class-validator';
-import { ContentStatus } from '#/common/enums/content.enum';
+import { RecordStatus } from '#/common/enums/content.enum';
 
 export class LessonUpdateDto {
   @IsNumber()
-  @IsEnum(ContentStatus)
+  @IsEnum(RecordStatus)
   @IsOptional()
-  status: ContentStatus;
+  status: RecordStatus;
 
   @IsInt()
   @IsPositive()

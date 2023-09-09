@@ -1,5 +1,6 @@
-import { Column, Entity, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne } from 'typeorm';
 
+import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { Lesson } from './lesson.entity';
 
@@ -8,11 +9,13 @@ export class LessonSchedule extends BaseEntity {
   @Column({ type: 'timestamp' })
   startDate: Date;
 
-  // TODO
-  // Foreign column for user profile
-  // @Column({ type: 'timestamp' })
-  // scheduledStudents: []
-
   @ManyToOne(() => Lesson, (lesson) => lesson.schedules)
   lesson: Lesson;
+
+  @ManyToMany(
+    () => StudentUserAccount,
+    (studentUserAccount) => studentUserAccount.lessonSchedules,
+  )
+  @JoinTable({ name: 'lesson_schedule_students' })
+  students: StudentUserAccount[];
 }

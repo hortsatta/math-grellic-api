@@ -1,7 +1,9 @@
 import { Expose } from 'class-transformer';
+
+import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { UserGender } from '../enums/user.enum';
 
-export abstract class UserAccountResponseDto {
+export abstract class UserAccountResponseDto extends BaseResponseDto {
   @Expose()
   firstName: string;
 

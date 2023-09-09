@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { generatePublicId } from '#/modules/user/helpers/user.helper';
 import { SupabaseService } from './supabase.service';
@@ -39,6 +39,12 @@ export class UserService {
       publicId,
     } as User);
     return this.userRepo.save(newUser);
+  }
+
+  findStudentUserAccountByIds(ids: number[]): Promise<StudentUserAccount[]> {
+    return this.studentUserAccountRepo.find({
+      where: { id: In(ids), isActive: true },
+    });
   }
 
   findOneByEmail(email: string) {
@@ -90,7 +96,7 @@ export class UserService {
     } = userDto;
 
     const assignedTeacherUser = await this.userRepo.findOne({
-      where: { publicId: teacherId },
+      where: { publicId: teacherId, isActive: true },
     });
 
     const isUserExisting = !!(await this.userRepo.findOne({
@@ -126,11 +132,11 @@ export class UserService {
     const studentUser = this.studentUserAccountRepo.create({
       ...moreUserDto,
       user: { id: user.id },
-      teacherUser: { id: assignedTeacherUser.id },
+      teacherUser: { id: assignedTeacherUser.teacherUserAccount.id },
     });
+
     const newStudentUser = await this.studentUserAccountRepo.save(studentUser);
     const teacherUser = { ...newStudentUser.teacherUser, publicId: teacherId };
-
     return { ...user, studentUserAccount: { ...newStudentUser, teacherUser } };
   }
 

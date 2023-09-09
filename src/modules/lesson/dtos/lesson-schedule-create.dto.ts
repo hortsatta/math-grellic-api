@@ -1,13 +1,24 @@
-import { IsDateString, IsInt, IsPositive } from 'class-validator';
+import {
+  ArrayMinSize,
+  ArrayNotEmpty,
+  IsArray,
+  IsDateString,
+  IsInt,
+  IsPositive,
+} from 'class-validator';
 
 export class LessonScheduleCreateDto {
   @IsDateString()
   startDate: Date;
 
-  // TODO foreign students id
-  // students: Type
-
   @IsInt()
   @IsPositive()
   lessonId: number;
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  @IsPositive({ each: true })
+  studentIds: number[];
 }

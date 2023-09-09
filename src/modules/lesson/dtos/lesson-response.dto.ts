@@ -1,12 +1,12 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ContentStatus } from '#/common/enums/content.enum';
+import { RecordStatus } from '#/common/enums/content.enum';
 import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { LessonScheduleResponseDto } from './lesson-schedule-response.dto';
 
 export class LessonResponseDto extends BaseResponseDto {
   @Expose()
-  status: ContentStatus;
+  status: RecordStatus;
 
   @Expose()
   orderNumber: number;

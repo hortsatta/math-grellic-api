@@ -1,12 +1,14 @@
 import {
   Inject,
   Injectable,
+  BadRequestException,
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { User } from '../user/entities/user.entity';
 import { Lesson } from './entities/lesson.entity';
 import { LessonCreateDto } from './dtos/lesson-create.dto';
 import { LessonUpdateDto } from './dtos/lesson-update.dto';
@@ -20,11 +22,17 @@ export class LessonService {
     private lessonScheduleService: LessonScheduleService,
   ) {}
 
-  // TODO make pagination
-  findAll(): Promise<Lesson[]> {
-    return this.repo.find({
-      where: { isActive: true },
-      order: { createdAt: 'DESC' },
+  findByTeacherIdPagination(
+    teacherId: number,
+    order: { [x: string]: 'ASC' | 'DESC' } = { orderNumber: 'ASC' },
+    take: number = 10,
+    skip: number = 0,
+  ): Promise<[Lesson[], number]> {
+    return this.repo.findAndCount({
+      where: { teacher: { id: teacherId }, isActive: true },
+      order,
+      skip,
+      take,
     });
   }
 
@@ -42,10 +50,22 @@ export class LessonService {
     return lesson;
   }
 
-  async create(lessonDto: LessonCreateDto): Promise<Lesson> {
-    const { startDate, ...moreLessonDto } = lessonDto;
+  async create(lessonDto: LessonCreateDto, user: User): Promise<Lesson> {
+    const { startDate, studentIds, ...moreLessonDto } = lessonDto;
 
-    const lesson = this.repo.create(moreLessonDto);
+    const isValid = await this.lessonScheduleService.validateScheduleCreation(
+      startDate,
+      studentIds,
+    );
+
+    if (!isValid) {
+      throw new BadRequestException('Schedule is invalid');
+    }
+
+    const lesson = this.repo.create({
+      ...moreLessonDto,
+      teacher: user.teacherUserAccount,
+    });
     const newLesson = await this.repo.save(lesson);
 
     if (!startDate) {
@@ -57,6 +77,7 @@ export class LessonService {
     const schedule = await this.lessonScheduleService.create({
       startDate,
       lessonId: newLesson.id,
+      studentIds,
     });
 
     return { ...newLesson, schedules: [schedule] };

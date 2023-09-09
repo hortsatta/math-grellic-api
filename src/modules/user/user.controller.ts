@@ -1,14 +1,7 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 
 import { SerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
+import { AuthGuard } from '#/common/guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from './entities/user.entity';
 import { UserResponseDto } from './dtos/user-response.dto';
@@ -26,11 +19,9 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get(`${AUTH_PATH}/me`)
+  @AuthGuard()
   @SerializeInterceptor(UserResponseDto)
   me(@CurrentUser() user: User): User {
-    if (!user) {
-      throw new UnauthorizedException('No user session found');
-    }
     return user;
   }
 

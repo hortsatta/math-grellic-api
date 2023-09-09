@@ -1,10 +1,13 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+
 import { BaseResponseDto } from '#/common/dtos/base-response.dto';
+import { StudentUserResponseDto } from '#/modules/user/dtos/student-user-response.dto';
 
 export class LessonScheduleResponseDto extends BaseResponseDto {
   @Expose()
   startDate: string;
 
-  // TODO students
-  // students: type
+  @Expose()
+  @Type(() => StudentUserResponseDto)
+  students: StudentUserResponseDto[];
 }

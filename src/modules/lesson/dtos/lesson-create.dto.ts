@@ -1,4 +1,7 @@
 import {
+  ArrayMinSize,
+  ArrayNotEmpty,
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -10,12 +13,12 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { ContentStatus } from '#/common/enums/content.enum';
+import { RecordStatus } from '#/common/enums/content.enum';
 
 export class LessonCreateDto {
-  @IsEnum(ContentStatus)
+  @IsEnum(RecordStatus)
   @IsOptional()
-  status: ContentStatus;
+  status: RecordStatus;
 
   @IsInt()
   @IsPositive()
@@ -43,6 +46,11 @@ export class LessonCreateDto {
   @IsOptional()
   startDate: Date;
 
-  // TODO
-  // students for schedule
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  @IsPositive({ each: true })
+  @IsOptional()
+  studentIds: number[];
 }
