@@ -74,8 +74,6 @@ export class LessonScheduleService {
       throw new NotFoundException('Lesson schedule not found');
     }
 
-    console.log(lessonSchedule.lesson);
-
     const students = studentIds?.length
       ? studentIds.map((id) => ({ id }))
       : null;
