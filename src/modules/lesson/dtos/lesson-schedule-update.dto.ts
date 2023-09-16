@@ -1,14 +1,23 @@
-import { IsDateString, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  ArrayMinSize,
+  ArrayNotEmpty,
+  IsArray,
+  IsInt,
+  IsPositive,
+} from 'class-validator';
 
 export class LessonScheduleUpdateDto {
   @IsDateString()
   @IsOptional()
   startDate: Date;
 
-  // TODO students
-  // students: Type
-
-  @IsBoolean()
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  @IsPositive({ each: true })
   @IsOptional()
-  isActive: boolean;
+  studentIds: number[];
 }

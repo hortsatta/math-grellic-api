@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { UseAuthGuard } from '#/common/guards/auth.guard';
@@ -40,11 +48,20 @@ export class UserController {
 
   // Teachers endpoint
 
-  @Get(`${TEACHERS_BASE_URL}/:id/students`)
-  @UseAuthGuard([UserRole.Admin, UserRole.Teacher])
+  @Get(`${TEACHERS_BASE_URL}/students`)
+  @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(StudentUserResponseDto)
-  getStudentsByTeacherId(@Param('id') id: number) {
-    return this.userService.findStudentsByTeacherId(id);
+  getStudentsByCurrentTeacherUser(
+    @CurrentUser() user: User,
+    @Query('ids') ids: string,
+    @Query('q') q: string,
+  ) {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.userService.findStudentsByTeacherId(
+      user.teacherUserAccount.id,
+      transformedIds,
+      q,
+    );
   }
 
   @Post(`${TEACHERS_BASE_URL}/register`)

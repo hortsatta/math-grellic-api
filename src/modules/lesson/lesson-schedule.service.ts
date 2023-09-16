@@ -49,19 +49,15 @@ export class LessonScheduleService {
   async create(lessonScheduleDto: LessonScheduleCreateDto) {
     const { lessonId, studentIds, ...moreLessonScheduleDto } =
       lessonScheduleDto;
-    // Get lesson, cancel schedule creation and throw error if not found
-    const lesson = await this.lessonService.findOneById(lessonId);
-    if (!lesson) {
-      throw new NotFoundException('Lesson not found');
-    }
 
-    const students =
-      studentIds && studentIds.length ? studentIds.map((id) => ({ id })) : null;
+    const students = studentIds?.length
+      ? studentIds.map((id) => ({ id }))
+      : null;
 
     const lessonSchedule = this.repo.create({
       ...moreLessonScheduleDto,
       students,
-      lesson,
+      lesson: { id: lessonId },
     });
 
     return this.repo.save(lessonSchedule);
@@ -71,13 +67,25 @@ export class LessonScheduleService {
     id: number,
     lessonScheduleDto: LessonScheduleUpdateDto,
   ): Promise<LessonSchedule> {
+    const { startDate, studentIds } = lessonScheduleDto;
+    // Get lesson schedule, cancel schedule update and throw error if not found
     const lessonSchedule = await this.findOneById(id);
-
     if (!lessonSchedule) {
       throw new NotFoundException('Lesson schedule not found');
     }
 
-    return this.repo.save({ ...lessonSchedule, ...lessonScheduleDto });
+    console.log(lessonSchedule.lesson);
+
+    const students = studentIds?.length
+      ? studentIds.map((id) => ({ id }))
+      : null;
+
+    return this.repo.save({
+      ...lessonSchedule,
+      startDate,
+      students,
+      lesson: lessonSchedule.lesson,
+    });
   }
 
   async delete(id: number) {

@@ -19,6 +19,9 @@ import { CurrentUser } from '../user/decorators/current-user.decorator';
 import { Lesson } from './entities/lesson.entity';
 import { LessonResponseDto } from './dtos/lesson-response.dto';
 import { LessonCreateDto } from './dtos/lesson-create.dto';
+import { LessonScheduleResponseDto } from './dtos/lesson-schedule-response.dto';
+import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
+import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
 import { LessonUpdateDto } from './dtos/lesson-update.dto';
 import { LessonService } from './lesson.service';
 
@@ -26,17 +29,21 @@ import { LessonService } from './lesson.service';
 export class LessonController {
   constructor(private readonly lessonService: LessonService) {}
 
-  // Fetch lessons of a particular teacher using its id
-  @Get('/teachers/:teacherId')
-  @UseAuthGuard([UserRole.Admin, UserRole.Teacher])
+  // Fetch lessons for the current teacher user
+  @Get('/teachers/list')
+  @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
   findByTeacherId(
-    @Param('teacherId') teacherId: number,
+    @CurrentUser() user: User,
+    @Query('q') q: string,
+    @Query('status') status?: string,
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
   ): Promise<[Lesson[], number]> {
+    const { id: teacherId } = user.teacherUserAccount;
+
     let order;
     if (sort) {
       const [sortBy, sortOrder] = sort?.split(',') || [];
@@ -48,15 +55,34 @@ export class LessonController {
       order,
       !!take ? take : undefined,
       !!skip ? skip : undefined,
+      q,
+      status,
     );
   }
 
-  @Get('/:slug')
-  @UseAuthGuard()
+  // @Get('/:slug')
+  // @UseAuthGuard()
+  // @UseSerializeInterceptor(LessonResponseDto)
+  // @UseFilterFieldsInterceptor()
+  // findOneBySlug(@Param('slug') slug: string): Promise<Lesson> {
+  //   return this.lessonService.findOneBySlug(slug);
+  // }
+
+  @Get('/:slug/teachers')
+  @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
-  findOneBySlug(@Param('slug') slug: string): Promise<Lesson> {
-    return this.lessonService.findOneBySlug(slug);
+  findOneBySlugAndTeacherId(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+    @Query('status') status?: string,
+  ): Promise<Lesson> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.findOneBySlugAndTeacherId(
+      slug,
+      teacherId,
+      status,
+    );
   }
 
   @Post()
@@ -69,20 +95,50 @@ export class LessonController {
     return this.lessonService.create(body, user);
   }
 
-  @Patch('/:id')
+  @Patch('/:slug')
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   update(
-    @Param('id') id: number,
+    @Param('slug') slug: string,
+    @Query('schedule') scheduleId: number,
     @Body() body: LessonUpdateDto,
+    @CurrentUser() user: User,
   ): Promise<Lesson> {
-    return this.lessonService.update(id, body);
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.update(slug, body, teacherId, scheduleId);
   }
 
+  // TODO delete
   @Delete('/:id')
   @UseAuthGuard(UserRole.Teacher)
   @HttpCode(204)
   delete(@Param('id') id: number): Promise<unknown> {
     return this.lessonService.delete(id);
   }
+
+  // Lesson schedule
+  @Post('/schedules')
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(LessonScheduleResponseDto)
+  createSchedule(
+    @Body() body: LessonScheduleCreateDto,
+    @CurrentUser() user: User,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.createSchedule(body, teacherId);
+  }
+
+  @Patch('/schedules/:scheduleId')
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(LessonScheduleResponseDto)
+  updateSchedule(
+    @Param('scheduleId') scheduleId: number,
+    @Body() body: LessonScheduleUpdateDto,
+    @CurrentUser() user: User,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.updateSchedule(scheduleId, body, teacherId);
+  }
+
+  // TODO delete schedule
 }

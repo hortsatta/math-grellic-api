@@ -14,6 +14,7 @@ export class Lesson extends BaseEntity {
   })
   status: RecordStatus;
 
+  // TODO set lesson number to not unique for next school year, do manula check
   @Column({ type: 'int', unique: true })
   orderNumber: number;
 

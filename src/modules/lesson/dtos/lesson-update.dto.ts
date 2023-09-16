@@ -1,5 +1,4 @@
 import {
-  IsNumber,
   Min,
   IsOptional,
   IsInt,
@@ -8,13 +7,15 @@ import {
   MinLength,
   MaxLength,
   IsUrl,
-  IsDateString,
   IsEnum,
+  ArrayMinSize,
+  ArrayNotEmpty,
+  IsArray,
+  IsDateString,
 } from 'class-validator';
 import { RecordStatus } from '#/common/enums/content.enum';
 
 export class LessonUpdateDto {
-  @IsNumber()
   @IsEnum(RecordStatus)
   @IsOptional()
   status: RecordStatus;
@@ -47,4 +48,12 @@ export class LessonUpdateDto {
   @IsDateString()
   @IsOptional()
   startDate: Date;
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  @IsPositive({ each: true })
+  @IsOptional()
+  studentIds: number[];
 }

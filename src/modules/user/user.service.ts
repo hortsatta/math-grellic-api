@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 
 import { generatePublicId } from '#/modules/user/helpers/user.helper';
 import { SupabaseService } from './supabase.service';
@@ -47,9 +47,32 @@ export class UserService {
     });
   }
 
-  async findStudentsByTeacherId(id: number): Promise<StudentUserAccount[]> {
+  findStudentsByTeacherId(
+    id: number,
+    studentIds?: number[],
+    q?: string,
+  ): Promise<StudentUserAccount[]> {
+    const generateWhere = () => {
+      const baseWhere = {
+        teacherUser: { id },
+        isActive: true,
+      };
+
+      if (studentIds?.length) {
+        return { ...baseWhere, id: In(studentIds) };
+      } else if (!!q?.trim()) {
+        return [
+          { firstName: ILike(`%${q}%`), ...baseWhere },
+          { lastName: ILike(`%${q}%`), ...baseWhere },
+          { middleName: ILike(`%${q}%`), ...baseWhere },
+        ];
+      }
+
+      return baseWhere;
+    };
+
     return this.studentUserAccountRepo.find({
-      where: { teacherUser: { id }, isActive: true },
+      where: generateWhere(),
       loadEagerRelations: false,
       relations: { user: true },
       select: {
