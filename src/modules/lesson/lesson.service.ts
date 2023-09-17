@@ -4,13 +4,16 @@ import {
   BadRequestException,
   NotFoundException,
   forwardRef,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   FindOptionsOrder,
+  FindOptionsOrderValue,
   FindOptionsWhere,
   ILike,
   In,
+  Not,
   Repository,
 } from 'typeorm';
 
@@ -63,7 +66,7 @@ export class LessonService {
       const [sortBy, sortOrder] = sort?.split(',') || [];
 
       if (sortBy === 'scheduleDate') {
-        return { schedules: { startDate: 'ASC' } };
+        return { schedules: { startDate: sortOrder as FindOptionsOrderValue } };
       }
 
       return { [sortBy]: sortOrder };
@@ -115,15 +118,25 @@ export class LessonService {
     return lesson;
   }
 
-  // TODO set lesson number to not unique for next school year, do manula check
   async create(lessonDto: LessonCreateDto, user: User): Promise<Lesson> {
     const { startDate, studentIds, ...moreLessonDto } = lessonDto;
 
+    // Validate lesson order number if unique for current teacher user
+    const isOrderNumberValid = !this.repo.count({
+      where: {
+        orderNumber: moreLessonDto.orderNumber,
+        teacher: { id: user.teacherUserAccount.id },
+      },
+    });
+    if (!isOrderNumberValid) {
+      throw new ConflictException('Lesson number is already present');
+    }
+
     if (startDate) {
-      const isValid =
+      const isScheduleValid =
         await this.lessonScheduleService.validateScheduleCreation(studentIds);
 
-      if (!isValid) {
+      if (!isScheduleValid) {
         throw new BadRequestException('Schedule is invalid');
       }
     }
@@ -164,6 +177,18 @@ export class LessonService {
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
+    }
+
+    // Validate lesson order number if unique for current teacher user
+    const isOrderNumberValid = !this.repo.count({
+      where: {
+        orderNumber: moreLessonDto.orderNumber,
+        slug: Not(slug),
+        teacher: { id: teacherId },
+      },
+    });
+    if (!isOrderNumberValid) {
+      throw new ConflictException('Lesson number is already present');
     }
 
     // Check if schedule id, if present then fetch schedule or throw error if none found

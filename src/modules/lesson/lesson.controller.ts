@@ -54,14 +54,6 @@ export class LessonController {
     );
   }
 
-  // @Get('/:slug')
-  // @UseAuthGuard()
-  // @UseSerializeInterceptor(LessonResponseDto)
-  // @UseFilterFieldsInterceptor()
-  // findOneBySlug(@Param('slug') slug: string): Promise<Lesson> {
-  //   return this.lessonService.findOneBySlug(slug);
-  // }
-
   @Get('/:slug/teachers')
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
