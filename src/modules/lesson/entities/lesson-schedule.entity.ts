@@ -9,7 +9,9 @@ export class LessonSchedule extends BaseEntity {
   @Column({ type: 'timestamp' })
   startDate: Date;
 
-  @ManyToOne(() => Lesson, (lesson) => lesson.schedules)
+  @ManyToOne(() => Lesson, (lesson) => lesson.schedules, {
+    onDelete: 'CASCADE',
+  })
   lesson: Lesson;
 
   @ManyToMany(

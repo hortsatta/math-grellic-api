@@ -6,7 +6,13 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, In, Repository } from 'typeorm';
+import {
+  FindOptionsOrder,
+  FindOptionsWhere,
+  ILike,
+  In,
+  Repository,
+} from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
 import { User } from '../user/entities/user.entity';
@@ -27,7 +33,7 @@ export class LessonService {
 
   findByTeacherIdPagination(
     teacherId: number,
-    order: { [x: string]: 'ASC' | 'DESC' } = { orderNumber: 'ASC' },
+    sort: string,
     take: number = 10,
     skip: number = 0,
     q?: string,
@@ -36,7 +42,6 @@ export class LessonService {
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Lesson> = {
         teacher: { id: teacherId },
-        isActive: true,
       };
 
       if (q?.trim()) {
@@ -50,10 +55,24 @@ export class LessonService {
       return baseWhere;
     };
 
+    const generateOrder = (): FindOptionsOrder<Lesson> => {
+      if (!sort) {
+        return { orderNumber: 'ASC' };
+      }
+
+      const [sortBy, sortOrder] = sort?.split(',') || [];
+
+      if (sortBy === 'scheduleDate') {
+        return { schedules: { startDate: 'ASC' } };
+      }
+
+      return { [sortBy]: sortOrder };
+    };
+
     return this.repo.findAndCount({
       where: generateWhere(),
       relations: { schedules: true },
-      order,
+      order: generateOrder(),
       skip,
       take,
     });
@@ -61,7 +80,7 @@ export class LessonService {
 
   findOneById(id: number): Promise<Lesson> {
     return this.repo.findOne({
-      where: { id, isActive: true },
+      where: { id },
       relations: { schedules: true },
     });
   }
@@ -74,7 +93,6 @@ export class LessonService {
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Lesson> = {
         slug,
-        isActive: true,
         teacher: { id: teacherId },
       };
 
@@ -192,8 +210,23 @@ export class LessonService {
       throw new NotFoundException('Lesson not found');
     }
 
-    await this.repo.save({ ...lesson, isActive: false });
+    await this.repo.save({ ...lesson });
     return;
+  }
+
+  async deleteBySlug(slug: string, teacherId: number): Promise<boolean> {
+    const lesson = await this.findOneBySlugAndTeacherId(slug, teacherId);
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    const result = await this.repo.delete({ slug });
+    return !!result.affected;
+
+    // TODO soft delete
+    // const result = await this.repo.softDelete({ slug });
+    // return !!result.affected;
   }
 
   // Lesson schedules
@@ -206,7 +239,6 @@ export class LessonService {
     const lesson = await this.repo.findOne({
       where: {
         id: lessonId,
-        isActive: true,
         status: RecordStatus.Published,
         teacher: { id: teacherId },
       },
@@ -226,7 +258,6 @@ export class LessonService {
   ) {
     const lesson = await this.repo.findOne({
       where: {
-        isActive: true,
         status: RecordStatus.Published,
         teacher: { id: teacherId },
         schedules: { id: scheduleId },

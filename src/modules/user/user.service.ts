@@ -43,7 +43,7 @@ export class UserService {
 
   findStudentsByIds(ids: number[]): Promise<StudentUserAccount[]> {
     return this.studentUserAccountRepo.find({
-      where: { id: In(ids), isActive: true },
+      where: { id: In(ids) },
     });
   }
 
@@ -55,7 +55,6 @@ export class UserService {
     const generateWhere = () => {
       const baseWhere = {
         teacherUser: { id },
-        isActive: true,
       };
 
       if (studentIds?.length) {
@@ -85,7 +84,7 @@ export class UserService {
 
   findOneByEmail(email: string) {
     return this.userRepo.findOne({
-      where: { email, isActive: true },
+      where: { email },
     });
   }
 
@@ -132,7 +131,7 @@ export class UserService {
     } = userDto;
 
     const assignedTeacherUser = await this.userRepo.findOne({
-      where: { publicId: teacherId, isActive: true },
+      where: { publicId: teacherId },
     });
 
     const isUserExisting = !!(await this.userRepo.findOne({

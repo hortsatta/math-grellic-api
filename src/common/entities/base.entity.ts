@@ -1,6 +1,6 @@
 import {
-  Column,
   CreateDateColumn,
+  DeleteDateColumn,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -9,12 +9,12 @@ export abstract class Base {
   @PrimaryGeneratedColumn('identity')
   id: number;
 
-  @Column({ type: 'bool', default: true })
-  isActive: boolean;
-
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamp' })
+  deletedAt: Date;
 }

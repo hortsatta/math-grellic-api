@@ -44,15 +44,9 @@ export class LessonController {
   ): Promise<[Lesson[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    let order;
-    if (sort) {
-      const [sortBy, sortOrder] = sort?.split(',') || [];
-      order = { [sortBy]: sortOrder };
-    }
-
     return this.lessonService.findByTeacherIdPagination(
       teacherId,
-      order,
+      sort,
       !!take ? take : undefined,
       !!skip ? skip : undefined,
       q,
@@ -108,12 +102,15 @@ export class LessonController {
     return this.lessonService.update(slug, body, teacherId, scheduleId);
   }
 
-  // TODO delete
-  @Delete('/:id')
+  @Delete('/:slug')
   @UseAuthGuard(UserRole.Teacher)
   @HttpCode(204)
-  delete(@Param('id') id: number): Promise<unknown> {
-    return this.lessonService.delete(id);
+  delete(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ): Promise<boolean> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.deleteBySlug(slug, teacherId);
   }
 
   // Lesson schedule

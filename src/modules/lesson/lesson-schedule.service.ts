@@ -18,8 +18,8 @@ export class LessonScheduleService {
   constructor(
     @InjectRepository(LessonSchedule) private repo: Repository<LessonSchedule>,
     @Inject(forwardRef(() => LessonService))
-    private lessonService: LessonService,
-    @Inject(UserService) private userService: UserService,
+    @Inject(UserService)
+    private userService: UserService,
   ) {}
 
   async validateScheduleCreation(studentIds?: number[]): Promise<boolean> {
@@ -38,12 +38,12 @@ export class LessonScheduleService {
 
   findByLessonId(lessonId: number): Promise<LessonSchedule[]> {
     return this.repo.find({
-      where: { lesson: { id: lessonId }, isActive: true },
+      where: { lesson: { id: lessonId } },
     });
   }
 
   findOneById(id: number): Promise<LessonSchedule> {
-    return this.repo.findOne({ where: { id, isActive: true } });
+    return this.repo.findOne({ where: { id } });
   }
 
   async create(lessonScheduleDto: LessonScheduleCreateDto) {
@@ -84,15 +84,5 @@ export class LessonScheduleService {
       students,
       lesson: lessonSchedule.lesson,
     });
-  }
-
-  async delete(id: number) {
-    const lessonSchedule = await this.findOneById(id);
-
-    if (!lessonSchedule) {
-      throw new NotFoundException('Lesson schedule not found');
-    }
-
-    return this.repo.save({ ...lessonSchedule, isActive: false });
   }
 }
