@@ -41,13 +41,13 @@ export class UserService {
     return this.userRepo.save(newUser);
   }
 
-  findStudentsByIds(ids: number[]): Promise<StudentUserAccount[]> {
+  getStudentsByIds(ids: number[]): Promise<StudentUserAccount[]> {
     return this.studentUserAccountRepo.find({
       where: { id: In(ids) },
     });
   }
 
-  findStudentsByTeacherId(
+  getStudentsByTeacherId(
     id: number,
     studentIds?: number[],
     q?: string,
@@ -82,7 +82,7 @@ export class UserService {
     });
   }
 
-  findOneByEmail(email: string) {
+  getOneByEmail(email: string) {
     return this.userRepo.findOne({
       where: { email },
     });

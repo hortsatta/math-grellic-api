@@ -57,7 +57,7 @@ export class UserController {
     @Query('q') q: string,
   ) {
     const transformedIds = ids?.split(',').map((id) => +id);
-    return this.userService.findStudentsByTeacherId(
+    return this.userService.getStudentsByTeacherId(
       user.teacherUserAccount.id,
       transformedIds,
       q,

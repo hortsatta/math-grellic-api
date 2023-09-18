@@ -27,7 +27,7 @@ export class LessonScheduleService {
       return true;
     } else {
       // Check if all specified student ids are valid
-      const students = await this.userService.findStudentsByIds(studentIds);
+      const students = await this.userService.getStudentsByIds(studentIds);
       if (students.length !== studentIds.length) {
         return false;
       }
@@ -36,13 +36,13 @@ export class LessonScheduleService {
     }
   }
 
-  findByLessonId(lessonId: number): Promise<LessonSchedule[]> {
+  getByLessonId(lessonId: number): Promise<LessonSchedule[]> {
     return this.repo.find({
       where: { lesson: { id: lessonId } },
     });
   }
 
-  findOneById(id: number): Promise<LessonSchedule> {
+  getOneById(id: number): Promise<LessonSchedule> {
     return this.repo.findOne({ where: { id } });
   }
 
@@ -69,7 +69,7 @@ export class LessonScheduleService {
   ): Promise<LessonSchedule> {
     const { startDate, studentIds } = lessonScheduleDto;
     // Get lesson schedule, cancel schedule update and throw error if not found
-    const lessonSchedule = await this.findOneById(id);
+    const lessonSchedule = await this.getOneById(id);
     if (!lessonSchedule) {
       throw new NotFoundException('Lesson schedule not found');
     }

@@ -29,7 +29,7 @@ export class CurrentUserMiddleware implements NestMiddleware {
           secret: this.configService.get<string>('SUPABASE_JWT_SECRET'),
         }) as JwtPayload;
         // Get current user by email and add to request object
-        const user = await this.userService.findOneByEmail(auth.email);
+        const user = await this.userService.getOneByEmail(auth.email);
         (req as any).currentUser = user;
       } catch (error) {
         (req as any).currentUser = null;
