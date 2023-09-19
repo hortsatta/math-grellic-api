@@ -1,9 +1,10 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
+import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { LessonSchedule } from './lesson-schedule.entity';
-import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
+import { LessonCompletion } from './lesson-completion.entity';
 
 @Entity()
 export class Lesson extends BaseEntity {
@@ -32,8 +33,17 @@ export class Lesson extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ type: 'text', nullable: true })
+  excerpt: string;
+
   @OneToMany(() => LessonSchedule, (lessonSchedule) => lessonSchedule.lesson)
   schedules: LessonSchedule[];
+
+  @OneToMany(
+    () => LessonCompletion,
+    (lessonCompletion) => lessonCompletion.lesson,
+  )
+  completions: LessonCompletion[];
 
   @ManyToOne(
     () => TeacherUserAccount,

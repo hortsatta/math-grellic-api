@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
   Param,
   Patch,
   Post,
@@ -23,20 +22,25 @@ import { LessonScheduleResponseDto } from './dtos/lesson-schedule-response.dto';
 import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
 import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
 import { LessonUpdateDto } from './dtos/lesson-update.dto';
+import { StudentLessonListResponseDto } from './dtos/student-lesson-list-response.dto';
+import { LessonCompletionUpdateDto } from './dtos/lesson-completion-update.dto';
+import { LessonCompletionResponseDto } from './dtos/lesson-completion-response.dto';
 import { LessonService } from './lesson.service';
 
 @Controller('lessons')
 export class LessonController {
   constructor(private readonly lessonService: LessonService) {}
 
+  // TEACHERS
+
   // Fetch lessons for the current teacher user
   @Get('/teachers/list')
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
-  findByTeacherId(
+  getTeacherLessonsByTeacherId(
     @CurrentUser() user: User,
-    @Query('q') q: string,
+    @Query('q') q?: string,
     @Query('status') status?: string,
     @Query('sort') sort?: string,
     @Query('take') take?: number,
@@ -44,7 +48,7 @@ export class LessonController {
   ): Promise<[Lesson[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.lessonService.findByTeacherIdPagination(
+    return this.lessonService.getPaginationTeacherLessonsByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -58,17 +62,13 @@ export class LessonController {
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
-  findOneBySlugAndTeacherId(
+  getOneBySlugAndTeacherId(
     @Param('slug') slug: string,
     @CurrentUser() user: User,
     @Query('status') status?: string,
   ): Promise<Lesson> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.findOneBySlugAndTeacherId(
-      slug,
-      teacherId,
-      status,
-    );
+    return this.lessonService.getOneBySlugAndTeacherId(slug, teacherId, status);
   }
 
   @Post()
@@ -96,13 +96,41 @@ export class LessonController {
 
   @Delete('/:slug')
   @UseAuthGuard(UserRole.Teacher)
-  @HttpCode(204)
   delete(
     @Param('slug') slug: string,
     @CurrentUser() user: User,
   ): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.lessonService.deleteBySlug(slug, teacherId);
+  }
+
+  // STUDENTS
+
+  @Get('/students/list')
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(StudentLessonListResponseDto)
+  getStudentLessonsByStudentId(
+    @CurrentUser() user: User,
+    @Query('q') q?: string,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.lessonService.getStudentLessonsByStudentId(studentId, q);
+  }
+
+  @Post(':slug/students/completion')
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(LessonCompletionResponseDto)
+  setLessonCompletionBySlugAndStudentId(
+    @Body() body: LessonCompletionUpdateDto,
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.lessonService.setLessonCompletionBySlugAndStudentId(
+      body,
+      slug,
+      studentId,
+    );
   }
 
   // Lesson schedule

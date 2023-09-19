@@ -45,6 +45,10 @@ export class LessonUpdateDto {
   @IsOptional()
   description: string;
 
+  @IsString()
+  @IsOptional()
+  excerpt: string;
+
   @IsDateString()
   @IsOptional()
   startDate: Date;

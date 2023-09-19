@@ -13,17 +13,21 @@ import {
   FindOptionsWhere,
   ILike,
   In,
+  IsNull,
   Not,
   Repository,
 } from 'typeorm';
+import dayjs from 'dayjs';
 
 import { RecordStatus } from '#/common/enums/content.enum';
 import { User } from '../user/entities/user.entity';
 import { Lesson } from './entities/lesson.entity';
+import { LessonCompletion } from './entities/lesson-completion.entity';
 import { LessonCreateDto } from './dtos/lesson-create.dto';
 import { LessonUpdateDto } from './dtos/lesson-update.dto';
 import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
 import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
+import { LessonCompletionUpdateDto } from './dtos/lesson-completion-update.dto';
 import { LessonScheduleService } from './lesson-schedule.service';
 
 @Injectable()
@@ -32,9 +36,11 @@ export class LessonService {
     @InjectRepository(Lesson) private repo: Repository<Lesson>,
     @Inject(forwardRef(() => LessonScheduleService))
     private lessonScheduleService: LessonScheduleService,
+    @InjectRepository(LessonCompletion)
+    private lessonCompletionRepo: Repository<LessonCompletion>,
   ) {}
 
-  findByTeacherIdPagination(
+  getPaginationTeacherLessonsByTeacherId(
     teacherId: number,
     sort: string,
     take: number = 10,
@@ -81,14 +87,14 @@ export class LessonService {
     });
   }
 
-  findOneById(id: number): Promise<Lesson> {
+  getOneById(id: number): Promise<Lesson> {
     return this.repo.findOne({
       where: { id },
       relations: { schedules: true },
     });
   }
 
-  async findOneBySlugAndTeacherId(
+  async getOneBySlugAndTeacherId(
     slug: string,
     teacherId: number,
     status?: string,
@@ -122,13 +128,13 @@ export class LessonService {
     const { startDate, studentIds, ...moreLessonDto } = lessonDto;
 
     // Validate lesson order number if unique for current teacher user
-    const isOrderNumberValid = !this.repo.count({
+    const orderNumberCount = await this.repo.count({
       where: {
         orderNumber: moreLessonDto.orderNumber,
         teacher: { id: user.teacherUserAccount.id },
       },
     });
-    if (!isOrderNumberValid) {
+    if (!!orderNumberCount) {
       throw new ConflictException('Lesson number is already present');
     }
 
@@ -180,20 +186,20 @@ export class LessonService {
     }
 
     // Validate lesson order number if unique for current teacher user
-    const isOrderNumberValid = !this.repo.count({
+    const orderNumberCount = await this.repo.count({
       where: {
         orderNumber: moreLessonDto.orderNumber,
         slug: Not(slug),
         teacher: { id: teacherId },
       },
     });
-    if (!isOrderNumberValid) {
+    if (!!orderNumberCount) {
       throw new ConflictException('Lesson number is already present');
     }
 
     // Check if schedule id, if present then fetch schedule or throw error if none found
     const schedule = !!scheduleId
-      ? await this.lessonScheduleService.findOneById(scheduleId)
+      ? await this.lessonScheduleService.getOneById(scheduleId)
       : null;
 
     if (scheduleId && !schedule) {
@@ -204,7 +210,7 @@ export class LessonService {
     const updatedLesson = await this.repo.save({ ...lesson, ...moreLessonDto });
 
     if (lesson.status === RecordStatus.Published) {
-      return;
+      return updatedLesson;
     }
 
     // Update schedule if scheduleId is present,
@@ -229,7 +235,7 @@ export class LessonService {
 
   // TODO delete
   async delete(id: number): Promise<void> {
-    const lesson = await this.findOneById(id);
+    const lesson = await this.getOneById(id);
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
@@ -240,7 +246,7 @@ export class LessonService {
   }
 
   async deleteBySlug(slug: string, teacherId: number): Promise<boolean> {
-    const lesson = await this.findOneBySlugAndTeacherId(slug, teacherId);
+    const lesson = await this.getOneBySlugAndTeacherId(slug, teacherId);
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
@@ -297,5 +303,113 @@ export class LessonService {
       scheduleId,
       lessonScheduleDto,
     );
+  }
+
+  // STUDENT
+
+  async getStudentLessonsByStudentId(studentId: number, q?: string) {
+    // TODO q
+    // TODO get excerpt or make excerpt from description...
+
+    const currentDateTime = dayjs().toDate();
+
+    const upcomingLesson = await this.repo
+      .createQueryBuilder('lesson')
+      .leftJoinAndSelect('lesson.schedules', 'schedules')
+      .leftJoin('schedules.students', 'students')
+      .where('students.id = :studentId OR students.id IS NULL', { studentId })
+      .andWhere('schedules.startDate > :startDate', {
+        startDate: currentDateTime,
+      })
+      .select([
+        'lesson.status',
+        'lesson.orderNumber',
+        'lesson.title',
+        'lesson.slug',
+        'lesson.durationSeconds',
+        'lesson.description',
+        'lesson.excerpt',
+        'schedules',
+      ])
+      .getOne();
+
+    const otherLessons = await this.repo
+      .createQueryBuilder('lesson')
+      .leftJoinAndSelect('lesson.schedules', 'schedules')
+      .leftJoin('schedules.students', 'students')
+      .leftJoinAndSelect(
+        'lesson.completions',
+        'completions',
+        'completions.student.id = :studentId',
+        { studentId },
+      )
+      .where('students.id = :studentId OR students.id IS NULL', { studentId })
+      .andWhere('schedules.startDate <= :startDate', {
+        startDate: currentDateTime,
+      })
+      .getMany();
+
+    const latestLesson = otherLessons.length ? otherLessons[0] : null;
+    const previousLessons =
+      otherLessons.length > 1 ? otherLessons.slice(1) : [];
+
+    return {
+      upcomingLesson,
+      latestLesson,
+      previousLessons,
+    };
+  }
+
+  async setLessonCompletionBySlugAndStudentId(
+    body: LessonCompletionUpdateDto,
+    slug: string,
+    studentId: number,
+  ) {
+    const currentDateTime = dayjs();
+
+    const lesson = await this.repo.findOne({
+      where: [
+        { slug, schedules: { students: { id: studentId } } },
+        { slug, schedules: { students: { id: IsNull() } } },
+      ],
+      relations: { schedules: true },
+    });
+
+    if (
+      !lesson ||
+      (lesson.schedules?.length &&
+        dayjs(lesson.schedules[0].startDate).isAfter(currentDateTime))
+    ) {
+      throw new NotFoundException('Lesson not available');
+    }
+
+    // Check if student has already completed the lesson
+    const hasCompleted = await this.lessonCompletionRepo.findOne({
+      where: { lesson: { id: lesson.id }, student: { id: studentId } },
+      relations: { lesson: true, student: true },
+    });
+    // If request is set to complete and student has not completed the lesson yet then add lesson with student to table
+    // If request is set to not complete and student has completed the lesson then delete lesson with student from table
+    // If request matches the hasCompleted variable then do nothing
+    let result = hasCompleted;
+    if (body.isCompleted && !hasCompleted) {
+      const data = { lesson: { id: lesson.id }, student: { id: studentId } };
+      const lessonCompletion = this.lessonCompletionRepo.create(data);
+      result = await this.lessonCompletionRepo.save(lessonCompletion);
+    } else if (!body.isCompleted && hasCompleted) {
+      await this.lessonCompletionRepo.delete({
+        lesson: { id: lesson.id },
+        student: { id: studentId },
+      });
+      result = null;
+    }
+
+    return !result
+      ? null
+      : {
+          ...result,
+          lesson: { id: lesson.id },
+          student: { id: studentId },
+        };
   }
 }

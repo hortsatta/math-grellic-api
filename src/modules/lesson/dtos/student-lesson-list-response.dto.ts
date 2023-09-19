@@ -6,13 +6,13 @@ import { LessonResponseDto } from './lesson-response.dto';
 export class StudentLessonListResponseDto extends BaseResponseDto {
   @Expose()
   @Type(() => LessonResponseDto)
-  upcoming: LessonResponseDto[];
+  latestLesson: LessonResponseDto | null;
 
   @Expose()
   @Type(() => LessonResponseDto)
-  latest: LessonResponseDto[];
+  upcomingLesson: LessonResponseDto | null;
 
   @Expose()
   @Type(() => LessonResponseDto)
-  previous: LessonResponseDto[];
+  previousLessons: LessonResponseDto[];
 }

@@ -42,6 +42,10 @@ export class LessonCreateDto {
   @IsOptional()
   description: string;
 
+  @IsString()
+  @IsOptional()
+  excerpt: string;
+
   @IsDateString()
   @IsOptional()
   startDate: Date;
