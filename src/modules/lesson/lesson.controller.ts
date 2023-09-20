@@ -117,6 +117,18 @@ export class LessonController {
     return this.lessonService.getStudentLessonsByStudentId(studentId, q);
   }
 
+  @Get('/:slug/students')
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(LessonResponseDto)
+  @UseFilterFieldsInterceptor()
+  getOneBySlugAndStudentId(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.lessonService.getOneBySlugAndStudentId(slug, studentId);
+  }
+
   @Post(':slug/students/completion')
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonCompletionResponseDto)

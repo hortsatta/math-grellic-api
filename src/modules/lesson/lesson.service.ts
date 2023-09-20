@@ -14,6 +14,7 @@ import {
   ILike,
   In,
   IsNull,
+  MoreThan,
   Not,
   Repository,
 } from 'typeorm';
@@ -309,8 +310,6 @@ export class LessonService {
 
   async getStudentLessonsByStudentId(studentId: number, q?: string) {
     // TODO q
-    // TODO get excerpt or make excerpt from description...
-
     const currentDateTime = dayjs().toDate();
 
     const upcomingLesson = await this.repo
@@ -327,10 +326,10 @@ export class LessonService {
         'lesson.title',
         'lesson.slug',
         'lesson.durationSeconds',
-        'lesson.description',
         'lesson.excerpt',
         'schedules',
       ])
+      .orderBy('schedules.startDate', 'ASC')
       .getOne();
 
     const otherLessons = await this.repo
@@ -347,6 +346,18 @@ export class LessonService {
       .andWhere('schedules.startDate <= :startDate', {
         startDate: currentDateTime,
       })
+      .select([
+        'lesson.status',
+        'lesson.orderNumber',
+        'lesson.title',
+        'lesson.slug',
+        'lesson.videoUrl',
+        'lesson.durationSeconds',
+        'lesson.excerpt',
+        'schedules',
+        'completions',
+      ])
+      .orderBy('lesson.orderNumber', 'DESC')
       .getMany();
 
     const latestLesson = otherLessons.length ? otherLessons[0] : null;
@@ -358,6 +369,55 @@ export class LessonService {
       latestLesson,
       previousLessons,
     };
+  }
+
+  async getOneBySlugAndStudentId(slug: string, studentId: number) {
+    const currentDateTime = dayjs().toDate();
+
+    const lesson = await this.repo.findOne({
+      where: [
+        { slug, schedules: { students: { id: studentId } } },
+        { slug, schedules: { students: { id: IsNull() } } },
+      ],
+      relations: { schedules: true, completions: true },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    // Omit video, description, ...etc not yet reached
+    if (dayjs(lesson.schedules[0].startDate).isAfter(dayjs())) {
+      // Check if the nearest upcoming lesson is the same lesson, if not then throw error
+      const upcomingLesson = await this.repo.findOne({
+        where: [
+          {
+            schedules: {
+              startDate: MoreThan(currentDateTime),
+              students: { id: studentId },
+            },
+          },
+          {
+            schedules: {
+              startDate: MoreThan(currentDateTime),
+              students: { id: IsNull() },
+            },
+          },
+        ],
+        relations: { schedules: true, completions: true },
+        order: { schedules: { startDate: 'ASC' } },
+      });
+
+      if (upcomingLesson?.id !== lesson.id) {
+        throw new NotFoundException('Lesson not found');
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { videoUrl, description, ...moreLesson } = lesson;
+      return moreLesson;
+    }
+
+    return lesson;
   }
 
   async setLessonCompletionBySlugAndStudentId(
@@ -388,6 +448,7 @@ export class LessonService {
       where: { lesson: { id: lesson.id }, student: { id: studentId } },
       relations: { lesson: true, student: true },
     });
+    console.log(hasCompleted);
     // If request is set to complete and student has not completed the lesson yet then add lesson with student to table
     // If request is set to not complete and student has completed the lesson then delete lesson with student from table
     // If request matches the hasCompleted variable then do nothing
