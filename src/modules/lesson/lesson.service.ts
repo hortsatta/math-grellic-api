@@ -448,7 +448,6 @@ export class LessonService {
       where: { lesson: { id: lesson.id }, student: { id: studentId } },
       relations: { lesson: true, student: true },
     });
-    console.log(hasCompleted);
     // If request is set to complete and student has not completed the lesson yet then add lesson with student to table
     // If request is set to not complete and student has completed the lesson then delete lesson with student from table
     // If request matches the hasCompleted variable then do nothing
