@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  forwardRef,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -11,15 +6,14 @@ import { UserService } from '../user/user.service';
 import { LessonSchedule } from './entities/lesson-schedule.entity';
 import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
 import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
-import { LessonService } from './lesson.service';
 
 @Injectable()
 export class LessonScheduleService {
   constructor(
-    @InjectRepository(LessonSchedule) private repo: Repository<LessonSchedule>,
-    @Inject(forwardRef(() => LessonService))
-    private lessonService: LessonService,
-    @Inject(UserService) private userService: UserService,
+    @InjectRepository(LessonSchedule)
+    private readonly repo: Repository<LessonSchedule>,
+    @Inject(UserService)
+    private readonly userService: UserService,
   ) {}
 
   async validateScheduleCreation(studentIds?: number[]): Promise<boolean> {
@@ -27,7 +21,7 @@ export class LessonScheduleService {
       return true;
     } else {
       // Check if all specified student ids are valid
-      const students = await this.userService.findStudentsByIds(studentIds);
+      const students = await this.userService.getStudentsByIds(studentIds);
       if (students.length !== studentIds.length) {
         return false;
       }
@@ -36,14 +30,14 @@ export class LessonScheduleService {
     }
   }
 
-  findByLessonId(lessonId: number): Promise<LessonSchedule[]> {
+  getByLessonId(lessonId: number): Promise<LessonSchedule[]> {
     return this.repo.find({
-      where: { lesson: { id: lessonId }, isActive: true },
+      where: { lesson: { id: lessonId } },
     });
   }
 
-  findOneById(id: number): Promise<LessonSchedule> {
-    return this.repo.findOne({ where: { id, isActive: true } });
+  getOneById(id: number): Promise<LessonSchedule> {
+    return this.repo.findOne({ where: { id } });
   }
 
   async create(lessonScheduleDto: LessonScheduleCreateDto) {
@@ -69,7 +63,7 @@ export class LessonScheduleService {
   ): Promise<LessonSchedule> {
     const { startDate, studentIds } = lessonScheduleDto;
     // Get lesson schedule, cancel schedule update and throw error if not found
-    const lessonSchedule = await this.findOneById(id);
+    const lessonSchedule = await this.getOneById(id);
     if (!lessonSchedule) {
       throw new NotFoundException('Lesson schedule not found');
     }
@@ -84,15 +78,5 @@ export class LessonScheduleService {
       students,
       lesson: lessonSchedule.lesson,
     });
-  }
-
-  async delete(id: number) {
-    const lessonSchedule = await this.findOneById(id);
-
-    if (!lessonSchedule) {
-      throw new NotFoundException('Lesson schedule not found');
-    }
-
-    return this.repo.save({ ...lessonSchedule, isActive: false });
   }
 }

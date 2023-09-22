@@ -23,13 +23,13 @@ export class CurrentUserMiddleware implements NestMiddleware {
     // Get cookie and parse token
     const token = req.headers.authorization?.split(' ').pop();
     // Verify token using jwtService
-    if (!!token) {
+    if (token) {
       try {
         const auth: any = this.jwtService.verify(token, {
           secret: this.configService.get<string>('SUPABASE_JWT_SECRET'),
         }) as JwtPayload;
         // Get current user by email and add to request object
-        const user = await this.userService.findOneByEmail(auth.email);
+        const user = await this.userService.getOneByEmail(auth.email);
         (req as any).currentUser = user;
       } catch (error) {
         (req as any).currentUser = null;

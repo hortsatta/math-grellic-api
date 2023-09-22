@@ -8,6 +8,7 @@ import { TeacherUserAccount } from './user/entities/teacher-user-account.entity'
 import { StudentUserAccount } from './user/entities/student-user-account.entity';
 import { Lesson } from './lesson/entities/lesson.entity';
 import { LessonSchedule } from './lesson/entities/lesson-schedule.entity';
+import { LessonCompletion } from './lesson/entities/lesson-completion.entity';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { LessonSchedule } from './lesson/entities/lesson-schedule.entity';
           StudentUserAccount,
           Lesson,
           LessonSchedule,
+          LessonCompletion,
         ],
         synchronize: process.env.NODE_ENV !== 'production',
         ssl: process.env.NODE_ENV === 'production',

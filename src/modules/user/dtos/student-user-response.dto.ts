@@ -1,4 +1,7 @@
-import { Expose, Transform } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
+
+import { LessonScheduleResponseDto } from '#/modules/lesson/dtos/lesson-schedule-response.dto';
+import { LessonCompletionResponseDto } from '#/modules/lesson/dtos/lesson-completion-response.dto';
 import { UserAccountResponseDto } from './user-account-response.dto';
 
 export class StudentUserResponseDto extends UserAccountResponseDto {
@@ -8,4 +11,12 @@ export class StudentUserResponseDto extends UserAccountResponseDto {
 
   @Expose()
   aboutMe: string;
+
+  @Expose()
+  @Type(() => LessonScheduleResponseDto)
+  lessonSchedules: LessonScheduleResponseDto[];
+
+  @Expose()
+  @Type(() => LessonCompletionResponseDto)
+  lessonCompletions: LessonCompletionResponseDto[];
 }

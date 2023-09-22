@@ -8,9 +8,12 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 
 import { CoreController } from './core.controller';
+import { CoreGateway } from './core.gateway';
+import { CoreService } from './core.service';
 
 @Module({
   controllers: [CoreController],
+  providers: [CoreGateway, CoreService],
 })
 export class CoreModule {
   constructor() {
