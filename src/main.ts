@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   FastifyAdapter,
   NestFastifyApplication,
@@ -7,7 +8,7 @@ import {
 
 import { AppModule } from './modules/app.module';
 import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
-import { ConfigService } from '@nestjs/config';
+import { AuthSocketAdapter } from './common/adapters/auth-socket.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -43,6 +44,7 @@ async function bootstrap() {
   );
   // Catch database specific errors/exception
   app.useGlobalFilters(new DatabaseExceptionFilter());
+  app.useWebSocketAdapter(new AuthSocketAdapter(app));
 
   await app.listen(3001);
 }

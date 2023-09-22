@@ -3,7 +3,6 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
-  forwardRef,
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -34,11 +33,11 @@ import { LessonScheduleService } from './lesson-schedule.service';
 @Injectable()
 export class LessonService {
   constructor(
-    @InjectRepository(Lesson) private repo: Repository<Lesson>,
-    @Inject(forwardRef(() => LessonScheduleService))
-    private lessonScheduleService: LessonScheduleService,
+    @InjectRepository(Lesson) private readonly repo: Repository<Lesson>,
+    @Inject(LessonScheduleService)
+    private readonly lessonScheduleService: LessonScheduleService,
     @InjectRepository(LessonCompletion)
-    private lessonCompletionRepo: Repository<LessonCompletion>,
+    private readonly lessonCompletionRepo: Repository<LessonCompletion>,
   ) {}
 
   getPaginationTeacherLessonsByTeacherId(
@@ -321,6 +320,9 @@ export class LessonService {
         startDate: currentDateTime,
       })
       .select([
+        'lesson.id',
+        'lesson.createdAt',
+        'lesson.updatedAt',
         'lesson.status',
         'lesson.orderNumber',
         'lesson.title',
@@ -347,6 +349,9 @@ export class LessonService {
         startDate: currentDateTime,
       })
       .select([
+        'lesson.id',
+        'lesson.createdAt',
+        'lesson.updatedAt',
         'lesson.status',
         'lesson.orderNumber',
         'lesson.title',

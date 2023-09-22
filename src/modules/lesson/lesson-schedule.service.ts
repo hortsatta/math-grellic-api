@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  forwardRef,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -11,15 +6,14 @@ import { UserService } from '../user/user.service';
 import { LessonSchedule } from './entities/lesson-schedule.entity';
 import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
 import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
-import { LessonService } from './lesson.service';
 
 @Injectable()
 export class LessonScheduleService {
   constructor(
-    @InjectRepository(LessonSchedule) private repo: Repository<LessonSchedule>,
-    @Inject(forwardRef(() => LessonService))
+    @InjectRepository(LessonSchedule)
+    private readonly repo: Repository<LessonSchedule>,
     @Inject(UserService)
-    private userService: UserService,
+    private readonly userService: UserService,
   ) {}
 
   async validateScheduleCreation(studentIds?: number[]): Promise<boolean> {

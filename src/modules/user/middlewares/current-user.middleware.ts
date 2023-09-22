@@ -23,7 +23,7 @@ export class CurrentUserMiddleware implements NestMiddleware {
     // Get cookie and parse token
     const token = req.headers.authorization?.split(' ').pop();
     // Verify token using jwtService
-    if (!!token) {
+    if (token) {
       try {
         const auth: any = this.jwtService.verify(token, {
           secret: this.configService.get<string>('SUPABASE_JWT_SECRET'),

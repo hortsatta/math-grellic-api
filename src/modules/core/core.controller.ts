@@ -1,10 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
-import dayjs from 'dayjs';
+
+import { CoreService } from './core.service';
 
 @Controller('core')
 export class CoreController {
-  @Get('/now')
+  constructor(private readonly coreService: CoreService) {}
+
+  @Get('/clock')
   getDateTimeNow(): Date {
-    return dayjs().toDate();
+    return this.coreService.getDateTimeNow();
   }
 }
