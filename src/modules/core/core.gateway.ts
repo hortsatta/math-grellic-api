@@ -8,11 +8,7 @@ import { Server } from 'socket.io';
 
 import { CoreService } from './core.service';
 
-@WebSocketGateway({
-  cors: {
-    origin: ['http://localhost:3000', 'http://localhost:5173'],
-  },
-})
+@WebSocketGateway()
 export class CoreGateway implements OnGatewayInit {
   private clockInterval: any;
   @WebSocketServer() server: Server;
