@@ -78,7 +78,8 @@ export class LessonController {
     @Body() body: LessonCreateDto,
     @CurrentUser() user: User,
   ): Promise<Lesson> {
-    return this.lessonService.create(body, user);
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.create(body, teacherId);
   }
 
   @Patch('/:slug')

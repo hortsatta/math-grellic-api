@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { UserApprovalStatus } from '../user/enums/user.enum';
 import { UserService } from '../user/user.service';
 import { LessonSchedule } from './entities/lesson-schedule.entity';
 import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
@@ -19,15 +20,18 @@ export class LessonScheduleService {
   async validateScheduleCreation(studentIds?: number[]): Promise<boolean> {
     if (!studentIds || !studentIds.length) {
       return true;
-    } else {
-      // Check if all specified student ids are valid
-      const students = await this.userService.getStudentsByIds(studentIds);
-      if (students.length !== studentIds.length) {
-        return false;
-      }
-
-      return true;
     }
+
+    // Check if all specified student ids are valid
+    const students = await this.userService.getStudentsByIds(
+      studentIds,
+      UserApprovalStatus.Approved,
+    );
+    if (students.length !== studentIds.length) {
+      return false;
+    }
+
+    return true;
   }
 
   getByLessonId(lessonId: number): Promise<LessonSchedule[]> {
