@@ -5,6 +5,7 @@ import { DatabaseModule } from './database.module';
 import { CoreModule } from './core/core.module';
 import { UserModule } from './user/user.module';
 import { LessonModule } from './lesson/lesson.module';
+import { ExamModule } from './exam/exam.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LessonModule } from './lesson/lesson.module';
     UserModule,
     CoreModule,
     LessonModule,
+    ExamModule,
   ],
   controllers: [],
 })

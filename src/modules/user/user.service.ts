@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, In, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, In, Repository } from 'typeorm';
 
 import { generatePublicId } from '#/modules/user/helpers/user.helper';
 import { SupabaseService } from './supabase.service';
@@ -41,21 +41,32 @@ export class UserService {
     return this.userRepo.save(newUser);
   }
 
-  getStudentsByIds(ids: number[]): Promise<StudentUserAccount[]> {
-    return this.studentUserAccountRepo.find({
-      where: { id: In(ids) },
-    });
+  getStudentsByIds(
+    ids: number[],
+    userStatus?: UserApprovalStatus,
+  ): Promise<StudentUserAccount[]> {
+    const where: FindOptionsWhere<StudentUserAccount> = userStatus
+      ? { id: In(ids), user: { approvalStatus: userStatus } }
+      : { id: In(ids) };
+
+    return this.studentUserAccountRepo.find({ where });
   }
 
   getStudentsByTeacherId(
     id: number,
     studentIds?: number[],
     q?: string,
+    userStatus?: UserApprovalStatus,
   ): Promise<StudentUserAccount[]> {
     const generateWhere = () => {
-      const baseWhere = {
-        teacherUser: { id },
-      };
+      const baseWhere: FindOptionsWhere<StudentUserAccount> = userStatus
+        ? {
+            teacherUser: { id },
+            user: { approvalStatus: userStatus },
+          }
+        : {
+            teacherUser: { id },
+          };
 
       if (studentIds?.length) {
         return { ...baseWhere, id: In(studentIds) };

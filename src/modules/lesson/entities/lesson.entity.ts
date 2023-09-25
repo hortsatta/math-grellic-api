@@ -1,6 +1,14 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 
 import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
+import { Exam } from '#/modules/exam/entities/exam.entity';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { LessonSchedule } from './lesson-schedule.entity';
@@ -51,4 +59,7 @@ export class Lesson extends BaseEntity {
   )
   @JoinColumn()
   teacher: TeacherUserAccount;
+
+  @ManyToMany(() => Exam, (exam) => exam.coveredLessons)
+  exams: Exam[];
 }

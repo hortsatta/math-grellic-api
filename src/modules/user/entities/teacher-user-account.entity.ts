@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
+import { Exam } from '#/modules/exam/entities/exam.entity';
 import { User } from './user.entity';
 import { UserAccount as UserAccountEntity } from './user-account.entity';
 import { StudentUserAccount } from './student-user-account.entity';
@@ -40,4 +41,7 @@ export class TeacherUserAccount extends UserAccountEntity {
 
   @OneToMany(() => Lesson, (lesson) => lesson.teacher)
   lessons: Lesson[];
+
+  @OneToMany(() => Exam, (exam) => exam.teacher)
+  exams: Exam[];
 }

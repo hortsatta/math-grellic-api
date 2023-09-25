@@ -9,6 +9,10 @@ import { StudentUserAccount } from './user/entities/student-user-account.entity'
 import { Lesson } from './lesson/entities/lesson.entity';
 import { LessonSchedule } from './lesson/entities/lesson-schedule.entity';
 import { LessonCompletion } from './lesson/entities/lesson-completion.entity';
+import { Exam } from './exam/entities/exam.entity';
+import { ExamQuestion } from './exam/entities/exam-question.entity';
+import { ExamQuestionChoice } from './exam/entities/exam-question-choice.entity';
+import { ExamSchedule } from './exam/entities/exam-schedule.entity';
 
 @Module({
   imports: [
@@ -30,6 +34,10 @@ import { LessonCompletion } from './lesson/entities/lesson-completion.entity';
           Lesson,
           LessonSchedule,
           LessonCompletion,
+          Exam,
+          ExamQuestion,
+          ExamQuestionChoice,
+          ExamSchedule,
         ],
         synchronize: process.env.NODE_ENV !== 'production',
         ssl: process.env.NODE_ENV === 'production',
