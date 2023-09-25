@@ -5,8 +5,9 @@ import {
   InsertEvent,
   UpdateEvent,
 } from 'typeorm';
+
+import { generateSlug } from '#/common/helpers/string.helper';
 import { Lesson } from '../entities/lesson.entity';
-import { generateSlug } from '../helpers/lesson.helper';
 
 @EventSubscriber()
 export class LessonSubscriber implements EntitySubscriberInterface<Lesson> {

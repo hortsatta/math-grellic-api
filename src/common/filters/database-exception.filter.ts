@@ -7,7 +7,7 @@ import {
 import { TypeORMError } from 'typeorm';
 import { FastifyReply } from 'fastify';
 
-import { capitalize } from '../helpers/capitalize.helper';
+import { capitalize } from '../helpers/string.helper';
 
 @Catch(TypeORMError)
 export class DatabaseExceptionFilter implements ExceptionFilter {
