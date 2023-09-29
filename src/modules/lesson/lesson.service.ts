@@ -39,7 +39,7 @@ export class LessonService {
     private readonly lessonCompletionRepo: Repository<LessonCompletion>,
   ) {}
 
-  getPaginationTeacherLessonsByTeacherId(
+  getPaginatedTeacherLessonsByTeacherId(
     teacherId: number,
     sort: string,
     take: number = 10,
@@ -83,6 +83,53 @@ export class LessonService {
       order: generateOrder(),
       skip,
       take,
+    });
+  }
+
+  getTeacherLessonsByTeacherId(
+    teacherId: number,
+    sort: string,
+    lessonIds?: number[],
+    q?: string,
+    status?: string,
+  ): Promise<Lesson[]> {
+    const generateWhere = () => {
+      let baseWhere: FindOptionsWhere<Lesson> = {
+        teacher: { id: teacherId },
+      };
+
+      if (lessonIds?.length) {
+        baseWhere = { ...baseWhere, id: In(lessonIds) };
+      }
+
+      if (q?.trim()) {
+        baseWhere = { ...baseWhere, title: ILike(`%${q}%`) };
+      }
+
+      if (status?.trim()) {
+        baseWhere = { ...baseWhere, status: In(status.split(',')) };
+      }
+
+      return baseWhere;
+    };
+
+    const generateOrder = (): FindOptionsOrder<Lesson> => {
+      if (!sort) {
+        return { orderNumber: 'ASC' };
+      }
+
+      const [sortBy, sortOrder] = sort?.split(',') || [];
+
+      if (sortBy === 'scheduleDate') {
+        return { schedules: { startDate: sortOrder as FindOptionsOrderValue } };
+      }
+
+      return { [sortBy]: sortOrder };
+    };
+
+    return this.lessonRepo.find({
+      where: generateWhere(),
+      order: generateOrder(),
     });
   }
 

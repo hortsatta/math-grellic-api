@@ -13,6 +13,9 @@ export class ExamQuestionChoiceCreateDto {
   @IsBoolean()
   isCorrect: boolean;
 
+  @IsBoolean()
+  isExpression: boolean;
+
   @IsInt()
   @IsPositive()
   @IsOptional()

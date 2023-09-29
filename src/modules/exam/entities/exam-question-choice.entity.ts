@@ -11,6 +11,9 @@ export class ExamQuestionChoice extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   isCorrect: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isExpression: boolean;
+
   @ManyToOne(() => ExamQuestion, (examQuestion) => examQuestion.choices, {
     onDelete: 'CASCADE',
   })

@@ -38,7 +38,7 @@ export class LessonController {
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
-  getTeacherLessonsByTeacherId(
+  getPaginatedTeacherLessonsByTeacherId(
     @CurrentUser() user: User,
     @Query('q') q?: string,
     @Query('status') status?: string,
@@ -47,12 +47,33 @@ export class LessonController {
     @Query('skip') skip?: number,
   ): Promise<[Lesson[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
-
-    return this.lessonService.getPaginationTeacherLessonsByTeacherId(
+    return this.lessonService.getPaginatedTeacherLessonsByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
       !!skip ? skip : undefined,
+      q,
+      status,
+    );
+  }
+
+  @Get('/teachers/list/all')
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(LessonResponseDto)
+  getTeacherLessonsByTeacherId(
+    @CurrentUser() user: User,
+    @Query('ids') ids?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('sort') sort?: string,
+  ): Promise<Lesson[]> {
+    const { id: teacherId } = user.teacherUserAccount;
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.lessonService.getTeacherLessonsByTeacherId(
+      teacherId,
+      sort,
+      transformedIds,
       q,
       status,
     );

@@ -19,4 +19,8 @@ export class ExamQuestionChoiceUpdateDto {
   @IsBoolean()
   @IsOptional()
   isCorrect: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isExpression: boolean;
 }

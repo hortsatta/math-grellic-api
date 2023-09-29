@@ -11,6 +11,9 @@ export class ExamQuestionChoiceResponseDto extends BaseResponseDto {
   isCorrect: boolean;
 
   @Expose()
+  isExpression: boolean;
+
+  @Expose()
   @Type(() => ExamQuestionResponseDto)
   question: ExamQuestionResponseDto;
 }
