@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -50,6 +51,19 @@ export class ExamController {
     );
   }
 
+  @Get('/:slug/teachers')
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(ExamResponseDto)
+  @UseFilterFieldsInterceptor()
+  getOneBySlugAndTeacherId(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+    @Query('status') status?: string,
+  ): Promise<Exam> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.examService.getOneBySlugAndTeacherId(slug, teacherId, status);
+  }
+
   @Post()
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
@@ -72,5 +86,15 @@ export class ExamController {
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.examService.update(slug, body, teacherId, scheduleId);
+  }
+
+  @Delete('/:slug')
+  @UseAuthGuard(UserRole.Teacher)
+  delete(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ): Promise<boolean> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.examService.deleteBySlug(slug, teacherId);
   }
 }

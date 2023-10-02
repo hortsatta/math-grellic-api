@@ -14,9 +14,6 @@ export class LessonCompletion extends BaseEntity {
   @ManyToOne(
     () => StudentUserAccount,
     (studentUserAccount) => studentUserAccount.lessonCompletions,
-    {
-      onDelete: 'CASCADE',
-    },
   )
   student: StudentUserAccount;
 }

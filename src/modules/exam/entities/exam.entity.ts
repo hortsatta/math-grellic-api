@@ -13,6 +13,7 @@ import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
 import { ExamSchedule } from './exam-schedule.entity';
+import { ExamCompletion } from './exam-completion.entity';
 import { ExamQuestion } from './exam-question.entity';
 
 @Entity()
@@ -42,6 +43,9 @@ export class Exam extends BaseEntity {
   @Column({ type: 'int', default: 1 })
   pointsPerQuestion: number;
 
+  @Column({ type: 'int' })
+  passingPoints: number;
+
   @Column({ type: 'text', nullable: true })
   description: string;
 
@@ -57,9 +61,10 @@ export class Exam extends BaseEntity {
   })
   questions: ExamQuestion[];
 
-  @OneToMany(() => ExamSchedule, (examSchedule) => examSchedule.exam, {
-    cascade: true,
-  })
+  @OneToMany(() => ExamCompletion, (examCompletion) => examCompletion.exam)
+  completions: ExamCompletion[];
+
+  @OneToMany(() => ExamSchedule, (examSchedule) => examSchedule.exam)
   schedules: ExamSchedule[];
 
   @ManyToOne(

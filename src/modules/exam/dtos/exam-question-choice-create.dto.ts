@@ -7,6 +7,10 @@ import {
 } from 'class-validator';
 
 export class ExamQuestionChoiceCreateDto {
+  @IsInt()
+  @IsPositive()
+  orderNumber: number;
+
   @IsString()
   text: string;
 

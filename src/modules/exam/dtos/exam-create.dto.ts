@@ -44,6 +44,11 @@ export class ExamCreateDto {
   @IsOptional()
   pointsPerQuestion: number;
 
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  passingPoints: number;
+
   @IsString()
   @IsOptional()
   description: string;

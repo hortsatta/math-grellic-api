@@ -12,6 +12,11 @@ export class ExamQuestionChoiceUpdateDto {
   @IsOptional()
   id: number;
 
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  orderNumber: number;
+
   @IsString()
   @IsOptional()
   text: string;

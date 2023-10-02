@@ -29,6 +29,9 @@ export class ExamResponseDto extends BaseResponseDto {
   pointsPerQuestion: number;
 
   @Expose()
+  passingPoints: number;
+
+  @Expose()
   description: string;
 
   @Expose()

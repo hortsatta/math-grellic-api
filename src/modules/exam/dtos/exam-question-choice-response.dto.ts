@@ -5,6 +5,9 @@ import { ExamQuestionResponseDto } from '#/modules/exam/dtos/exam-question-respo
 
 export class ExamQuestionChoiceResponseDto extends BaseResponseDto {
   @Expose()
+  orderNumber: number;
+
+  @Expose()
   text: string;
 
   @Expose()

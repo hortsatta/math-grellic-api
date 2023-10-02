@@ -21,9 +21,12 @@ import { RecordStatus } from '#/common/enums/content.enum';
 import { LessonService } from '../lesson/lesson.service';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
+import { ExamQuestionChoice } from './entities/exam-question-choice.entity';
+import { ExamCompletion } from './entities/exam-completion.entity';
 import { ExamCreateDto } from './dtos/exam-create.dto';
-import { ExamScheduleService } from './exam-schedule.service';
 import { ExamUpdateDto } from './dtos/exam-update.dto';
+import { ExamQuestionUpdateDto } from './dtos/exam-question-update.dto';
+import { ExamScheduleService } from './exam-schedule.service';
 
 @Injectable()
 export class ExamService {
@@ -31,6 +34,10 @@ export class ExamService {
     @InjectRepository(Exam) private readonly examRepo: Repository<Exam>,
     @InjectRepository(ExamQuestion)
     private readonly examQuestionRepo: Repository<ExamQuestion>,
+    @InjectRepository(ExamQuestionChoice)
+    private readonly examQuestionChoiceRepo: Repository<ExamQuestionChoice>,
+    @InjectRepository(ExamCompletion)
+    private readonly examCompletionRepo: Repository<ExamCompletion>,
     @Inject(ExamScheduleService)
     private readonly examScheduleService: ExamScheduleService,
     @Inject(LessonService)
@@ -84,6 +91,45 @@ export class ExamService {
     });
   }
 
+  async getOneBySlugAndTeacherId(
+    slug: string,
+    teacherId: number,
+    status?: string,
+  ) {
+    const generateWhere = () => {
+      let baseWhere: FindOptionsWhere<Exam> = {
+        slug,
+        teacher: { id: teacherId },
+      };
+
+      if (status?.trim()) {
+        baseWhere = { ...baseWhere, status: In(status.split(',')) };
+      }
+
+      return baseWhere;
+    };
+
+    const exam = await this.examRepo.findOne({
+      where: generateWhere(),
+      relations: {
+        coveredLessons: true,
+        questions: { choices: true },
+        schedules: { students: true },
+      },
+      order: {
+        questions: { orderNumber: 'ASC', choices: { orderNumber: 'ASC' } },
+      },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    console.log(exam.questions.map((q) => q.choices));
+
+    return exam;
+  }
+
   async create(examDto: ExamCreateDto, teacherId: number): Promise<Exam> {
     const {
       startDate,
@@ -93,6 +139,14 @@ export class ExamService {
       questions,
       ...moreExamDto
     } = examDto;
+
+    // Check if passing points is more than the exam's total points
+    if (
+      moreExamDto.passingPoints >
+      moreExamDto.pointsPerQuestion * moreExamDto.visibleQuestionsCount
+    ) {
+      throw new BadRequestException('Passing points is more that total points');
+    }
 
     // Validate exam order number if unique for current teacher user
     const orderNumberCount = await this.examRepo.count({
@@ -209,14 +263,33 @@ export class ExamService {
       questions,
       ...moreExamDto
     } = examDto;
+    // Check if passing points is more than the exam's total points
+    if (
+      moreExamDto.passingPoints >
+      moreExamDto.pointsPerQuestion * moreExamDto.visibleQuestionsCount
+    ) {
+      throw new BadRequestException('Passing points is more that total points');
+    }
 
     // Find exam, throw error if none found
     const exam = await this.examRepo.findOne({
       where: { slug, teacher: { id: teacherId } },
+      relations: { questions: { choices: true } },
     });
 
     if (!exam) {
       throw new NotFoundException('Exam not found');
+    }
+
+    // Check if someone has already completed exam, if true then cancel update
+    const completionCount = await this.examCompletionRepo.count({
+      where: { exam: { id: exam.id } },
+    });
+
+    if (completionCount > 0) {
+      throw new BadRequestException(
+        'Cannot update exams that are already taken',
+      );
     }
 
     // Validate exam order number if unique for current teacher user
@@ -232,35 +305,18 @@ export class ExamService {
       throw new ConflictException('Exam number is already present');
     }
 
-    // TODO find all exam questions and check
     // Check if all questions have atleast one isCorrect choice
-    for (const question of questions) {
-      let choices = question.choices;
+    questions.forEach((question) => {
+      const hasCorrectChoice = question.choices.some(
+        (choice) => choice.isCorrect,
+      );
 
-      if (question.id) {
-        const targetQuestion = await this.examQuestionRepo.findOne({
-          where: { id: question.id },
-          relations: { choices: true },
-        });
-        const updatedChoices =
-          targetQuestion?.choices?.map((choice) => {
-            const updatedChoice = question.choices.find(
-              (c) => c.id && c.id === choice.id,
-            );
-            return updatedChoice ?? choice;
-          }) || [];
-        const newChoices = choices.filter((c) => !c.id);
-        choices = [...updatedChoices, ...newChoices];
-      }
-
-      const isCorrectChoice = choices.find((choice) => choice.isCorrect);
-
-      if (!isCorrectChoice) {
+      if (!hasCorrectChoice) {
         throw new BadRequestException(
           'Question should have at least 1 correct choice',
         );
       }
-    }
+    });
 
     // Validate if lessons from coveredLessonIds is owned by current user teacher
     if (coveredLessonIds?.length) {
@@ -330,7 +386,10 @@ export class ExamService {
       ? coveredLessonIds.map((lessonId) => ({ id: lessonId }))
       : [];
 
-    // Update lesson, ignore schedule if previous lesson status is published
+    // Delete questions and choices not included in request
+    await this.deleteExamQuestionsAndChoices(questions, exam);
+
+    // Update exam, ignore schedule if previous exam status is published
     const updatedExam = await this.examRepo.save({
       ...exam,
       ...moreExamDto,
@@ -339,6 +398,9 @@ export class ExamService {
     });
 
     if (exam.status === RecordStatus.Published) {
+      console.log(
+        updatedExam.questions.map((q) => ({ or: q.orderNumber, q: q.text })),
+      );
       return updatedExam;
     }
 
@@ -368,4 +430,149 @@ export class ExamService {
     // Just return exam without schedule if no scheduleId or startDate found
     return updatedExam;
   }
+
+  async deleteBySlug(slug: string, teacherId: number): Promise<boolean> {
+    const exam = await this.getOneBySlugAndTeacherId(slug, teacherId);
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    // Abort if lesson had completions
+    const hasCompletion = !!(await this.examCompletionRepo.count({
+      where: { exam: { id: exam.id } },
+    }));
+    if (hasCompletion) {
+      throw new BadRequestException('Cannot delete lesson');
+    }
+
+    const result = await this.examRepo.delete({ slug });
+    return !!result.affected;
+  }
+
+  async deleteExamQuestionsAndChoices(
+    questions: ExamQuestionUpdateDto[],
+    exam: Exam,
+  ) {
+    const targetQuestionIds = questions.filter((q) => !!q.id).map((q) => q.id);
+
+    // Delete questions not included in update
+    const questionsToDelete = exam.questions.filter(
+      (q) => !targetQuestionIds.includes(q.id),
+    );
+    await this.examQuestionRepo.remove(questionsToDelete);
+
+    // Delete choices not included in update
+    await Promise.all(
+      questions
+        .filter((q) => !!q.id)
+        .map(async (targetQuestion) => {
+          const currentQuestion = exam.questions.find(
+            (q) => q.id === targetQuestion.id,
+          );
+
+          const targetChoiceIds = targetQuestion.choices
+            .filter((c) => !!c.id)
+            .map((c) => c.id);
+
+          // Delete questions not included in update
+          const choicesToDelete = currentQuestion.choices.filter(
+            (c) => !targetChoiceIds.includes(c.id),
+          );
+          await this.examQuestionChoiceRepo.remove(choicesToDelete);
+        }),
+    );
+  }
 }
+
+//   async upsertExamQuestions(
+//     questions: ExamQuestionUpdateDto[],
+//     exam: Exam,
+//   ): Promise<ExamQuestion[]> {
+//     const questionIds = questions.filter((q) => !!q.id).map((q) => q.id);
+//     const questionsToCreate = questions.filter((q) => !q.id);
+
+//     // Delete questions not included in update
+//     const questionsToDelete = exam.questions.filter(
+//       (q) => !questionIds.includes(q.id),
+//     );
+//     await this.examQuestionRepo.remove(questionsToDelete);
+
+//     // Update existing questions and choices
+//     const questionsToUpdate = exam.questions.filter((q) =>
+//       questionIds.includes(q.id),
+//     );
+//     const updatedQuestions = await Promise.all(
+//       questionsToUpdate.map(async (q) => {
+//         const { choices: newChoices, ...moreNewData } = questions.find(
+//           (question) => question.id === q.id,
+//         );
+//         const updatedChoices = await this.upsertExamQuestionChoices(
+//           newChoices,
+//           q,
+//         );
+
+//         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+//         const { choices: _, ...moreCurrentQuestion } = q;
+//         const updatedQuestion = await this.examQuestionRepo.save({
+//           ...moreCurrentQuestion,
+//           ...moreNewData,
+//           exam,
+//         });
+
+//         return { ...updatedQuestion, choices: updatedChoices };
+//       }),
+//     );
+
+//     // todo questions to create
+//     const newQuestions = await Promise.all(
+//       questionsToCreate.map(async (q) => {
+//         const question = this.examQuestionRepo.create({ ...q, exam });
+//         const newQuestion = await this.examQuestionRepo.save(question);
+//         return newQuestion;
+//       }),
+//     );
+
+//     return [...updatedQuestions, ...newQuestions];
+//   }
+
+//   async upsertExamQuestionChoices(
+//     choices: ExamQuestionChoiceUpdateDto[],
+//     question: ExamQuestion,
+//   ): Promise<ExamQuestionChoice[]> {
+//     const choicesIds = choices.filter((c) => !!c.id).map((c) => c.id);
+
+//     // Delete choices not included in update
+//     const choicesToDelete = question.choices.filter(
+//       (c) => !choicesIds.includes(c.id),
+//     );
+//     await this.examQuestionChoiceRepo.remove(choicesToDelete);
+
+//     // Update existing choices
+//     const choicesToUpdate = question.choices.filter((c) =>
+//       choicesIds.includes(c.id),
+//     );
+//     const updatedChoices = await Promise.all(
+//       choicesToUpdate.map(async (c) => {
+//         const updatedChoice = await this.examQuestionChoiceRepo.save({
+//           ...c,
+//           question,
+//         });
+
+//         return updatedChoice;
+//       }),
+//     );
+
+//     // Create new choices
+//     const choicesToCreate = choices.filter((q) => !q.id);
+//     const newChoices = await Promise.all(
+//       choicesToCreate.map(async (c) => {
+//         const choice = this.examQuestionChoiceRepo.create({ ...c, question });
+//         const newChoice = await this.examQuestionChoiceRepo.save(choice);
+//         return newChoice;
+//       }),
+//     );
+
+//     return [...updatedChoices, ...newChoices];
+//   }
+// }

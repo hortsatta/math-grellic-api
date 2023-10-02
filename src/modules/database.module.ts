@@ -13,6 +13,8 @@ import { Exam } from './exam/entities/exam.entity';
 import { ExamQuestion } from './exam/entities/exam-question.entity';
 import { ExamQuestionChoice } from './exam/entities/exam-question-choice.entity';
 import { ExamSchedule } from './exam/entities/exam-schedule.entity';
+import { ExamCompletion } from './exam/entities/exam-completion.entity';
+import { ExamCompletionQuestionAnswer } from './exam/entities/exam-completion-question-answer.entity';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { ExamSchedule } from './exam/entities/exam-schedule.entity';
           ExamQuestion,
           ExamQuestionChoice,
           ExamSchedule,
+          ExamCompletion,
+          ExamCompletionQuestionAnswer,
         ],
         synchronize: process.env.NODE_ENV !== 'production',
         ssl: process.env.NODE_ENV === 'production',

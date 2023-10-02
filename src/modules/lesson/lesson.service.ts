@@ -26,7 +26,7 @@ import { LessonCreateDto } from './dtos/lesson-create.dto';
 import { LessonUpdateDto } from './dtos/lesson-update.dto';
 import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
 import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
-import { LessonCompletionUpdateDto } from './dtos/lesson-completion-update.dto';
+import { LessonCompletionUpsertDto } from './dtos/lesson-completion-upsert.dto';
 import { LessonScheduleService } from './lesson-schedule.service';
 
 @Injectable()
@@ -297,23 +297,19 @@ export class LessonService {
     return updatedLesson;
   }
 
-  // TODO delete
-  async delete(id: number): Promise<void> {
-    const lesson = await this.getOneById(id);
-
-    if (!lesson) {
-      throw new NotFoundException('Lesson not found');
-    }
-
-    await this.lessonRepo.save({ ...lesson });
-    return;
-  }
-
   async deleteBySlug(slug: string, teacherId: number): Promise<boolean> {
     const lesson = await this.getOneBySlugAndTeacherId(slug, teacherId);
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
+    }
+
+    // Abort if lesson had completions
+    const hasCompletion = !!(await this.lessonCompletionRepo.count({
+      where: { lesson: { id: lesson.id } },
+    }));
+    if (hasCompletion) {
+      throw new BadRequestException('Cannot delete lesson');
     }
 
     const result = await this.lessonRepo.delete({ slug });
@@ -499,7 +495,7 @@ export class LessonService {
   }
 
   async setLessonCompletionBySlugAndStudentId(
-    body: LessonCompletionUpdateDto,
+    body: LessonCompletionUpsertDto,
     slug: string,
     studentId: number,
   ) {

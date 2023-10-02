@@ -7,6 +7,8 @@ import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
 import { ExamQuestionChoice } from './entities/exam-question-choice.entity';
 import { ExamSchedule } from './entities/exam-schedule.entity';
+import { ExamCompletion } from './entities/exam-completion.entity';
+import { ExamCompletionQuestionAnswer } from './entities/exam-completion-question-answer.entity';
 import { ExamController } from './exam.controller';
 import { ExamSubscriber } from './subscribers/exam.subscriber';
 import { ExamService } from './exam.service';
@@ -19,6 +21,8 @@ import { ExamScheduleService } from './exam-schedule.service';
       ExamQuestion,
       ExamQuestionChoice,
       ExamSchedule,
+      ExamCompletion,
+      ExamCompletionQuestionAnswer,
     ]),
     UserModule,
     LessonModule,
@@ -27,5 +31,3 @@ import { ExamScheduleService } from './exam-schedule.service';
   providers: [ExamSubscriber, ExamService, ExamScheduleService],
 })
 export class ExamModule {}
-
-// TODO exam subscriber listener generate slug

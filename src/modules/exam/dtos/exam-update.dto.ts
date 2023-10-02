@@ -48,6 +48,11 @@ export class ExamUpdateDto {
   @IsOptional()
   pointsPerQuestion: number;
 
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  passingPoints: number;
+
   @IsString()
   @IsOptional()
   description: string;

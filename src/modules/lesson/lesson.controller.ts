@@ -23,7 +23,7 @@ import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
 import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
 import { LessonUpdateDto } from './dtos/lesson-update.dto';
 import { StudentLessonListResponseDto } from './dtos/student-lesson-list-response.dto';
-import { LessonCompletionUpdateDto } from './dtos/lesson-completion-update.dto';
+import { LessonCompletionUpsertDto } from './dtos/lesson-completion-upsert.dto';
 import { LessonCompletionResponseDto } from './dtos/lesson-completion-response.dto';
 import { LessonService } from './lesson.service';
 
@@ -155,7 +155,7 @@ export class LessonController {
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonCompletionResponseDto)
   setLessonCompletionBySlugAndStudentId(
-    @Body() body: LessonCompletionUpdateDto,
+    @Body() body: LessonCompletionUpsertDto,
     @Param('slug') slug: string,
     @CurrentUser() user: User,
   ) {

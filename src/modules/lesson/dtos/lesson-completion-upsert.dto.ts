@@ -1,6 +1,6 @@
 import { IsBoolean } from 'class-validator';
 
-export class LessonCompletionUpdateDto {
+export class LessonCompletionUpsertDto {
   @IsBoolean()
   isCompleted: boolean;
 }
