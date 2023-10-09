@@ -26,6 +26,8 @@ import { ExamCompletion } from './entities/exam-completion.entity';
 import { ExamCreateDto } from './dtos/exam-create.dto';
 import { ExamUpdateDto } from './dtos/exam-update.dto';
 import { ExamQuestionUpdateDto } from './dtos/exam-question-update.dto';
+import { ExamScheduleCreateDto } from './dtos/exam-schedule-create.dto';
+import { ExamScheduleUpdateDto } from './dtos/exam-schedule-update.dto';
 import { ExamScheduleService } from './exam-schedule.service';
 
 @Injectable()
@@ -124,8 +126,6 @@ export class ExamService {
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }
-
-    console.log(exam.questions.map((q) => q.choices));
 
     return exam;
   }
@@ -483,96 +483,101 @@ export class ExamService {
         }),
     );
   }
+
+  async createSchedule(
+    examScheduleDto: ExamScheduleCreateDto,
+    teacherId: number,
+  ) {
+    const { examId, startDate, endDate, studentIds } = examScheduleDto;
+
+    const exam = await this.examRepo.findOne({
+      where: {
+        id: examId,
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+      },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    // check before creating exam to avoid conflicts, If schedule is present then validate students
+    // Check start date and end date if no conflicts with other schedules/exams
+    const { error } = await this.examScheduleService.validateScheduleUpsert(
+      startDate,
+      endDate,
+      teacherId,
+      studentIds,
+      examId,
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return this.examScheduleService.create(examScheduleDto, teacherId);
+  }
+
+  async updateSchedule(
+    scheduleId: number,
+    examScheduleDto: ExamScheduleUpdateDto,
+    teacherId: number,
+  ) {
+    const { startDate, endDate, studentIds } = examScheduleDto;
+
+    const exam = await this.examRepo.findOne({
+      where: {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+        schedules: { id: scheduleId },
+      },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam schedule not found');
+    }
+
+    // Check before creating exam to avoid conflicts, If schedule is present then validate students
+    // Check start date and end date if no conflicts with other schedules/exams
+    const { error } = await this.examScheduleService.validateScheduleUpsert(
+      startDate,
+      endDate,
+      teacherId,
+      studentIds,
+      exam.id,
+      scheduleId,
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return await this.examScheduleService.update(
+      scheduleId,
+      examScheduleDto,
+      teacherId,
+    );
+  }
+
+  async deleteSchedule(
+    scheduleId: number,
+    teacherId: number,
+  ): Promise<boolean> {
+    // TODO soft delete if schedule has completion
+    // Check if lesson has complete, if true then cancel deletion
+    const exam = await this.examRepo.findOne({
+      where: {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+        schedules: { id: scheduleId },
+      },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam schedule not found');
+    }
+
+    return this.examScheduleService.delete(scheduleId);
+  }
 }
-
-//   async upsertExamQuestions(
-//     questions: ExamQuestionUpdateDto[],
-//     exam: Exam,
-//   ): Promise<ExamQuestion[]> {
-//     const questionIds = questions.filter((q) => !!q.id).map((q) => q.id);
-//     const questionsToCreate = questions.filter((q) => !q.id);
-
-//     // Delete questions not included in update
-//     const questionsToDelete = exam.questions.filter(
-//       (q) => !questionIds.includes(q.id),
-//     );
-//     await this.examQuestionRepo.remove(questionsToDelete);
-
-//     // Update existing questions and choices
-//     const questionsToUpdate = exam.questions.filter((q) =>
-//       questionIds.includes(q.id),
-//     );
-//     const updatedQuestions = await Promise.all(
-//       questionsToUpdate.map(async (q) => {
-//         const { choices: newChoices, ...moreNewData } = questions.find(
-//           (question) => question.id === q.id,
-//         );
-//         const updatedChoices = await this.upsertExamQuestionChoices(
-//           newChoices,
-//           q,
-//         );
-
-//         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-//         const { choices: _, ...moreCurrentQuestion } = q;
-//         const updatedQuestion = await this.examQuestionRepo.save({
-//           ...moreCurrentQuestion,
-//           ...moreNewData,
-//           exam,
-//         });
-
-//         return { ...updatedQuestion, choices: updatedChoices };
-//       }),
-//     );
-
-//     // todo questions to create
-//     const newQuestions = await Promise.all(
-//       questionsToCreate.map(async (q) => {
-//         const question = this.examQuestionRepo.create({ ...q, exam });
-//         const newQuestion = await this.examQuestionRepo.save(question);
-//         return newQuestion;
-//       }),
-//     );
-
-//     return [...updatedQuestions, ...newQuestions];
-//   }
-
-//   async upsertExamQuestionChoices(
-//     choices: ExamQuestionChoiceUpdateDto[],
-//     question: ExamQuestion,
-//   ): Promise<ExamQuestionChoice[]> {
-//     const choicesIds = choices.filter((c) => !!c.id).map((c) => c.id);
-
-//     // Delete choices not included in update
-//     const choicesToDelete = question.choices.filter(
-//       (c) => !choicesIds.includes(c.id),
-//     );
-//     await this.examQuestionChoiceRepo.remove(choicesToDelete);
-
-//     // Update existing choices
-//     const choicesToUpdate = question.choices.filter((c) =>
-//       choicesIds.includes(c.id),
-//     );
-//     const updatedChoices = await Promise.all(
-//       choicesToUpdate.map(async (c) => {
-//         const updatedChoice = await this.examQuestionChoiceRepo.save({
-//           ...c,
-//           question,
-//         });
-
-//         return updatedChoice;
-//       }),
-//     );
-
-//     // Create new choices
-//     const choicesToCreate = choices.filter((q) => !q.id);
-//     const newChoices = await Promise.all(
-//       choicesToCreate.map(async (c) => {
-//         const choice = this.examQuestionChoiceRepo.create({ ...c, question });
-//         const newChoice = await this.examQuestionChoiceRepo.save(choice);
-//         return newChoice;
-//       }),
-//     );
-
-//     return [...updatedChoices, ...newChoices];
-//   }
-// }

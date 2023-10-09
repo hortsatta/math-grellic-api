@@ -365,6 +365,27 @@ export class LessonService {
     );
   }
 
+  async deleteSchedule(
+    scheduleId: number,
+    teacherId: number,
+  ): Promise<boolean> {
+    // TODO soft delete if schedule has completion
+    // Check if lesson has complete, if true then cancel deletion
+    const lesson = await this.lessonRepo.findOne({
+      where: {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+        schedules: { id: scheduleId },
+      },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson schedule not found');
+    }
+
+    return this.lessonScheduleService.delete(scheduleId);
+  }
+
   // STUDENT
 
   async getStudentLessonsByStudentId(studentId: number, q?: string) {

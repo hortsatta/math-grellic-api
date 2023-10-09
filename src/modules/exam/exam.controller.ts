@@ -19,6 +19,9 @@ import { Exam } from './entities/exam.entity';
 import { ExamResponseDto } from './dtos/exam-response.dto';
 import { ExamCreateDto } from './dtos/exam-create.dto';
 import { ExamUpdateDto } from './dtos/exam-update.dto';
+import { ExamScheduleResponseDto } from './dtos/exam-schedule-response.dto';
+import { ExamScheduleCreateDto } from './dtos/exam-schedule-create.dto';
+import { ExamScheduleUpdateDto } from './dtos/exam-schedule-update.dto';
 import { ExamService } from './exam.service';
 
 @Controller('exams')
@@ -96,5 +99,40 @@ export class ExamController {
   ): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.examService.deleteBySlug(slug, teacherId);
+  }
+
+  // SCHEDULES
+
+  @Post('/schedules')
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(ExamScheduleResponseDto)
+  createSchedule(
+    @Body() body: ExamScheduleCreateDto,
+    @CurrentUser() user: User,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.examService.createSchedule(body, teacherId);
+  }
+
+  @Patch('/schedules/:scheduleId')
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(ExamScheduleResponseDto)
+  updateSchedule(
+    @Param('scheduleId') scheduleId: number,
+    @Body() body: ExamScheduleUpdateDto,
+    @CurrentUser() user: User,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.examService.updateSchedule(scheduleId, body, teacherId);
+  }
+
+  @Delete('/schedules/:scheduleId')
+  @UseAuthGuard(UserRole.Teacher)
+  deleteSchedule(
+    @Param('scheduleId') scheduleId: number,
+    @CurrentUser() user: User,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.examService.deleteSchedule(scheduleId, teacherId);
   }
 }

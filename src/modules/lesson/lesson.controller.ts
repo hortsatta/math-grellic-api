@@ -167,7 +167,8 @@ export class LessonController {
     );
   }
 
-  // Lesson schedule
+  // SCHEDULES
+
   @Post('/schedules')
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonScheduleResponseDto)
@@ -191,5 +192,13 @@ export class LessonController {
     return this.lessonService.updateSchedule(scheduleId, body, teacherId);
   }
 
-  // TODO delete schedule
+  @Delete('/schedules/:scheduleId')
+  @UseAuthGuard(UserRole.Teacher)
+  deleteDelete(
+    @Param('scheduleId') scheduleId: number,
+    @CurrentUser() user: User,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.deleteSchedule(scheduleId, teacherId);
+  }
 }

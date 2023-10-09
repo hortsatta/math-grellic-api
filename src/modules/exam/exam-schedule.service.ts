@@ -97,7 +97,7 @@ export class ExamScheduleService {
       if (studentOverlapCount) {
         return {
           error: new ConflictException(
-            'The new schedule conflicts with an existing one',
+            'Assigned student(s) has conflicting schedules',
           ),
         };
       }
@@ -168,7 +168,7 @@ export class ExamScheduleService {
     // Get exam schedule, cancel schedule update and throw error if not found
     const examSchedule = await this.getOneById(id);
     if (!examSchedule) {
-      throw new NotFoundException('Lesson schedule not found');
+      throw new NotFoundException('Exam schedule not found');
     }
 
     let students = studentIds?.length ? studentIds.map((id) => ({ id })) : [];
@@ -189,5 +189,10 @@ export class ExamScheduleService {
       students,
       exam: examSchedule.exam,
     });
+  }
+
+  async delete(id: number): Promise<boolean> {
+    const result = await this.repo.delete({ id });
+    return !!result.affected;
   }
 }

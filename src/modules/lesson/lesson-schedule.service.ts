@@ -83,4 +83,9 @@ export class LessonScheduleService {
       lesson: lessonSchedule.lesson,
     });
   }
+
+  async delete(id: number): Promise<boolean> {
+    const result = await this.repo.delete({ id });
+    return !!result.affected;
+  }
 }
