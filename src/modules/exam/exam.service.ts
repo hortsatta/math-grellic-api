@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  Brackets,
   FindOptionsOrder,
   FindOptionsOrderValue,
   FindOptionsWhere,
@@ -17,7 +18,7 @@ import {
 } from 'typeorm';
 import dayjs from 'dayjs';
 
-import { RecordStatus } from '#/common/enums/content.enum';
+import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
 import { LessonService } from '../lesson/lesson.service';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
@@ -28,6 +29,7 @@ import { ExamUpdateDto } from './dtos/exam-update.dto';
 import { ExamQuestionUpdateDto } from './dtos/exam-question-update.dto';
 import { ExamScheduleCreateDto } from './dtos/exam-schedule-create.dto';
 import { ExamScheduleUpdateDto } from './dtos/exam-schedule-update.dto';
+import { ExamCompletionCreateDto } from './dtos/exam-completion-create.dto';
 import { ExamScheduleService } from './exam-schedule.service';
 
 @Injectable()
@@ -398,9 +400,6 @@ export class ExamService {
     });
 
     if (exam.status === RecordStatus.Published) {
-      console.log(
-        updatedExam.questions.map((q) => ({ or: q.orderNumber, q: q.text })),
-      );
       return updatedExam;
     }
 
@@ -579,5 +578,310 @@ export class ExamService {
     }
 
     return this.examScheduleService.delete(scheduleId);
+  }
+
+  // STUDENT
+
+  async getStudentExamsByStudentId(studentId: number, q?: string) {
+    const currentDateTime = dayjs().toDate();
+
+    const upcomingExamQuery = this.examRepo
+      .createQueryBuilder('exam')
+      .leftJoinAndSelect('exam.schedules', 'schedules')
+      .leftJoin('schedules.students', 'students')
+      .where('exam.status = :status', { status: RecordStatus.Published })
+      .andWhere('students.id = :studentId', { studentId })
+      .andWhere('schedules.startDate > :currentDateTime', { currentDateTime });
+
+    const ongoingExamsQuery = this.examRepo
+      .createQueryBuilder('exam')
+      .leftJoinAndSelect('exam.schedules', 'schedules')
+      .leftJoin('schedules.students', 'students')
+      .leftJoinAndSelect(
+        'exam.completions',
+        'completions',
+        'completions.student.id = :studentId',
+        { studentId },
+      )
+      .where('exam.status = :status', { status: RecordStatus.Published })
+      .andWhere('students.id = :studentId', { studentId })
+      .andWhere(
+        new Brackets((sqb) => {
+          sqb.where('schedules.startDate <= :currentDateTime', {
+            currentDateTime,
+          });
+          sqb.andWhere('schedules.endDate >= :currentDateTime', {
+            currentDateTime,
+          });
+        }),
+      );
+
+    // Get upcoming and ongoing exams first to exlcude ids in other exams query
+    const upcomingExam = await upcomingExamQuery
+      .select([
+        'exam.id',
+        'exam.createdAt',
+        'exam.updatedAt',
+        'exam.status',
+        'exam.orderNumber',
+        'exam.title',
+        'exam.slug',
+        'exam.excerpt',
+        'exam.randomizeQuestions',
+        'exam.visibleQuestionsCount',
+        'exam.pointsPerQuestion',
+        'exam.passingPoints',
+        'schedules',
+      ])
+      .orderBy('schedules.startDate', 'ASC')
+      .getOne();
+
+    const ongoingExams = await ongoingExamsQuery
+      .select([
+        'exam.id',
+        'exam.createdAt',
+        'exam.updatedAt',
+        'exam.status',
+        'exam.orderNumber',
+        'exam.title',
+        'exam.slug',
+        'exam.excerpt',
+        'exam.randomizeQuestions',
+        'exam.visibleQuestionsCount',
+        'exam.pointsPerQuestion',
+        'exam.passingPoints',
+        'schedules',
+        'completions',
+      ])
+      .orderBy('schedules.startDate', 'ASC')
+      .getMany();
+
+    const excludeIds = [upcomingExam, ...ongoingExams]
+      .filter((e) => !!e)
+      .map((e) => e.id);
+
+    const otherExamsQuery = this.examRepo
+      .createQueryBuilder('exam')
+      .leftJoinAndSelect('exam.schedules', 'schedules')
+      .leftJoin('schedules.students', 'students')
+      .leftJoinAndSelect(
+        'exam.completions',
+        'completions',
+        'completions.student.id = :studentId',
+        { studentId },
+      )
+      .where('exam.status = :status', { status: RecordStatus.Published })
+      .andWhere('students.id = :studentId', { studentId })
+      .andWhere('schedules.endDate < :currentDateTime', { currentDateTime });
+
+    if (excludeIds.length) {
+      otherExamsQuery.andWhere('exam.id NOT IN (:...excludeIds)', {
+        excludeIds,
+      });
+    }
+
+    if (q) {
+      upcomingExamQuery.andWhere('exam.title ILIKE :q', { q });
+      otherExamsQuery.andWhere('exam.title ILIKE :q', { q });
+    }
+
+    const otherExams = await otherExamsQuery
+      .select([
+        'exam.id',
+        'exam.createdAt',
+        'exam.updatedAt',
+        'exam.status',
+        'exam.orderNumber',
+        'exam.title',
+        'exam.slug',
+        'exam.excerpt',
+        'exam.randomizeQuestions',
+        'exam.visibleQuestionsCount',
+        'exam.pointsPerQuestion',
+        'exam.passingPoints',
+        'schedules',
+        'completions',
+      ])
+      .orderBy('exam.orderNumber', 'DESC')
+      .getMany();
+
+    const latestExam = otherExams.length ? otherExams[0] : null;
+    const previousExams = otherExams.length > 1 ? otherExams.slice(1) : [];
+
+    return {
+      upcomingExam,
+      latestExam,
+      previousExams,
+      ongoingExams,
+    };
+  }
+
+  async getOneBySlugAndStudentId(slug: string, studentId: number) {
+    const currentDateTime = dayjs();
+
+    const exam = await this.examRepo.findOne({
+      where: [
+        {
+          slug,
+          status: RecordStatus.Published,
+          schedules: { students: { id: studentId } },
+        },
+      ],
+      relations: {
+        coveredLessons: true,
+        questions: { choices: true },
+        schedules: { students: true },
+        completions: {
+          questionAnswers: { question: true, selectedQuestionChoice: true },
+        },
+      },
+      order: { schedules: { startDate: 'ASC' } },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    const filteredSchedules = exam.schedules.filter((schedule) =>
+      schedule.students.find((s) => s.id === studentId),
+    );
+
+    const ongoingDate = filteredSchedules.find((schedule) => {
+      const startDate = dayjs(schedule.startDate);
+      const endDate = dayjs(schedule.endDate);
+      return currentDateTime.isBetween(startDate, endDate, null, '[]');
+    });
+
+    // If exam is ongoing for current student then remove answers from completion
+    if (ongoingDate) {
+      const { completions, ...moreExam } = exam;
+      return {
+        ...moreExam,
+        completions: completions.map(
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          ({ questionAnswers, ...moreCompletion }) => moreCompletion,
+        ),
+        schedules: [ongoingDate],
+        scheduleStatus: ExamScheduleStatus.Ongoing,
+      };
+    }
+
+    const currentAvailableExams =
+      await this.getStudentExamsByStudentId(studentId);
+
+    const upcomingDate = filteredSchedules.find((schedule) => {
+      const startDate = dayjs(schedule.startDate);
+      return startDate.isAfter(currentDateTime);
+    });
+
+    // If exam is upcoming for current student then remove questions and answers from completion
+    if (upcomingDate && currentAvailableExams.upcomingExam.id === exam.id) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { questions, completions, ...moreExam } = exam;
+      return {
+        ...moreExam,
+        completions: completions.map(
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          ({ questionAnswers, ...moreCompletion }) => moreCompletion,
+        ),
+        schedules: [upcomingDate],
+        scheduleStatus: ExamScheduleStatus.Upcoming,
+      };
+    }
+
+    return { ...exam, scheduleStatus: ExamScheduleStatus.Past };
+  }
+
+  async createExamCompletionBySlugAndStudentId(
+    body: ExamCompletionCreateDto,
+    slug: string,
+    studentId: number,
+  ) {
+    const { questionAnswers } = body;
+    const currentDateTime = dayjs();
+
+    const exam = await this.examRepo.findOne({
+      where: [
+        {
+          slug,
+          status: RecordStatus.Published,
+          schedules: { students: { id: studentId } },
+        },
+      ],
+      relations: { schedules: true, completions: true },
+    });
+
+    if (
+      !exam ||
+      (exam.schedules?.length &&
+        dayjs(exam.schedules[0].startDate).isAfter(currentDateTime))
+    ) {
+      throw new NotFoundException('Exam not available');
+    }
+
+    const completions = await this.examCompletionRepo.find({
+      where: { exam: { id: exam.id }, student: { id: studentId } },
+    });
+
+    if (completions.length) {
+      throw new BadRequestException('Exam already taken');
+    }
+
+    const examQuestions = await this.examQuestionRepo.find({
+      where: {
+        id: In(questionAnswers.map((a) => a.questionId)),
+        exam: { id: exam.id },
+      },
+      relations: { choices: true },
+    });
+
+    const correctCount = questionAnswers.reduce(
+      (acc, { questionId, selectedQuestionChoiceId }) => {
+        if (!questionId || !selectedQuestionChoiceId) {
+          return acc;
+        }
+
+        const question = examQuestions.find((q) => q.id === questionId);
+        const choice = question
+          ? question.choices.find((c) => c.id === selectedQuestionChoiceId)
+          : null;
+
+        return choice.isCorrect ? acc + 1 : acc;
+      },
+      0,
+    );
+
+    const score = correctCount * exam.pointsPerQuestion;
+
+    const newQuestionAnswers = questionAnswers.map(
+      ({ questionId, selectedQuestionChoiceId }) => ({
+        question: { id: questionId },
+        selectedQuestionChoice: selectedQuestionChoiceId
+          ? { id: selectedQuestionChoiceId }
+          : null,
+      }),
+    );
+
+    const completion = this.examCompletionRepo.create({
+      score,
+      submittedAt: currentDateTime,
+      exam,
+      questionAnswers: newQuestionAnswers,
+      student: { id: studentId },
+    });
+
+    return this.examCompletionRepo.save(completion);
+  }
+
+  async deleteExamCompletionBySlugAndStudentId(
+    slug: string,
+    studentId: number,
+  ): Promise<boolean> {
+    const result = await this.examCompletionRepo.delete({
+      exam: { slug },
+      student: { id: studentId },
+    });
+
+    return !!result.affected;
   }
 }

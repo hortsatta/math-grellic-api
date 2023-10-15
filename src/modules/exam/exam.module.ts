@@ -11,6 +11,7 @@ import { ExamCompletion } from './entities/exam-completion.entity';
 import { ExamCompletionQuestionAnswer } from './entities/exam-completion-question-answer.entity';
 import { ExamController } from './exam.controller';
 import { ExamSubscriber } from './subscribers/exam.subscriber';
+import { ExamGateway } from './exam.gateway';
 import { ExamService } from './exam.service';
 import { ExamScheduleService } from './exam-schedule.service';
 
@@ -28,6 +29,6 @@ import { ExamScheduleService } from './exam-schedule.service';
     LessonModule,
   ],
   controllers: [ExamController],
-  providers: [ExamSubscriber, ExamService, ExamScheduleService],
+  providers: [ExamGateway, ExamSubscriber, ExamService, ExamScheduleService],
 })
 export class ExamModule {}

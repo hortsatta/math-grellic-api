@@ -29,6 +29,7 @@ export class ExamCompletionQuestionAnswer extends BaseEntity {
   @ManyToOne(
     () => ExamQuestionChoice,
     (examQuestionChoice) => examQuestionChoice.questionAnswers,
+    { nullable: true },
   )
   selectedQuestionChoice: ExamQuestionChoice;
 }

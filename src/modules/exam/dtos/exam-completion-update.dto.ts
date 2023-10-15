@@ -5,12 +5,10 @@ import {
   IsPositive,
   IsOptional,
   IsArray,
-  ArrayNotEmpty,
-  ArrayMinSize,
   ValidateNested,
 } from 'class-validator';
 
-import { ExamCompletionQuestionAnswerUpdateDto } from './exam-completion-question-answer-update.dto';
+import { ExamCompletionQuestionAnswerUpsertDto } from './exam-completion-question-answer-update.dto';
 
 export class ExamCompletionUpdateDto {
   @IsInt()
@@ -27,10 +25,8 @@ export class ExamCompletionUpdateDto {
   examId: number;
 
   @IsArray()
-  @ArrayNotEmpty()
-  @ArrayMinSize(2)
   @ValidateNested({ each: true })
   @IsOptional()
-  @Type(() => ExamCompletionQuestionAnswerUpdateDto)
-  questionAnswers: ExamCompletionQuestionAnswerUpdateDto[];
+  @Type(() => ExamCompletionQuestionAnswerUpsertDto)
+  questionAnswers: ExamCompletionQuestionAnswerUpsertDto[];
 }

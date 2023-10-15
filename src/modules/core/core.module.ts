@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import duration from 'dayjs/plugin/duration';
 import updateLocale from 'dayjs/plugin/updateLocale';
 import localeData from 'dayjs/plugin/localeData';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import isBetween from 'dayjs/plugin/isBetween';
 
 import { CoreController } from './core.controller';
 import { CoreGateway } from './core.gateway';
@@ -19,6 +21,7 @@ export class CoreModule {
   constructor() {
     // Initialize dayjs
     dayjs.extend(relativeTime);
+    dayjs.extend(duration);
     // Use custom format for time
     dayjs.extend(customParseFormat);
     // Set global dayjs settings
@@ -32,5 +35,7 @@ export class CoreModule {
     dayjs.extend(utc);
     dayjs.extend(timezone);
     dayjs.tz.setDefault('Asia/Manila');
+    // Use inBetween method
+    dayjs.extend(isBetween);
   }
 }

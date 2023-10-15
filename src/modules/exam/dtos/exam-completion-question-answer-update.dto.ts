@@ -1,6 +1,6 @@
 import { IsInt, IsPositive, IsOptional } from 'class-validator';
 
-export class ExamCompletionQuestionAnswerUpdateDto {
+export class ExamCompletionQuestionAnswerUpsertDto {
   @IsInt()
   @IsPositive()
   @IsOptional()

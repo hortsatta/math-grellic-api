@@ -22,6 +22,9 @@ import { ExamUpdateDto } from './dtos/exam-update.dto';
 import { ExamScheduleResponseDto } from './dtos/exam-schedule-response.dto';
 import { ExamScheduleCreateDto } from './dtos/exam-schedule-create.dto';
 import { ExamScheduleUpdateDto } from './dtos/exam-schedule-update.dto';
+import { ExamCompletionResponseDto } from './dtos/exam-completion-response.dto';
+import { StudentExamListResponseDto } from './dtos/student-exam-list-response.dto';
+import { ExamCompletionCreateDto } from './dtos/exam-completion-create.dto';
 import { ExamService } from './exam.service';
 
 @Controller('exams')
@@ -99,6 +102,47 @@ export class ExamController {
   ): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.examService.deleteBySlug(slug, teacherId);
+  }
+
+  // STUDENTS
+
+  @Get('/students/list')
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(StudentExamListResponseDto)
+  getStudentExamsByStudentId(
+    @CurrentUser() user: User,
+    @Query('q') q?: string,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.examService.getStudentExamsByStudentId(studentId, q);
+  }
+
+  @Get('/:slug/students')
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(ExamResponseDto)
+  @UseFilterFieldsInterceptor()
+  getOneBySlugAndStudentId(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.examService.getOneBySlugAndStudentId(slug, studentId);
+  }
+
+  @Post(':slug/students/completion')
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(ExamCompletionResponseDto)
+  setExamCompletionBySlugAndStudentId(
+    @Body() body: ExamCompletionCreateDto,
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.examService.createExamCompletionBySlugAndStudentId(
+      body,
+      slug,
+      studentId,
+    );
   }
 
   // SCHEDULES

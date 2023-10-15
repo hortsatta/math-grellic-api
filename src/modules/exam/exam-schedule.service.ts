@@ -69,6 +69,7 @@ export class ExamScheduleService {
 
     // If this exam has multiple schedules then check if target student is present on others schedule,
     // If student is present and schedule is future then return as invalid (false)
+    // TODO check if student has completion with exam, cancel if exam already taken
     if (examId) {
       const studentOverlapBaseWhere: FindOptionsWhere<ExamSchedule> = scheduleId
         ? {

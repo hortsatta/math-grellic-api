@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  Brackets,
   FindOptionsOrder,
   FindOptionsOrderValue,
   FindOptionsWhere,
@@ -389,17 +390,20 @@ export class LessonService {
   // STUDENT
 
   async getStudentLessonsByStudentId(studentId: number, q?: string) {
-    // TODO q
     const currentDateTime = dayjs().toDate();
 
     const upcomingLessonQuery = this.lessonRepo
       .createQueryBuilder('lesson')
       .leftJoinAndSelect('lesson.schedules', 'schedules')
       .leftJoin('schedules.students', 'students')
-      .where('students.id = :studentId OR students.id IS NULL', { studentId })
-      .andWhere('schedules.startDate > :startDate', {
-        startDate: currentDateTime,
-      });
+      .where('lesson.status = :status', { status: RecordStatus.Published })
+      .andWhere('schedules.startDate > :currentDateTime', { currentDateTime })
+      .andWhere(
+        new Brackets((sqb) => {
+          sqb.where('students.id = :studentId', { studentId });
+          sqb.orWhere('students.id IS NULL');
+        }),
+      );
 
     const otherLessonsQuery = this.lessonRepo
       .createQueryBuilder('lesson')
@@ -411,10 +415,14 @@ export class LessonService {
         'completions.student.id = :studentId',
         { studentId },
       )
-      .where('students.id = :studentId OR students.id IS NULL', { studentId })
-      .andWhere('schedules.startDate <= :startDate', {
-        startDate: currentDateTime,
-      });
+      .where('lesson.status = :status', { status: RecordStatus.Published })
+      .andWhere('schedules.startDate <= :currentDateTime', { currentDateTime })
+      .andWhere(
+        new Brackets((sqb) => {
+          sqb.where('students.id = :studentId', { studentId });
+          sqb.orWhere('students.id IS NULL');
+        }),
+      );
 
     if (q) {
       upcomingLessonQuery.andWhere('lesson.title ILIKE :q', { q });
@@ -471,8 +479,16 @@ export class LessonService {
 
     const lesson = await this.lessonRepo.findOne({
       where: [
-        { slug, schedules: { students: { id: studentId } } },
-        { slug, schedules: { students: { id: IsNull() } } },
+        {
+          slug,
+          status: RecordStatus.Published,
+          schedules: { students: { id: studentId } },
+        },
+        {
+          slug,
+          status: RecordStatus.Published,
+          schedules: { students: { id: IsNull() } },
+        },
       ],
       relations: { schedules: true, completions: true },
     });
@@ -487,12 +503,14 @@ export class LessonService {
       const upcomingLesson = await this.lessonRepo.findOne({
         where: [
           {
+            status: RecordStatus.Published,
             schedules: {
               startDate: MoreThan(currentDateTime),
               students: { id: studentId },
             },
           },
           {
+            status: RecordStatus.Published,
             schedules: {
               startDate: MoreThan(currentDateTime),
               students: { id: IsNull() },
@@ -524,8 +542,16 @@ export class LessonService {
 
     const lesson = await this.lessonRepo.findOne({
       where: [
-        { slug, schedules: { students: { id: studentId } } },
-        { slug, schedules: { students: { id: IsNull() } } },
+        {
+          slug,
+          status: RecordStatus.Published,
+          schedules: { students: { id: studentId } },
+        },
+        {
+          slug,
+          status: RecordStatus.Published,
+          schedules: { students: { id: IsNull() } },
+        },
       ],
       relations: { schedules: true },
     });

@@ -13,7 +13,7 @@ import { ExamCompletionQuestionAnswer } from './exam-completion-question-answer.
 
 @Entity()
 export class ExamCompletion extends BaseEntity {
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true, default: null })
   score: number;
 
   @CreateDateColumn({ type: 'timestamp' })
