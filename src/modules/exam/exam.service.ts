@@ -18,6 +18,7 @@ import {
 } from 'typeorm';
 import dayjs from 'dayjs';
 
+import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
 import { LessonService } from '../lesson/lesson.service';
 import { Exam } from './entities/exam.entity';
@@ -754,9 +755,14 @@ export class ExamService {
 
     // If exam is ongoing for current student then remove answers from completion
     if (ongoingDate) {
-      const { completions, ...moreExam } = exam;
+      const { questions, completions, ...moreExam } = exam;
+      const targetQuestions = moreExam.randomizeQuestions
+        ? shuffleArray(questions)
+        : questions;
+
       return {
         ...moreExam,
+        questions: targetQuestions,
         completions: completions.map(
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           ({ questionAnswers, ...moreCompletion }) => moreCompletion,
