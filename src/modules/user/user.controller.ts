@@ -10,6 +10,7 @@ import {
 
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from './entities/user.entity';
 import { UserResponseDto } from './dtos/user-response.dto';
@@ -17,9 +18,8 @@ import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
 import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
-import { UserService } from './user.service';
-import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { StudentUserResponseDto } from './dtos/student-user-response.dto';
+import { UserService } from './user.service';
 
 const TEACHERS_BASE_URL = '/teachers';
 const STUDENTS_BASE_URL = '/students';
@@ -46,7 +46,7 @@ export class UserController {
     return this.userService.updateApprovalStatus(id, body.approvalStatus);
   }
 
-  // Teachers endpoint
+  // TEACHERS
 
   @Get(`${TEACHERS_BASE_URL}/students`)
   @UseAuthGuard(UserRole.Teacher)
@@ -79,7 +79,7 @@ export class UserController {
     return this.userService.updateTeacherUser(id, body);
   }
 
-  // Students endpoint
+  // STUDENTS
 
   @Post(`${STUDENTS_BASE_URL}/register`)
   @UseSerializeInterceptor(UserResponseDto)

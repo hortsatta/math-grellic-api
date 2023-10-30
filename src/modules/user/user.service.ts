@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, In, Repository } from 'typeorm';
 
 import { generatePublicId } from '#/modules/user/helpers/user.helper';
-import { SupabaseService } from './supabase.service';
+import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { User } from './entities/user.entity';
 import { TeacherUserAccount } from './entities/teacher-user-account.entity';
 import { StudentUserAccount } from './entities/student-user-account.entity';
@@ -15,7 +15,7 @@ import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
 import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
-import { UserApprovalStatus, UserRole } from './enums/user.enum';
+import { SupabaseService } from './supabase.service';
 
 @Injectable()
 export class UserService {
@@ -53,7 +53,7 @@ export class UserService {
   }
 
   getStudentsByTeacherId(
-    id: number,
+    teacherId: number,
     studentIds?: number[],
     q?: string,
     userStatus?: UserApprovalStatus,
@@ -61,11 +61,11 @@ export class UserService {
     const generateWhere = () => {
       const baseWhere: FindOptionsWhere<StudentUserAccount> = userStatus
         ? {
-            teacherUser: { id },
+            teacherUser: { id: teacherId },
             user: { approvalStatus: userStatus },
           }
         : {
-            teacherUser: { id },
+            teacherUser: { id: teacherId },
           };
 
       if (studentIds?.length) {
@@ -83,6 +83,22 @@ export class UserService {
 
     return this.studentUserAccountRepo.find({
       where: generateWhere(),
+      loadEagerRelations: false,
+      relations: { user: true },
+      select: {
+        user: {
+          publicId: true,
+        },
+      },
+    });
+  }
+
+  getTeacherByStudentId(id: number): Promise<TeacherUserAccount> {
+    return this.teacherUserAccountRepo.findOne({
+      where: {
+        students: { id, user: { approvalStatus: UserApprovalStatus.Approved } },
+        user: { approvalStatus: UserApprovalStatus.Approved },
+      },
       loadEagerRelations: false,
       relations: { user: true },
       select: {

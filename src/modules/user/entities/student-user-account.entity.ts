@@ -12,6 +12,7 @@ import { LessonSchedule } from '#/modules/lesson/entities/lesson-schedule.entity
 import { ExamSchedule } from '#/modules/exam/entities/exam-schedule.entity';
 import { LessonCompletion } from '#/modules/lesson/entities/lesson-completion.entity';
 import { ExamCompletion } from '#/modules/exam/entities/exam-completion.entity';
+import { ActivityCategoryCompletion } from '#/modules/activity/entities/activity-category-completion.entity';
 import { User } from './user.entity';
 import { UserAccount as UserAccountEntity } from './user-account.entity';
 import { TeacherUserAccount } from './teacher-user-account.entity';
@@ -46,4 +47,10 @@ export class StudentUserAccount extends UserAccountEntity {
 
   @OneToMany(() => ExamCompletion, (examCompletion) => examCompletion.student)
   examCompletions: ExamCompletion[];
+
+  @OneToMany(
+    () => ActivityCategoryCompletion,
+    (activityCategoryCompletion) => activityCategoryCompletion.student,
+  )
+  activityCompletions: ActivityCategoryCompletion[];
 }

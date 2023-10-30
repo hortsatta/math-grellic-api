@@ -13,6 +13,7 @@ import {
   FindOptionsWhere,
   ILike,
   In,
+  LessThanOrEqual,
   Not,
   Repository,
 } from 'typeorm';
@@ -20,6 +21,7 @@ import dayjs from 'dayjs';
 
 import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
+import { UserService } from '../user/user.service';
 import { LessonService } from '../lesson/lesson.service';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
@@ -47,6 +49,8 @@ export class ExamService {
     private readonly examScheduleService: ExamScheduleService,
     @Inject(LessonService)
     private readonly lessonService: LessonService,
+    @Inject(UserService)
+    private readonly userService: UserService,
   ) {}
 
   getPaginationTeacherExamsByTeacherId(
@@ -131,6 +135,38 @@ export class ExamService {
     }
 
     return exam;
+  }
+
+  async getExamsWithCompletionsByStudentIdAndTeacherId(
+    studentId: number,
+    teacherId: number,
+  ): Promise<Exam[]> {
+    const exams = await this.examRepo.find({
+      where: {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+        schedules: {
+          startDate: LessThanOrEqual(dayjs().toDate()),
+          students: { id: studentId },
+        },
+      },
+      relations: {
+        completions: { student: true },
+      },
+    });
+
+    const transformedExams = exams.map((exam) => {
+      const completions = exam.completions.filter(
+        (completion) => completion.student.id === studentId,
+      );
+
+      return {
+        ...exam,
+        completions,
+      };
+    });
+
+    return transformedExams;
   }
 
   async create(examDto: ExamCreateDto, teacherId: number): Promise<Exam> {
@@ -438,7 +474,7 @@ export class ExamService {
       throw new NotFoundException('Exam not found');
     }
 
-    // Abort if lesson had completions
+    // Abort if exam had completions
     const hasCompletion = !!(await this.examCompletionRepo.count({
       where: { exam: { id: exam.id } },
     }));
@@ -706,18 +742,59 @@ export class ExamService {
       .orderBy('exam.orderNumber', 'DESC')
       .getMany();
 
-    const latestExam = otherExams.length ? otherExams[0] : null;
-    const previousExams = otherExams.length > 1 ? otherExams.slice(1) : [];
+    if (ongoingExams?.length) {
+      return {
+        upcomingExam,
+        latestExam: null,
+        previousExams: otherExams,
+        ongoingExams,
+      };
+    } else {
+      const latestExam = otherExams.length ? otherExams[0] : null;
+      const previousExams = otherExams.length > 1 ? otherExams.slice(1) : [];
 
-    return {
-      upcomingExam,
-      latestExam,
-      previousExams,
-      ongoingExams,
-    };
+      return {
+        upcomingExam,
+        latestExam,
+        previousExams,
+        ongoingExams,
+      };
+    }
   }
 
-  async getOneBySlugAndStudentId(slug: string, studentId: number) {
+  async getAllByStudentId(studentId: number): Promise<Exam[]> {
+    const exams = await this.examRepo.find({
+      where: [
+        {
+          status: RecordStatus.Published,
+          schedules: { students: { id: studentId } },
+        },
+      ],
+      relations: {
+        schedules: { students: true },
+      },
+      order: { schedules: { startDate: 'ASC' } },
+    });
+
+    const transformedExams = exams.map((exam) => {
+      const schedules = exam.schedules.filter((schedule) =>
+        schedule.students.some((s) => s.id === studentId),
+      );
+
+      return {
+        ...exam,
+        schedules,
+      };
+    });
+
+    return transformedExams;
+  }
+
+  async getOneBySlugAndStudentId(
+    slug: string,
+    studentId: number,
+    noSchedules?: boolean,
+  ) {
     const currentDateTime = dayjs();
 
     const exam = await this.examRepo.findOne({
@@ -741,6 +818,10 @@ export class ExamService {
 
     if (!exam) {
       throw new NotFoundException('Exam not found');
+    }
+
+    if (noSchedules) {
+      return exam;
     }
 
     const filteredSchedules = exam.schedules.filter((schedule) =>

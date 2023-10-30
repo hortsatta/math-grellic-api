@@ -30,5 +30,6 @@ import { ExamScheduleService } from './exam-schedule.service';
   ],
   controllers: [ExamController],
   providers: [ExamGateway, ExamSubscriber, ExamService, ExamScheduleService],
+  exports: [ExamService],
 })
 export class ExamModule {}

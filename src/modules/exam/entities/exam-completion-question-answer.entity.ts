@@ -7,10 +7,6 @@ import { ExamQuestionChoice } from './exam-question-choice.entity';
 
 @Entity()
 export class ExamCompletionQuestionAnswer extends BaseEntity {
-  // TODO
-  // @Column({ type: 'boolean', default: false })
-  // is_correct: boolean;
-
   @ManyToOne(
     () => ExamCompletion,
     (examCompletion) => examCompletion.questionAnswers,
