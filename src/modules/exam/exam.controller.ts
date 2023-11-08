@@ -8,6 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import dayjs from 'dayjs';
 
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
@@ -78,7 +79,15 @@ export class ExamController {
     @CurrentUser() user: User,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.create(body, teacherId);
+    const { startDate, endDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+      ...(endDate && { endDate: dayjs(endDate).toDate() }),
+    };
+
+    return this.examService.create(transformedBody, teacherId);
   }
 
   @Patch('/:slug')
@@ -91,7 +100,20 @@ export class ExamController {
     @CurrentUser() user: User,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.update(slug, body, teacherId, scheduleId);
+    const { startDate, endDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+      ...(endDate && { endDate: dayjs(endDate).toDate() }),
+    };
+
+    return this.examService.update(
+      slug,
+      transformedBody,
+      teacherId,
+      scheduleId,
+    );
   }
 
   @Delete('/:slug')
@@ -155,7 +177,14 @@ export class ExamController {
     @CurrentUser() user: User,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.createSchedule(body, teacherId);
+
+    const transformedBody = {
+      ...body,
+      startDate: dayjs(body.startDate).toDate(),
+      endDate: dayjs(body.endDate).toDate(),
+    };
+
+    return this.examService.createSchedule(transformedBody, teacherId);
   }
 
   @Patch('/schedules/:scheduleId')
@@ -167,7 +196,19 @@ export class ExamController {
     @CurrentUser() user: User,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.updateSchedule(scheduleId, body, teacherId);
+    const { startDate, endDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+      ...(endDate && { endDate: dayjs(endDate).toDate() }),
+    };
+
+    return this.examService.updateSchedule(
+      scheduleId,
+      transformedBody,
+      teacherId,
+    );
   }
 
   @Delete('/schedules/:scheduleId')

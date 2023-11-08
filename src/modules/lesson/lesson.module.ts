@@ -17,6 +17,6 @@ import { LessonScheduleService } from './lesson-schedule.service';
   ],
   controllers: [LessonController],
   providers: [LessonSubscriber, LessonService, LessonScheduleService],
-  exports: [LessonService],
+  exports: [LessonService, LessonScheduleService],
 })
 export class LessonModule {}

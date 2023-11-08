@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import dayjs from 'dayjs';
 
+import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { ExamService } from '../exam/exam.service';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { StudentUserAccount } from '../user/entities/student-user-account.entity';
@@ -133,7 +134,7 @@ export class PerformanceService {
   async getPaginationStudentPerformancesByTeacherId(
     teacherId: number,
     sort: string,
-    take: number = 10,
+    take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
     performance = StudentPerformanceType.Exam,

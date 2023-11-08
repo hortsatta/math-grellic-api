@@ -1,7 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, FindOptionsWhere, IsNull, Repository } from 'typeorm';
+import dayjs from 'dayjs';
 
+import { RecordStatus } from '#/common/enums/content.enum';
 import { UserApprovalStatus } from '../user/enums/user.enum';
 import { UserService } from '../user/user.service';
 import { LessonSchedule } from './entities/lesson-schedule.entity';
@@ -42,6 +44,76 @@ export class LessonScheduleService {
 
   getOneById(id: number): Promise<LessonSchedule> {
     return this.repo.findOne({ where: { id } });
+  }
+
+  getByDateRangeAndTeacherId(fromDate: Date, toDate: Date, teacherId: number) {
+    return this.repo.find({
+      where: {
+        startDate: Between(fromDate, toDate),
+        lesson: { status: RecordStatus.Published, teacher: { id: teacherId } },
+      },
+      relations: { lesson: true },
+      order: { startDate: 'ASC' },
+    });
+  }
+
+  async getByDateRangeAndTeacherAndStudentId(
+    fromDate: Date,
+    toDate: Date,
+    teacherId: number,
+    studentId: number,
+  ) {
+    const currentDateTime = dayjs();
+
+    const baseWhere: FindOptionsWhere<LessonSchedule> = {
+      startDate: Between(fromDate, toDate),
+      lesson: { status: RecordStatus.Published, teacher: { id: teacherId } },
+    };
+
+    const schedules = await this.repo.find({
+      where: [
+        {
+          ...baseWhere,
+          students: { id: IsNull() },
+        },
+        {
+          ...baseWhere,
+          students: { id: studentId },
+        },
+      ],
+      relations: { lesson: true },
+      order: { startDate: 'ASC' },
+    });
+
+    const transformedSchedules = schedules.map((s) => {
+      const { lesson, ...moreSchedule } = s;
+      const { slug, orderNumber, title, durationSeconds, excerpt } = lesson;
+
+      return {
+        ...moreSchedule,
+        lesson: {
+          slug,
+          orderNumber,
+          title,
+          durationSeconds,
+          excerpt,
+        },
+      };
+    });
+
+    const previousSchedules = transformedSchedules.filter((s) =>
+      dayjs(s.startDate).isSameOrBefore(currentDateTime),
+    );
+
+    const upcomingSchedule = transformedSchedules.filter((s) =>
+      dayjs(s.startDate).isAfter(currentDateTime),
+    )[0];
+
+    if (upcomingSchedule) {
+      return [...previousSchedules, upcomingSchedule];
+    }
+
+    return previousSchedules;
   }
 
   async create(lessonScheduleDto: LessonScheduleCreateDto) {

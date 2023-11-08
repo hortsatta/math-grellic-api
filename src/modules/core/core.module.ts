@@ -8,6 +8,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import isBetween from 'dayjs/plugin/isBetween';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 
 import { CoreController } from './core.controller';
 import { CoreGateway } from './core.gateway';
@@ -35,7 +36,8 @@ export class CoreModule {
     dayjs.extend(utc);
     dayjs.extend(timezone);
     dayjs.tz.setDefault('Asia/Manila');
-    // Use inBetween method
+    // Use checker methods
     dayjs.extend(isBetween);
+    dayjs.extend(isSameOrBefore);
   }
 }

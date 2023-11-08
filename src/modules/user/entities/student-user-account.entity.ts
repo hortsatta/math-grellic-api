@@ -8,6 +8,7 @@ import {
   OneToOne,
 } from 'typeorm';
 
+import { MeetingSchedule } from '#/modules/schedule/entities/meeting-schedule.entity';
 import { LessonSchedule } from '#/modules/lesson/entities/lesson-schedule.entity';
 import { ExamSchedule } from '#/modules/exam/entities/exam-schedule.entity';
 import { LessonCompletion } from '#/modules/lesson/entities/lesson-completion.entity';
@@ -38,6 +39,12 @@ export class StudentUserAccount extends UserAccountEntity {
 
   @ManyToMany(() => ExamSchedule, (examSchedule) => examSchedule.students)
   examSchedules: ExamSchedule[];
+
+  @ManyToMany(
+    () => MeetingSchedule,
+    (meetingSchedule) => meetingSchedule.students,
+  )
+  meetingSchedules: MeetingSchedule[];
 
   @OneToMany(
     () => LessonCompletion,

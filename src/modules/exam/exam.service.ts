@@ -19,9 +19,9 @@ import {
 } from 'typeorm';
 import dayjs from 'dayjs';
 
+import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
-import { UserService } from '../user/user.service';
 import { LessonService } from '../lesson/lesson.service';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
@@ -49,14 +49,12 @@ export class ExamService {
     private readonly examScheduleService: ExamScheduleService,
     @Inject(LessonService)
     private readonly lessonService: LessonService,
-    @Inject(UserService)
-    private readonly userService: UserService,
   ) {}
 
   getPaginationTeacherExamsByTeacherId(
     teacherId: number,
     sort: string,
-    take: number = 10,
+    take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
     status?: string,

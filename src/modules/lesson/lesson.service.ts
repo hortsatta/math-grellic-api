@@ -20,6 +20,7 @@ import {
 } from 'typeorm';
 import dayjs from 'dayjs';
 
+import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Lesson } from './entities/lesson.entity';
 import { LessonCompletion } from './entities/lesson-completion.entity';
@@ -43,7 +44,7 @@ export class LessonService {
   getPaginatedTeacherLessonsByTeacherId(
     teacherId: number,
     sort: string,
-    take: number = 10,
+    take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
     status?: string,

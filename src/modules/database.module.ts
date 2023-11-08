@@ -23,6 +23,7 @@ import { ActivityCategoryTypePoint } from './activity/entities/activity-category
 import { ActivityCategoryTypeTime } from './activity/entities/activity-category-type-time.entity';
 import { ActivityCategoryCompletion } from './activity/entities/activity-category-completion.entity';
 import { ActivityCategoryCompletionQuestionAnswer } from './activity/entities/activity-category-completion-question-answer.entity';
+import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ActivityCategoryCompletionQuestionAnswer } from './activity/entities/ac
           ActivityCategoryTypeTime,
           ActivityCategoryCompletion,
           ActivityCategoryCompletionQuestionAnswer,
+          MeetingSchedule,
         ],
         synchronize: process.env.NODE_ENV !== 'production',
         ssl: process.env.NODE_ENV === 'production',

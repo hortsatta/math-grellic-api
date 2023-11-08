@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UserModule } from '../user/user.module';
+import { ScheduleModule } from '../schedule/schedule.module';
 import { LessonModule } from '../lesson/lesson.module';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
@@ -27,9 +28,10 @@ import { ExamScheduleService } from './exam-schedule.service';
     ]),
     UserModule,
     LessonModule,
+    forwardRef(() => ScheduleModule),
   ],
   controllers: [ExamController],
   providers: [ExamGateway, ExamSubscriber, ExamService, ExamScheduleService],
-  exports: [ExamService],
+  exports: [ExamService, ExamScheduleService],
 })
 export class ExamModule {}

@@ -15,6 +15,7 @@ import {
   Repository,
 } from 'typeorm';
 
+import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { UserService } from '../user/user.service';
 import {
@@ -49,7 +50,7 @@ export class ActivityService {
   async getPaginationTeacherActivitiesByTeacherId(
     teacherId: number,
     sort: string,
-    take: number = 10,
+    take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
     status?: string,

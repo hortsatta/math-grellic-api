@@ -8,6 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import dayjs from 'dayjs';
 
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
@@ -100,7 +101,14 @@ export class LessonController {
     @CurrentUser() user: User,
   ): Promise<Lesson> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.create(body, teacherId);
+    const { startDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+    };
+
+    return this.lessonService.create(transformedBody, teacherId);
   }
 
   @Patch('/:slug')
@@ -113,7 +121,19 @@ export class LessonController {
     @CurrentUser() user: User,
   ): Promise<Lesson> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.update(slug, body, teacherId, scheduleId);
+    const { startDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+    };
+
+    return this.lessonService.update(
+      slug,
+      transformedBody,
+      teacherId,
+      scheduleId,
+    );
   }
 
   @Delete('/:slug')
@@ -177,7 +197,13 @@ export class LessonController {
     @CurrentUser() user: User,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.createSchedule(body, teacherId);
+
+    const transformedBody = {
+      ...body,
+      startDate: dayjs(body.startDate).toDate(),
+    };
+
+    return this.lessonService.createSchedule(transformedBody, teacherId);
   }
 
   @Patch('/schedules/:scheduleId')
@@ -189,7 +215,18 @@ export class LessonController {
     @CurrentUser() user: User,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.updateSchedule(scheduleId, body, teacherId);
+    const { startDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+    };
+
+    return this.lessonService.updateSchedule(
+      scheduleId,
+      transformedBody,
+      teacherId,
+    );
   }
 
   @Delete('/schedules/:scheduleId')
