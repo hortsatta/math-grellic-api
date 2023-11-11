@@ -21,6 +21,7 @@ import { MeetingScheduleResponseDto } from './dtos/meeting-schedule-response.dto
 import { MeetingScheduleCreateDto } from './dtos/meeting-schedule-create.dto';
 import { MeetingScheduleUpdateDto } from './dtos/meeting-schedule-update.dto';
 import { TimelineSchedulesResponseDto } from './dtos/timeline-schedules-response.dto';
+import { StudentMeetingScheduleListResponseDto } from './dtos/student-meeting-schedule-list-response.dto';
 import { ScheduleService } from './schedule.service';
 
 @Controller('schedules')
@@ -149,7 +150,7 @@ export class ScheduleController {
 
   @Get('/meetings/students')
   @UseAuthGuard(UserRole.Student)
-  @UseSerializeInterceptor(MeetingScheduleResponseDto)
+  @UseSerializeInterceptor(StudentMeetingScheduleListResponseDto)
   getStudentMeetingSchedulesByStudentId(@CurrentUser() user: User) {
     const { id: studentId } = user.studentUserAccount;
     return this.scheduleService.getStudentMeetingSchedulesByStudentId(

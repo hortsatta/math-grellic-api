@@ -170,23 +170,63 @@ export class ScheduleService {
     return { error: null };
   }
 
-  getOneByIdAndUserAccountId(
+  async getOneByIdAndUserAccountId(
     id: number,
     userAccountId: number,
     isStudent?: boolean,
   ): Promise<MeetingSchedule> {
-    const baseWhere: FindOptionsWhere<MeetingSchedule> = {
-      id,
-      teacher: { id: userAccountId },
-    };
-
     if (isStudent) {
-      return this.repo.findOne({
-        where: { students: { id: userAccountId }, ...baseWhere },
+      const currentDateTime = dayjs().toDate();
+
+      const teacher =
+        await this.userService.getTeacherByStudentId(userAccountId);
+
+      if (!teacher) {
+        throw new NotFoundException('Student not found');
+      }
+
+      const targetMeetingSchedule = await this.repo.findOne({
+        where: [
+          { id, teacher: { id: teacher.id }, students: { id: userAccountId } },
+          { id, teacher: { id: teacher.id }, students: { id: IsNull() } },
+        ],
       });
+
+      const upcomingMeetingSchedules = await this.repo.find({
+        where: [
+          {
+            startDate: MoreThan(currentDateTime),
+            teacher: { id: teacher.id },
+            students: { id: userAccountId },
+          },
+          {
+            startDate: MoreThan(currentDateTime),
+            teacher: { id: teacher.id },
+            students: { id: IsNull() },
+          },
+        ],
+        order: { startDate: 'DESC' },
+        take: 3,
+      });
+
+      if (!targetMeetingSchedule) {
+        throw new NotFoundException('Schedule not found');
+      }
+
+      if (dayjs(targetMeetingSchedule.startDate).isAfter(currentDateTime)) {
+        const isUpcoming = upcomingMeetingSchedules.some(
+          (schedule) => schedule.id === targetMeetingSchedule.id,
+        );
+
+        if (!isUpcoming) {
+          throw new NotFoundException('Schedule not found');
+        }
+      }
+
+      return targetMeetingSchedule;
     }
 
-    return this.repo.findOne({ where: baseWhere });
+    return this.repo.findOne({ where: { id, teacher: { id: userAccountId } } });
   }
 
   getByStartAndEndDateAndTeacherId(
@@ -376,23 +416,70 @@ export class ScheduleService {
   async getStudentMeetingSchedulesByStudentId(studentId: number) {
     const currentDateTime = dayjs().toDate();
 
+    const teacher = await this.userService.getTeacherByStudentId(studentId);
+
+    if (!teacher) {
+      throw new NotFoundException('Student not found');
+    }
+
     const upcomingMeetingSchedules = await this.repo.find({
-      where: {
-        startDate: MoreThan(currentDateTime),
-        students: { id: studentId },
-      },
+      where: [
+        {
+          startDate: MoreThan(currentDateTime),
+          teacher: { id: teacher.id },
+          students: { id: studentId },
+        },
+        {
+          startDate: MoreThan(currentDateTime),
+          teacher: { id: teacher.id },
+          students: { id: IsNull() },
+        },
+      ],
       order: { startDate: 'DESC' },
       take: 3,
     });
 
     const otherMeetingSchedules = await this.repo.find({
-      where: {
-        id: Not(In(upcomingMeetingSchedules.map((s) => s.id))),
-        startDate: LessThanOrEqual(currentDateTime),
-      },
+      where: [
+        {
+          id: Not(In(upcomingMeetingSchedules.map((s) => s.id))),
+          teacher: { id: teacher.id },
+          startDate: LessThanOrEqual(currentDateTime),
+          students: { id: studentId },
+        },
+        {
+          id: Not(In(upcomingMeetingSchedules.map((s) => s.id))),
+          teacher: { id: teacher.id },
+          startDate: LessThanOrEqual(currentDateTime),
+          students: { id: IsNull() },
+        },
+      ],
       order: { startDate: 'DESC' },
     });
 
-    return { ...upcomingMeetingSchedules, ...otherMeetingSchedules };
+    const currentMeetingSchedules = otherMeetingSchedules.filter((schedule) =>
+      dayjs(currentDateTime).isBetween(
+        schedule.startDate,
+        schedule.endDate,
+        'day',
+        '[]',
+      ),
+    );
+
+    const previousMeetingSchedules = otherMeetingSchedules.filter(
+      (schedule) =>
+        !dayjs(currentDateTime).isBetween(
+          schedule.startDate,
+          schedule.endDate,
+          'day',
+          '[]',
+        ),
+    );
+
+    return {
+      upcomingMeetingSchedules,
+      currentMeetingSchedules,
+      previousMeetingSchedules,
+    };
   }
 }
