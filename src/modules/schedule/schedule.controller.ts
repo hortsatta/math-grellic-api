@@ -24,13 +24,16 @@ import { TimelineSchedulesResponseDto } from './dtos/timeline-schedules-response
 import { StudentMeetingScheduleListResponseDto } from './dtos/student-meeting-schedule-list-response.dto';
 import { ScheduleService } from './schedule.service';
 
+const TEACHER_URL = '/teachers';
+const STUDENT_URL = '/students';
+
 @Controller('schedules')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
 
   // TEACHERS
 
-  @Get('/teachers')
+  @Get(`${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TimelineSchedulesResponseDto)
   getSchedulesByDateRangeAndTeacherId(
@@ -49,7 +52,7 @@ export class ScheduleController {
     );
   }
 
-  @Get('/meetings/teachers')
+  @Get(`/meetings${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   getTeacherMeetingSchedulesByTeacherId(
@@ -70,7 +73,7 @@ export class ScheduleController {
     );
   }
 
-  @Get('/:id/teachers')
+  @Get(`/:id${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   @UseFilterFieldsInterceptor()
@@ -129,7 +132,7 @@ export class ScheduleController {
 
   // STUDENTS
 
-  @Get('/students')
+  @Get(`${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(TimelineSchedulesResponseDto)
   getSchedulesByDateRangeAndStudentId(
@@ -148,7 +151,7 @@ export class ScheduleController {
     );
   }
 
-  @Get('/meetings/students')
+  @Get(`/meetings${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentMeetingScheduleListResponseDto)
   getStudentMeetingSchedulesByStudentId(@CurrentUser() user: User) {
@@ -158,7 +161,7 @@ export class ScheduleController {
     );
   }
 
-  @Get('/:id/students')
+  @Get(`/:id${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   @UseFilterFieldsInterceptor()

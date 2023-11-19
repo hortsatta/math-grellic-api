@@ -10,7 +10,7 @@ export class User extends BaseEntity {
   @Column({ type: 'uuid', unique: true })
   supabaseUserId: string;
 
-  @Column({ type: 'varchar', length: 11, unique: true })
+  @Column({ type: 'varchar', length: 11, unique: true, nullable: true })
   publicId: string;
 
   @Column({

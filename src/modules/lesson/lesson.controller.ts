@@ -28,6 +28,10 @@ import { LessonCompletionUpsertDto } from './dtos/lesson-completion-upsert.dto';
 import { LessonCompletionResponseDto } from './dtos/lesson-completion-response.dto';
 import { LessonService } from './lesson.service';
 
+const TEACHER_URL = '/teachers';
+const STUDENT_URL = '/students';
+const SCHEDULE_URL = '/schedules';
+
 @Controller('lessons')
 export class LessonController {
   constructor(private readonly lessonService: LessonService) {}
@@ -35,7 +39,7 @@ export class LessonController {
   // TEACHERS
 
   // Fetch lessons for the current teacher user
-  @Get('/teachers/list')
+  @Get(`${TEACHER_URL}/list`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
@@ -58,7 +62,7 @@ export class LessonController {
     );
   }
 
-  @Get('/teachers/list/all')
+  @Get(`${TEACHER_URL}/list/all`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
@@ -80,7 +84,7 @@ export class LessonController {
     );
   }
 
-  @Get('/:slug/teachers')
+  @Get(`/:slug${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
@@ -148,7 +152,7 @@ export class LessonController {
 
   // STUDENTS
 
-  @Get('/students/list')
+  @Get(`${STUDENT_URL}/list`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentLessonListResponseDto)
   getStudentLessonsByStudentId(
@@ -159,7 +163,7 @@ export class LessonController {
     return this.lessonService.getStudentLessonsByStudentId(studentId, q);
   }
 
-  @Get('/:slug/students')
+  @Get(`/:slug${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
@@ -171,7 +175,7 @@ export class LessonController {
     return this.lessonService.getOneBySlugAndStudentId(slug, studentId);
   }
 
-  @Post(':slug/students/completion')
+  @Post(`:slug${STUDENT_URL}/completion`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonCompletionResponseDto)
   setLessonCompletionBySlugAndStudentId(
@@ -189,7 +193,7 @@ export class LessonController {
 
   // SCHEDULES
 
-  @Post('/schedules')
+  @Post(`${SCHEDULE_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonScheduleResponseDto)
   createSchedule(
@@ -206,7 +210,7 @@ export class LessonController {
     return this.lessonService.createSchedule(transformedBody, teacherId);
   }
 
-  @Patch('/schedules/:scheduleId')
+  @Patch(`${SCHEDULE_URL}/:scheduleId`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonScheduleResponseDto)
   updateSchedule(
@@ -229,7 +233,7 @@ export class LessonController {
     );
   }
 
-  @Delete('/schedules/:scheduleId')
+  @Delete(`${SCHEDULE_URL}/:scheduleId`)
   @UseAuthGuard(UserRole.Teacher)
   deleteDelete(
     @Param('scheduleId') scheduleId: number,

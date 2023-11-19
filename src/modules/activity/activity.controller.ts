@@ -23,6 +23,9 @@ import { ActivityResponseDto } from './dtos/activity-response.dto';
 import { StudentActivityListResponseDto } from './dtos/student-activity-list-response.dto';
 import { ActivityService } from './activity.service';
 
+const TEACHER_URL = '/teachers';
+const STUDENT_URL = '/students';
+
 @Controller('activities')
 export class ActivityController {
   constructor(private readonly activityService: ActivityService) {}
@@ -35,7 +38,7 @@ export class ActivityController {
 
   // TEACHERS
 
-  @Get('/teachers/list')
+  @Get(`${TEACHER_URL}/list`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
@@ -59,7 +62,7 @@ export class ActivityController {
     );
   }
 
-  @Get('/:slug/teachers')
+  @Get(`/:slug${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ActivityResponseDto)
   @UseFilterFieldsInterceptor()
@@ -111,7 +114,7 @@ export class ActivityController {
 
   // STUDENTS
 
-  @Get('/students/list')
+  @Get(`${STUDENT_URL}/list`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentActivityListResponseDto)
   getStudentActivitiesByStudentId(
@@ -122,7 +125,7 @@ export class ActivityController {
     return this.activityService.getStudentActivitiesByStudentId(studentId, q);
   }
 
-  @Get('/:slug/students')
+  @Get(`/:slug/${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityResponseDto)
   @UseFilterFieldsInterceptor()

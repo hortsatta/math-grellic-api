@@ -28,13 +28,17 @@ import { StudentExamListResponseDto } from './dtos/student-exam-list-response.dt
 import { ExamCompletionCreateDto } from './dtos/exam-completion-create.dto';
 import { ExamService } from './exam.service';
 
+const TEACHER_URL = '/teachers';
+const STUDENT_URL = '/students';
+const SCHEDULE_URL = '/schedules';
+
 @Controller('exams')
 export class ExamController {
   constructor(private readonly examService: ExamService) {}
 
   // TEACHERS
 
-  @Get('/teachers/list')
+  @Get(`${TEACHER_URL}/list`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
@@ -58,7 +62,7 @@ export class ExamController {
     );
   }
 
-  @Get('/:slug/teachers')
+  @Get(`/:slug${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
   @UseFilterFieldsInterceptor()
@@ -128,7 +132,7 @@ export class ExamController {
 
   // STUDENTS
 
-  @Get('/students/list')
+  @Get(`${STUDENT_URL}/list`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentExamListResponseDto)
   getStudentExamsByStudentId(
@@ -139,7 +143,7 @@ export class ExamController {
     return this.examService.getStudentExamsByStudentId(studentId, q);
   }
 
-  @Get('/:slug/students')
+  @Get(`/:slug${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ExamResponseDto)
   @UseFilterFieldsInterceptor()
@@ -151,7 +155,7 @@ export class ExamController {
     return this.examService.getOneBySlugAndStudentId(slug, studentId);
   }
 
-  @Post(':slug/students/completion')
+  @Post(`:slug${STUDENT_URL}/completion`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ExamCompletionResponseDto)
   setExamCompletionBySlugAndStudentId(
@@ -169,7 +173,7 @@ export class ExamController {
 
   // SCHEDULES
 
-  @Post('/schedules')
+  @Post(`${SCHEDULE_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamScheduleResponseDto)
   createSchedule(
@@ -187,7 +191,7 @@ export class ExamController {
     return this.examService.createSchedule(transformedBody, teacherId);
   }
 
-  @Patch('/schedules/:scheduleId')
+  @Patch(`${SCHEDULE_URL}/:scheduleId`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamScheduleResponseDto)
   updateSchedule(
@@ -211,7 +215,7 @@ export class ExamController {
     );
   }
 
-  @Delete('/schedules/:scheduleId')
+  @Delete(`${SCHEDULE_URL}/:scheduleId`)
   @UseAuthGuard(UserRole.Teacher)
   deleteSchedule(
     @Param('scheduleId') scheduleId: number,

@@ -14,8 +14,8 @@ import { StudentPerformance } from './models/performance.model';
 import { StudentPerformanceType } from './enums/performance.enum';
 import { PerformanceService } from './performance.service';
 
-const TEACHERS_BASE_URL = 'teachers';
-const STUDENTS_BASE_URL = 'students';
+const TEACHER_URL = '/teachers';
+const STUDENT_URL = '/students';
 
 @Controller('performances')
 export class PerformanceController {
@@ -23,7 +23,7 @@ export class PerformanceController {
 
   // TEACHERS
 
-  @Get(`${TEACHERS_BASE_URL}/students`)
+  @Get(`${TEACHER_URL}${STUDENT_URL}/list`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
@@ -45,7 +45,7 @@ export class PerformanceController {
     );
   }
 
-  @Get(`${TEACHERS_BASE_URL}/students/:publicId`)
+  @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
@@ -60,7 +60,7 @@ export class PerformanceController {
     );
   }
 
-  @Get(`${TEACHERS_BASE_URL}/students/:publicId/exams`)
+  @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/exams`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
@@ -75,7 +75,7 @@ export class PerformanceController {
     );
   }
 
-  @Get(`${TEACHERS_BASE_URL}/students/:publicId/exams/:slug`)
+  @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/exams/:slug`)
   @UseAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
@@ -94,7 +94,7 @@ export class PerformanceController {
 
   // STUDENTS
 
-  @Get(`${STUDENTS_BASE_URL}`)
+  @Get(`${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
@@ -105,7 +105,7 @@ export class PerformanceController {
     return this.performanceService.getStudentPerformanceByStudentId(studentId);
   }
 
-  @Get(`${STUDENTS_BASE_URL}/exams`)
+  @Get(`${STUDENT_URL}/exams`)
   @UseAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
@@ -114,7 +114,7 @@ export class PerformanceController {
     return this.performanceService.getStudentExamsByStudentId(studentId);
   }
 
-  @Get(`${STUDENTS_BASE_URL}/exams/:slug`)
+  @Get(`${STUDENT_URL}/exams/:slug`)
   @UseAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
