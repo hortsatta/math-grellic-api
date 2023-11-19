@@ -29,41 +29,55 @@ import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
   imports: [
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DATABASE_HOST'),
-        port: configService.get<number>('DATABASE_PORT'),
-        username: configService.get<string>('DATABASE_USERNAME'),
-        password: configService.get<string>('DATABASE_PASSWORD'),
-        database: configService.get<string>('DATABASE_NAME'),
-        // Use snake_case for databse column names
-        namingStrategy: new SnakeNamingStrategy(),
-        entities: [
-          User,
-          TeacherUserAccount,
-          StudentUserAccount,
-          Lesson,
-          LessonSchedule,
-          LessonCompletion,
-          Exam,
-          ExamQuestion,
-          ExamQuestionChoice,
-          ExamSchedule,
-          ExamCompletion,
-          ExamCompletionQuestionAnswer,
-          Activity,
-          ActivityCategory,
-          ActivityCategoryQuestion,
-          ActivityCategoryQuestionChoice,
-          ActivityCategoryTypePoint,
-          ActivityCategoryTypeTime,
-          ActivityCategoryCompletion,
-          ActivityCategoryCompletionQuestionAnswer,
-          MeetingSchedule,
-        ],
-        synchronize: process.env.NODE_ENV !== 'production',
-        ssl: process.env.NODE_ENV === 'production',
-      }),
+      useFactory: async (configService: ConfigService) => {
+        let ssl: object | boolean = false;
+        // Fetch pem file for aws rds db in prod
+        if (process.env.NODE_ENV === 'production') {
+          const pemUrl = configService.get<string>('DATABASE_PEM_URL');
+          const response = await fetch(pemUrl);
+          const ca = await response.text();
+          ssl = {
+            rejectUnauthorized: false,
+            ca,
+          };
+        }
+
+        return {
+          type: 'postgres',
+          host: configService.get<string>('DATABASE_HOST'),
+          port: configService.get<number>('DATABASE_PORT'),
+          username: configService.get<string>('DATABASE_USERNAME'),
+          password: configService.get<string>('DATABASE_PASSWORD'),
+          database: configService.get<string>('DATABASE_NAME'),
+          // Use snake_case for databse column names
+          namingStrategy: new SnakeNamingStrategy(),
+          entities: [
+            User,
+            TeacherUserAccount,
+            StudentUserAccount,
+            Lesson,
+            LessonSchedule,
+            LessonCompletion,
+            Exam,
+            ExamQuestion,
+            ExamQuestionChoice,
+            ExamSchedule,
+            ExamCompletion,
+            ExamCompletionQuestionAnswer,
+            Activity,
+            ActivityCategory,
+            ActivityCategoryQuestion,
+            ActivityCategoryQuestionChoice,
+            ActivityCategoryTypePoint,
+            ActivityCategoryTypeTime,
+            ActivityCategoryCompletion,
+            ActivityCategoryCompletionQuestionAnswer,
+            MeetingSchedule,
+          ],
+          synchronize: process.env.NODE_ENV !== 'production',
+          ssl,
+        };
+      },
     }),
   ],
 })
