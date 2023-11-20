@@ -46,9 +46,6 @@ async function bootstrap() {
   app.useGlobalFilters(new DatabaseExceptionFilter());
   app.useWebSocketAdapter(new AuthSocketAdapter(app));
 
-  await app.listen(3000);
-
-  console.log('App Started at Port 3000');
-  return;
+  await app.listen(3001);
 }
 bootstrap();
