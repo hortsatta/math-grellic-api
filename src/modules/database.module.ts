@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
+import cfetch from 'cross-fetch';
 
 import { User } from './user/entities/user.entity';
 import { TeacherUserAccount } from './user/entities/teacher-user-account.entity';
@@ -34,7 +35,7 @@ import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
         // Fetch pem file for aws rds db in prod
         if (process.env.NODE_ENV === 'production') {
           const pemUrl = configService.get<string>('DATABASE_PEM_URL');
-          const response = await fetch(pemUrl);
+          const response = await cfetch(pemUrl);
           const ca = await response.text();
           ssl = {
             rejectUnauthorized: false,
