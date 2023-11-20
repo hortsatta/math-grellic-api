@@ -46,6 +46,6 @@ async function bootstrap() {
   app.useGlobalFilters(new DatabaseExceptionFilter());
   app.useWebSocketAdapter(new AuthSocketAdapter(app));
 
-  await app.listen(3000);
+  await app.listen(configService.get<number>('API_PORT') || 3001, '0.0.0.0');
 }
 bootstrap();
