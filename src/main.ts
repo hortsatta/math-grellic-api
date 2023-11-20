@@ -47,5 +47,8 @@ async function bootstrap() {
   app.useWebSocketAdapter(new AuthSocketAdapter(app));
 
   await app.listen(3000);
+
+  console.log('App Started at Port 3000');
+  return;
 }
 bootstrap();
