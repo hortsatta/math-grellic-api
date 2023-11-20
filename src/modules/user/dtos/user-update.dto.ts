@@ -9,7 +9,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import dayjs from 'dayjs';
+import dayjs from '#/common/configs/dayjs.config';
 
 import { UserApprovalStatus, UserGender } from '../enums/user.enum';
 

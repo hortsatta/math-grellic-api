@@ -5,7 +5,7 @@ import {
   InsertEvent,
   UpdateEvent,
 } from 'typeorm';
-import dayjs from 'dayjs';
+import dayjs from '#/common/configs/dayjs.config';
 
 import { User } from '../entities/user.entity';
 import { UserApprovalStatus } from '../enums/user.enum';

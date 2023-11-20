@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, IsNull, Repository } from 'typeorm';
-import dayjs from 'dayjs';
+import dayjs from '#/common/configs/dayjs.config';
 
 import { RecordStatus } from '#/common/enums/content.enum';
 import { UserApprovalStatus } from '../user/enums/user.enum';

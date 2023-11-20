@@ -1,4 +1,5 @@
-import dayjs from 'dayjs';
+import dayjs from '#/common/configs/dayjs.config';
+
 import randomstring from 'randomstring';
 
 import { UserRole } from '#/modules/user/enums/user.enum';
