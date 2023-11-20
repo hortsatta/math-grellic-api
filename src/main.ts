@@ -46,6 +46,6 @@ async function bootstrap() {
   app.useGlobalFilters(new DatabaseExceptionFilter());
   app.useWebSocketAdapter(new AuthSocketAdapter(app));
 
-  await app.listen(3001);
+  await app.listen(3000);
 }
 bootstrap();
