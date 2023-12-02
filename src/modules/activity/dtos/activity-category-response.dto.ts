@@ -7,6 +7,7 @@ import { ActivityCategoryQuestionResponseDto } from './activity-category-questio
 import { ActivityCategoryCompletionResponseDto } from './activity-category-completion-response.dto';
 import { ActivityCategoryTypePointResponseDto } from './activity-category-type-point-response.dto';
 import { ActivityCategoryTypeTimeResponseDto } from './activity-category-type-time-reponse.dto';
+import { ActivityCategoryTypeStageResponseDto } from './activity-category-type-stage-reponse.dto';
 
 export class ActivityCategoryResponseDto extends BaseResponseDto {
   @Expose()
@@ -29,6 +30,10 @@ export class ActivityCategoryResponseDto extends BaseResponseDto {
   @Expose()
   @Type(() => ActivityCategoryTypeTimeResponseDto)
   typeTime: ActivityCategoryTypeTimeResponseDto;
+
+  @Expose()
+  @Type(() => ActivityCategoryTypeStageResponseDto)
+  typeStage: ActivityCategoryTypeStageResponseDto;
 
   @Expose()
   @Type(() => ActivityResponseDto)

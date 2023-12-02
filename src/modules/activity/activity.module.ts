@@ -30,5 +30,6 @@ import { ActivityCategoryCompletionQuestionAnswer } from './entities/activity-ca
   ],
   controllers: [ActivityController],
   providers: [ActivityService, ActivitySubscriber],
+  exports: [ActivityService],
 })
 export class ActivityModule {}

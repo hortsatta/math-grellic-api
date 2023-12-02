@@ -58,4 +58,8 @@ export class ActivityCategoryUpdateDto {
   @IsInt()
   @IsOptional()
   durationSeconds: number;
+
+  @IsInt()
+  @IsOptional()
+  totalStageCount: number;
 }

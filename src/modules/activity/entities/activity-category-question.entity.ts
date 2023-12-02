@@ -13,6 +13,9 @@ export class ActivityCategoryQuestion extends BaseEntity {
   @Column({ type: 'text' })
   text: string;
 
+  @Column({ type: 'int', nullable: true })
+  stageNumber: number;
+
   @ManyToOne(
     () => ActivityCategory,
     (activityCategory) => activityCategory.questions,

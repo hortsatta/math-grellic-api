@@ -29,4 +29,10 @@ export class ActivityResponseDto extends BaseResponseDto {
   @Expose()
   @Type(() => ActivityCategoryResponseDto)
   categories: ActivityCategoryResponseDto[];
+
+  @Expose()
+  score: number | null;
+
+  @Expose()
+  rank: number | null;
 }

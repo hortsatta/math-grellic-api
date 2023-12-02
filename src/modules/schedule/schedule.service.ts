@@ -353,8 +353,6 @@ export class ScheduleService {
       teacher: { id: teacherId },
     });
 
-    console.log(meetingSchedule);
-
     return this.repo.save(meetingSchedule);
   }
 

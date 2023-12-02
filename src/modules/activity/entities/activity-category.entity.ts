@@ -6,6 +6,7 @@ import { Activity } from './activity.entity';
 import { ActivityCategoryQuestion } from './activity-category-question.entity';
 import { ActivityCategoryTypePoint } from './activity-category-type-point.entity';
 import { ActivityCategoryTypeTime } from './activity-category-type-time.entity';
+import { ActivityCategoryTypeStage } from './activity-category-type-stage.entity';
 import { ActivityCategoryCompletion } from './activity-category-completion.entity';
 
 @Entity()
@@ -53,6 +54,15 @@ export class ActivityCategory extends BaseEntity {
     },
   )
   typeTime: ActivityCategoryTypeTime;
+
+  @OneToOne(
+    () => ActivityCategoryTypeStage,
+    (activityCategoryTypeStage) => activityCategoryTypeStage.activityCategory,
+    {
+      cascade: true,
+    },
+  )
+  typeStage: ActivityCategoryTypeStage;
 
   @OneToMany(
     () => ActivityCategoryCompletion,

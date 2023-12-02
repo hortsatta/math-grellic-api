@@ -49,4 +49,8 @@ export class ActivityCategoryCreateDto {
   @IsInt()
   @IsOptional()
   durationSeconds: number;
+
+  @IsInt()
+  @IsOptional()
+  totalStageCount: number;
 }

@@ -23,6 +23,11 @@ export class ActivityCategoryQuestionUpdateDto {
   @IsOptional()
   orderNumber: number;
 
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  stageNumber: number;
+
   @IsString()
   @IsOptional()
   text: string;

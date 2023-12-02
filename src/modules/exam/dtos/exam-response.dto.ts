@@ -56,4 +56,7 @@ export class ExamResponseDto extends BaseResponseDto {
   @Expose()
   @Type(() => ExamCompletionResponseDto)
   completions: ExamCompletionResponseDto[];
+
+  @Expose()
+  rank: number | null;
 }

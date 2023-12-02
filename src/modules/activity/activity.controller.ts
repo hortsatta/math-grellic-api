@@ -125,7 +125,7 @@ export class ActivityController {
     return this.activityService.getStudentActivitiesByStudentId(studentId, q);
   }
 
-  @Get(`/:slug/${STUDENT_URL}`)
+  @Get(`/:slug${STUDENT_URL}`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityResponseDto)
   @UseFilterFieldsInterceptor()

@@ -23,6 +23,11 @@ export class ActivityCategoryQuestionCreateDto {
   @IsInt()
   @IsPositive()
   @IsOptional()
+  stageNumber: number;
+
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
   activityCategoryId: number;
 
   @IsArray()

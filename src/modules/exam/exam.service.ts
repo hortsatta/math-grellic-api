@@ -22,6 +22,7 @@ import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
+import { UserService } from '../user/user.service';
 import { LessonService } from '../lesson/lesson.service';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
@@ -49,7 +50,46 @@ export class ExamService {
     private readonly examScheduleService: ExamScheduleService,
     @Inject(LessonService)
     private readonly lessonService: LessonService,
+    @Inject(UserService)
+    private readonly userService: UserService,
   ) {}
+
+  async generateExamRankings(exam: Exam, teacherId: number) {
+    const students = await this.userService.getStudentsByTeacherId(teacherId);
+
+    const studentIds = students.map((student) => student.id);
+
+    const completions = await this.examCompletionRepo.find({
+      where: { exam: { id: exam.id }, student: { id: In(studentIds) } },
+      relations: { student: true },
+      order: { submittedAt: 'DESC' },
+    });
+
+    // Assign completions
+    const studentData = studentIds.map((studentId) => {
+      const completion = completions.find(
+        (com) => com.student.id === studentId,
+      );
+      return {
+        studentId,
+        completions: completion ? [completion] : [],
+      };
+    });
+
+    const completeStudentData = studentData
+      .filter((data) => !!data.completions.length)
+      .sort(
+        (dataA, dataB) =>
+          dataB.completions[0].score - dataA.completions[0].score,
+      )
+      .map((data, index) => ({ ...data, rank: index + 1 }));
+
+    const incompleteStudentData = studentData
+      .filter((data) => !data.completions.length)
+      .map((data) => ({ ...data, rank: null }));
+
+    return [...completeStudentData, ...incompleteStudentData];
+  }
 
   getPaginationTeacherExamsByTeacherId(
     teacherId: number,
@@ -795,6 +835,8 @@ export class ExamService {
   ) {
     const currentDateTime = dayjs();
 
+    const teacher = await this.userService.getTeacherByStudentId(studentId);
+
     const exam = await this.examRepo.findOne({
       where: [
         {
@@ -814,7 +856,7 @@ export class ExamService {
       order: { schedules: { startDate: 'ASC' } },
     });
 
-    if (!exam) {
+    if (!exam || !teacher) {
       throw new NotFoundException('Exam not found');
     }
 
@@ -832,9 +874,14 @@ export class ExamService {
       return currentDateTime.isBetween(startDate, endDate, null, '[]');
     });
 
+    const transformedExam = {
+      ...exam,
+      completions: exam.completions.length ? [exam.completions[0]] : [],
+    };
+
     // If exam is ongoing for current student then remove answers from completion
     if (ongoingDate) {
-      const { questions, completions, ...moreExam } = exam;
+      const { questions, completions, ...moreExam } = transformedExam;
       const targetQuestions = moreExam.randomizeQuestions
         ? shuffleArray(questions)
         : questions;
@@ -862,7 +909,7 @@ export class ExamService {
     // If exam is upcoming for current student then remove questions and answers from completion
     if (upcomingDate && currentAvailableExams.upcomingExam.id === exam.id) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { questions, completions, ...moreExam } = exam;
+      const { questions, completions, ...moreExam } = transformedExam;
       return {
         ...moreExam,
         completions: completions.map(
@@ -874,7 +921,18 @@ export class ExamService {
       };
     }
 
-    return { ...exam, scheduleStatus: ExamScheduleStatus.Past };
+    // Get current student rank if exam is not ongoing or upcoming
+    const studentRankings = await this.generateExamRankings(exam, teacher.id);
+
+    const { rank } = studentRankings.find(
+      (data) => data.studentId === studentId,
+    );
+
+    return {
+      ...transformedExam,
+      scheduleStatus: ExamScheduleStatus.Past,
+      rank,
+    };
   }
 
   async createExamCompletionBySlugAndStudentId(

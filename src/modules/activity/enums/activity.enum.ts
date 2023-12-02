@@ -9,6 +9,7 @@ export enum ActivityGame {
 export enum ActivityCategoryType {
   Point = 'point',
   Time = 'time',
+  Stage = 'stage',
 }
 
 export enum ActivityCategoryLevel {
@@ -32,10 +33,10 @@ export const activityGameType = {
   },
   [ActivityGame.EscapeRoom]: {
     name: ActivityGame.EscapeRoom,
-    type: ActivityCategoryType.Point,
+    type: ActivityCategoryType.Stage,
   },
   [ActivityGame.SlidePuzzle]: {
     name: ActivityGame.SlidePuzzle,
-    type: ActivityCategoryType.Time,
+    type: ActivityCategoryType.Stage,
   },
 };

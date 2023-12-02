@@ -9,7 +9,9 @@ import { StudentPerformanceResponseDto } from './dtos/student-performance-respon
 import { UserRole } from '../user/enums/user.enum';
 import { User } from '../user/entities/user.entity';
 import { Exam } from '../exam/entities/exam.entity';
+import { Activity } from '../activity/entities/activity.entity';
 import { ExamResponseDto } from '../exam/dtos/exam-response.dto';
+import { ActivityResponseDto } from '../activity/dtos/activity-response.dto';
 import { StudentPerformance } from './models/performance.model';
 import { StudentPerformanceType } from './enums/performance.enum';
 import { PerformanceService } from './performance.service';
@@ -34,7 +36,7 @@ export class PerformanceController {
     @Query('take') take?: number,
     @Query('skip') skip?: number,
     @Query('perf') performance?: StudentPerformanceType,
-  ): Promise<[StudentPerformance[], number]> {
+  ): Promise<[Partial<StudentPerformance>[], number]> {
     return this.performanceService.getPaginationStudentPerformancesByTeacherId(
       user.teacherUserAccount.id,
       sort,
@@ -92,6 +94,38 @@ export class PerformanceController {
     );
   }
 
+  @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/activities`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ActivityResponseDto)
+  getStudentActivitiesByPublicIdAndTeacherId(
+    @Param('publicId') publicId: string,
+    @CurrentUser() user: User,
+  ): Promise<Activity[]> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.performanceService.getStudentActivitiesByPublicIdAndTeacherId(
+      publicId,
+      teacherId,
+    );
+  }
+
+  @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/activities/:slug`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ActivityResponseDto)
+  getStudentActivityWithCompletionsByPublicIdAndSlug(
+    @Param('publicId') publicId: string,
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ): Promise<Activity> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.performanceService.getStudentActivityWithCompletionsByPublicIdAndSlug(
+      publicId,
+      slug,
+      teacherId,
+    );
+  }
+
   // STUDENTS
 
   @Get(`${STUDENT_URL}`)
@@ -124,6 +158,32 @@ export class PerformanceController {
   ): Promise<Exam> {
     const { id: studentId } = user.studentUserAccount;
     return this.performanceService.getStudentExamWithCompletionsBySlugAndStudentId(
+      slug,
+      studentId,
+    );
+  }
+
+  @Get(`${STUDENT_URL}/activities`)
+  @UseAuthGuard(UserRole.Student)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ActivityResponseDto)
+  getStudentActivitiesByStudentId(
+    @CurrentUser() user: User,
+  ): Promise<Activity[]> {
+    const { id: studentId } = user.studentUserAccount;
+    return this.performanceService.getStudentActivitiesByStudentId(studentId);
+  }
+
+  @Get(`${STUDENT_URL}/activities/:slug`)
+  @UseAuthGuard(UserRole.Student)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ActivityResponseDto)
+  getStudentActivityWithCompletionsBySlugAndStudentId(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ): Promise<Activity> {
+    const { id: studentId } = user.studentUserAccount;
+    return this.performanceService.getStudentActivityWithCompletionsBySlugAndStudentId(
       slug,
       studentId,
     );

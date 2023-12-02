@@ -47,6 +47,262 @@ export class ActivityService {
     private readonly userService: UserService,
   ) {}
 
+  async generateActivityRankings(activity: Activity, teacherId: number) {
+    const students = await this.userService.getStudentsByTeacherId(teacherId);
+
+    // Remove duplicate category level
+    const filteredCategories = activity.categories
+      .sort((catA, catB) => catB.updatedAt.valueOf() - catA.updatedAt.valueOf())
+      .filter(
+        (cat, index, array) =>
+          array.findIndex((item) => item.level === cat.level) === index,
+      );
+
+    const categoryIds = filteredCategories.map((cat) => cat.id);
+
+    const studentData = await Promise.all(
+      students.map(async ({ id: studentId }) => {
+        const targetCompletions =
+          await this.activityCategoryCompletionRepo.find({
+            where: {
+              activityCategory: { id: In(categoryIds) },
+              student: { id: studentId },
+            },
+            relations: { activityCategory: true },
+          });
+
+        if (activity.game.type === ActivityCategoryType.Point) {
+          const completions = filteredCategories.reduce((total, cat) => {
+            const list = targetCompletions
+              .filter((com) => com.activityCategory.id === cat.id)
+              .sort(
+                (comA, comB) =>
+                  comA.timeCompletedSeconds - comB.timeCompletedSeconds,
+              )
+              .sort((comA, comB) => comB.score - comA.score);
+
+            if (list.length) {
+              total.push(list[0]);
+            }
+
+            return total;
+          }, []);
+
+          // Combine the completion score in each category
+          const score = completions.length
+            ? completions.reduce((total, com) => total + com.score, 0)
+            : null;
+
+          return {
+            studentId,
+            score,
+            completions,
+          };
+        } else if (activity.game.type === ActivityCategoryType.Time) {
+          const completions = filteredCategories.reduce((total, cat) => {
+            const list = targetCompletions
+              .filter((com) => com.activityCategory.id === cat.id)
+              .sort(
+                (comA, comB) =>
+                  comA.timeCompletedSeconds - comB.timeCompletedSeconds,
+              );
+
+            if (list.length) {
+              total.push(list[0]);
+            }
+
+            return total;
+          }, []);
+
+          const score = completions.length
+            ? completions.reduce(
+                (total, com) => total + com.timeCompletedSeconds,
+                0,
+              ) / completions.length
+            : null;
+
+          return {
+            studentId,
+            score,
+            completions,
+          };
+        } else {
+          const targetCategory = filteredCategories.length
+            ? filteredCategories[0]
+            : null;
+
+          const completions = targetCompletions
+            .filter((com) => com.activityCategory.id === targetCategory.id)
+            .sort(
+              (comA, comB) =>
+                comA.timeCompletedSeconds - comB.timeCompletedSeconds,
+            )
+            .sort((comA, comB) => comB.score - comA.score);
+
+          return {
+            studentId,
+            score: completions.length ? completions[0].score : null,
+            completions,
+          };
+        }
+      }),
+    );
+
+    // Calculate student rankings
+    if (activity.game.type === ActivityCategoryType.Point) {
+      const completeStudentData = studentData
+        .filter((data) => data.score != null)
+        .sort((dataA, dataB) => dataB.score - dataA.score)
+        .map((data, index) => ({ ...data, rank: index + 1 }));
+
+      const incompleteStudentData = studentData
+        .filter((data) => data.score == null)
+        .map((data) => ({ ...data, rank: null }));
+
+      return [...completeStudentData, ...incompleteStudentData];
+    } else if (activity.game.type === ActivityCategoryType.Time) {
+      const completeStudentData = studentData
+        .filter((data) => data.score != null && data.completions.length >= 3)
+        .sort((dataA, dataB) => dataA.score - dataB.score)
+        .map((data, index) => ({ ...data, rank: index + 1 }));
+
+      const incompleteStudentData = studentData
+        .filter((data) => data.score == null || data.completions.length < 3)
+        .map((data) => ({ ...data, rank: null }));
+
+      return [...completeStudentData, ...incompleteStudentData];
+    } else {
+      const completeStudentData = studentData
+        .filter((data) => data.score != null)
+        .sort((dataA, dataB) => dataB.score - dataA.score)
+        .map((data, index) => ({ ...data, rank: index + 1 }));
+
+      const incompleteStudentData = studentData
+        .filter((data) => data.score == null)
+        .map((data) => ({ ...data, rank: null }));
+
+      return [...completeStudentData, ...incompleteStudentData];
+    }
+  }
+
+  async generateActivityWithCompletions(activity: Activity, studentId: number) {
+    // Remove duplicate category level
+    const filteredCategories = activity.categories
+      .sort((catA, catB) => catB.updatedAt.valueOf() - catA.updatedAt.valueOf())
+      .filter(
+        (cat, index, array) =>
+          array.findIndex((item) => item.level === cat.level) === index,
+      );
+
+    const categoryIds = filteredCategories.map((cat) => cat.id);
+
+    const targetCompletions = await this.activityCategoryCompletionRepo.find({
+      where: {
+        activityCategory: { id: In(categoryIds) },
+        student: { id: studentId },
+      },
+      relations: { activityCategory: true },
+    });
+
+    let categories: ActivityCategory[] = [];
+    let score = null;
+
+    // Calculate final score base on game type
+    // Type point
+    if (activity.game.type === ActivityCategoryType.Point) {
+      categories = filteredCategories.map((cat) => {
+        const completions = targetCompletions
+          .filter((com) => com.activityCategory.id === cat.id)
+          .sort(
+            (comA, comB) =>
+              comA.timeCompletedSeconds - comB.timeCompletedSeconds,
+          )
+          .sort((comA, comB) => comB.score - comA.score);
+
+        return {
+          ...cat,
+          completions: !!completions.length ? completions[0] : [],
+        } as ActivityCategory;
+      });
+
+      const catWithCompletions = categories.filter(
+        (cat) => !!cat.completions.length,
+      );
+
+      // Combine the completion score in each category
+      if (catWithCompletions.length) {
+        score = catWithCompletions.reduce(
+          (total, cat) => total + cat.completions[0].score,
+          0,
+        );
+      }
+      // Type time
+    } else if (activity.game.type === ActivityCategoryType.Time) {
+      categories = filteredCategories.map((cat) => {
+        const completions = targetCompletions
+          .filter((com) => com.activityCategory.id === cat.id)
+          .sort(
+            (comA, comB) =>
+              comA.timeCompletedSeconds - comB.timeCompletedSeconds,
+          );
+
+        return {
+          ...cat,
+          completions: !!completions.length ? completions[0] : [],
+        } as ActivityCategory;
+      });
+
+      const catWithCompletions = categories.filter(
+        (cat) => !!cat.completions.length,
+      );
+
+      // Get the average time completed
+      if (catWithCompletions.length) {
+        score =
+          catWithCompletions.reduce(
+            (total, cat) => total + cat.completions[0].timeCompletedSeconds,
+            0,
+          ) / catWithCompletions.length;
+      }
+      // Type stage
+    } else {
+      const targetCategory = filteredCategories.length
+        ? filteredCategories[0]
+        : null;
+
+      const completions = targetCompletions
+        .filter((com) => com.activityCategory.id === targetCategory.id)
+        .sort(
+          (comA, comB) => comA.timeCompletedSeconds - comB.timeCompletedSeconds,
+        )
+        .sort((comA, comB) => comB.score - comA.score);
+
+      categories = targetCategory
+        ? [
+            {
+              ...targetCategory,
+              completions: !!completions.length ? completions[0] : [],
+            } as ActivityCategory,
+          ]
+        : [];
+
+      const catWithCompletions = categories
+        .filter((cat) => !!cat.completions.length)
+        .sort(
+          (catA, catB) => catB.updatedAt.valueOf() - catA.updatedAt.valueOf(),
+        );
+
+      // Get the latest score
+      score = catWithCompletions[0]?.completions[0]?.score || null;
+    }
+
+    return {
+      ...activity,
+      categories,
+      score,
+    };
+  }
+
   async getPaginationTeacherActivitiesByTeacherId(
     teacherId: number,
     sort: string,
@@ -83,7 +339,9 @@ export class ActivityService {
 
     const result = await this.activityRepo.findAndCount({
       where: generateWhere(),
-      relations: { categories: { typePoint: true, typeTime: true } },
+      relations: {
+        categories: { typePoint: true, typeTime: true, typeStage: true },
+      },
       order: generateOrder(),
       skip,
       take,
@@ -106,6 +364,19 @@ export class ActivityService {
     });
 
     return [sortedActivities, result[1]];
+  }
+
+  async getAllByStudentId(studentId: number): Promise<Activity[]> {
+    const teacher = await this.userService.getTeacherByStudentId(studentId);
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    return this.activityRepo.find({
+      where: { teacher: { id: teacher.id }, status: RecordStatus.Published },
+      relations: { categories: { completions: true } },
+    });
   }
 
   async getOneBySlugAndTeacherId(
@@ -133,6 +404,7 @@ export class ActivityService {
           questions: { choices: true },
           typePoint: true,
           typeTime: true,
+          typeStage: true,
         },
       },
       order: {
@@ -148,6 +420,44 @@ export class ActivityService {
     }
 
     return activity;
+  }
+
+  async getActivitiesWithCompletionsByStudentIdAndTeacherId(
+    studentId: number,
+    teacherId: number,
+  ): Promise<Activity[]> {
+    const activities = await this.activityRepo.find({
+      where: {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+      },
+      relations: {
+        categories: { completions: true },
+      },
+    });
+
+    const transformedActivities = activities.map((activity) => {
+      const categories = activity.categories.map((cat) => {
+        const completions = cat.completions
+          .filter((completion) => completion.student.id === studentId)
+          .sort(
+            (comA, comB) =>
+              comB.submittedAt.valueOf() - comA.submittedAt.valueOf(),
+          );
+
+        return {
+          ...cat,
+          completions: completions.length ? [completions[0]] : [],
+        };
+      });
+
+      return {
+        ...activity,
+        categories,
+      };
+    });
+
+    return transformedActivities;
   }
 
   async create(
@@ -198,6 +508,7 @@ export class ActivityService {
         pointsPerQuestion,
         durationSeconds,
         correctAnswerCount,
+        totalStageCount,
         ...moreCategory
       }) => {
         const { type: gameType } = activityGameType[game];
@@ -210,10 +521,15 @@ export class ActivityService {
               durationSeconds,
             },
           };
-        } else {
+        } else if (gameType === ActivityCategoryType.Time) {
           return {
             ...moreCategory,
             typeTime: { correctAnswerCount },
+          };
+        } else {
+          return {
+            ...moreCategory,
+            typeStage: { totalStageCount },
           };
         }
       },
@@ -236,6 +552,7 @@ export class ActivityService {
           questions: { choices: true },
           typePoint: true,
           typeTime: true,
+          typeStage: true,
         },
       },
       order: { categories: { level: 'ASC' } },
@@ -257,6 +574,7 @@ export class ActivityService {
           questions: { choices: true },
           typePoint: true,
           typeTime: true,
+          typeStage: true,
         },
       },
     });
@@ -317,6 +635,7 @@ export class ActivityService {
         pointsPerQuestion,
         durationSeconds,
         correctAnswerCount,
+        totalStageCount,
         ...moreCategory
       }) => {
         const { type: gameType } = activityGameType[game];
@@ -335,20 +654,21 @@ export class ActivityService {
             },
             typeTime: undefined,
           };
+        } else if (gameType === ActivityCategoryType.Time) {
+          return {
+            ...moreCategory,
+            typeTime: { ...sourceCategory.typeTime, correctAnswerCount },
+          };
         } else {
           return {
             ...moreCategory,
-            typePoint: undefined,
-            typeTime: {
-              ...sourceCategory.typeTime,
-              correctAnswerCount,
-            },
+            typeStage: { ...sourceCategory.typeStage, totalStageCount },
           };
         }
       },
     );
 
-    // Update activity, ignore schedule if previous activity status is published
+    // Update activity
     const { id } = await this.activityRepo.save({
       ...activity,
       ...moreActivityDto,
@@ -364,6 +684,7 @@ export class ActivityService {
           questions: { choices: true },
           typePoint: true,
           typeTime: true,
+          typeStage: true,
         },
       },
       order: { categories: { level: 'ASC' } },
@@ -449,7 +770,9 @@ export class ActivityService {
 
     const featuredEntities = await this.activityRepo.find({
       where: { ...generateWhere() },
-      relations: { categories: { typePoint: true, typeTime: true } },
+      relations: {
+        categories: { typePoint: true, typeTime: true, typeStage: true },
+      },
       order: { orderNumber: 'ASC' },
       take: 2,
     });
@@ -461,61 +784,24 @@ export class ActivityService {
         ...generateWhere(),
         id: Not(In(featuredEntityIds)),
       },
-      relations: { categories: { typePoint: true, typeTime: true } },
+      relations: {
+        categories: { typePoint: true, typeTime: true, typeStage: true },
+      },
       order: { orderNumber: 'ASC' },
     });
 
     // Get featured activity completions
     const featuredActivities = await Promise.all(
-      featuredEntities.map(async (activity) => {
-        const categoryIds = activity.categories.map((cat) => cat.id);
-        const completions = await this.activityCategoryCompletionRepo.find({
-          where: { activityCategory: { id: In(categoryIds) } },
-          relations: { activityCategory: true },
-        });
-
-        const categories = activity.categories.map((cat) => {
-          const targetCompletions = completions.find(
-            (com) => com.activityCategory.id === cat.id,
-          );
-          return {
-            ...cat,
-            completions: targetCompletions,
-          };
-        });
-
-        return {
-          ...activity,
-          categories,
-        };
-      }),
+      featuredEntities.map((activity) =>
+        this.generateActivityWithCompletions(activity, studentId),
+      ),
     );
 
     // Get other activity completions
     const otherActivities = await Promise.all(
-      otherEntities.map(async (activity) => {
-        const categoryIds = activity.categories.map((cat) => cat.id);
-        const completions = await this.activityCategoryCompletionRepo.find({
-          where: { activityCategory: { id: In(categoryIds) } },
-          relations: { activityCategory: true },
-        });
-
-        const categories = activity.categories.map((cat) => {
-          const targetCompletions = completions.find(
-            (com) => com.activityCategory.id === cat.id,
-          );
-
-          return {
-            ...cat,
-            completions: targetCompletions,
-          };
-        });
-
-        return {
-          ...activity,
-          categories,
-        };
-      }),
+      otherEntities.map(async (activity) =>
+        this.generateActivityWithCompletions(activity, studentId),
+      ),
     );
 
     return {
@@ -538,6 +824,7 @@ export class ActivityService {
           questions: { choices: true },
           typePoint: true,
           typeTime: true,
+          typeStage: true,
         },
       },
       order: {
@@ -552,30 +839,23 @@ export class ActivityService {
       throw new BadRequestException('Activity does not exist');
     }
 
-    const categoryIds = activity.categories.map((cat) => cat.id);
-    // Get activity student completions
-    const completions = await this.activityCategoryCompletionRepo.find({
-      where: { activityCategory: { id: In(categoryIds) } },
-      relations: {
-        activityCategory: true,
-        questionAnswers: { question: true, selectedQuestionChoice: true },
-      },
-    });
-    // Apply completions to categories
-    const categories = activity.categories.map((cat) => {
-      const targetCompletions = completions.find(
-        (com) => com.activityCategory.id === cat.id,
-      );
+    const transformedActivity = await this.generateActivityWithCompletions(
+      activity,
+      studentId,
+    );
 
-      return {
-        ...cat,
-        completions: targetCompletions,
-      };
-    });
+    const studentRankings = await this.generateActivityRankings(
+      activity,
+      teacher.id,
+    );
+
+    const { rank } = studentRankings.find(
+      (data) => data.studentId === studentId,
+    );
 
     return {
-      ...activity,
-      categories,
+      ...transformedActivity,
+      rank,
     };
   }
 }

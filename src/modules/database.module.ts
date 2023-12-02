@@ -22,6 +22,7 @@ import { ActivityCategoryQuestion } from './activity/entities/activity-category-
 import { ActivityCategoryQuestionChoice } from './activity/entities/activity-category-question-choice.entity';
 import { ActivityCategoryTypePoint } from './activity/entities/activity-category-type-point.entity';
 import { ActivityCategoryTypeTime } from './activity/entities/activity-category-type-time.entity';
+import { ActivityCategoryTypeStage } from './activity/entities/activity-category-type-stage.entity';
 import { ActivityCategoryCompletion } from './activity/entities/activity-category-completion.entity';
 import { ActivityCategoryCompletionQuestionAnswer } from './activity/entities/activity-category-completion-question-answer.entity';
 import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
@@ -71,6 +72,7 @@ import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
             ActivityCategoryQuestionChoice,
             ActivityCategoryTypePoint,
             ActivityCategoryTypeTime,
+            ActivityCategoryTypeStage,
             ActivityCategoryCompletion,
             ActivityCategoryCompletionQuestionAnswer,
             MeetingSchedule,
