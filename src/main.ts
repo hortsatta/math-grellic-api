@@ -1,4 +1,3 @@
-import * as dotenv from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -11,13 +10,17 @@ import { AppModule } from './modules/app.module';
 import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
 import { AuthSocketAdapter } from './common/adapters/auth-socket.adapter';
 
-dotenv.config();
-
 async function bootstrap() {
-  const adapter = new FastifyAdapter();
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter(),
+  );
+
+  // Get config service to access env variables
+  const configService = app.get<ConfigService>(ConfigService);
   // Enable cors with options
-  adapter.enableCors({
-    origin: JSON.parse(process.env.CORS_ORIGINS),
+  app.enableCors({
+    origin: JSON.parse(configService.get<string>('CORS_ORIGINS')),
     allowedHeaders: [
       'Access-Control-Allow-Origin',
       'Origin',
@@ -30,14 +33,6 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'PUT', 'OPTIONS', 'POST', 'DELETE'],
   });
-
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    adapter,
-  );
-
-  // Get config service to access env variables
-  const configService = app.get<ConfigService>(ConfigService);
 
   // Append api prefix to your base url
   app.setGlobalPrefix('api');
