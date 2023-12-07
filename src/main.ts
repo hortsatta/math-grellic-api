@@ -30,6 +30,7 @@ async function bootstrap() {
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
+    preflightContinue: true,
   });
 
   // Append api prefix to your base url
