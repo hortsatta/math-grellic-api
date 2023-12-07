@@ -19,19 +19,7 @@ async function bootstrap() {
   // Get config service to access env variables
   const configService = app.get<ConfigService>(ConfigService);
   // Enable and assign origins
-  app.enableCors({
-    origin: JSON.parse(configService.get<string>('CORS_ORIGINS')),
-    allowedHeaders: [
-      'Origin',
-      'X-Requested-With',
-      'content-type',
-      'Accept',
-      'Authorization',
-    ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true,
-    preflightContinue: true,
-  });
+  app.enableCors();
 
   // Append api prefix to your base url
   app.setGlobalPrefix('api');
