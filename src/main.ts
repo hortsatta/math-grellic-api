@@ -21,8 +21,12 @@ async function bootstrap() {
   // Enable and assign origins
   app.enableCors({
     origin: JSON.parse(configService.get<string>('CORS_ORIGINS')),
+    allowedHeaders:
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+    methods: 'GET, POST, PUT, DELETE, OPTIONS',
     credentials: true,
   });
+
   // Append api prefix to your base url
   app.setGlobalPrefix('api');
   // Enable versioning on this api
