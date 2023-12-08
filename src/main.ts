@@ -22,7 +22,6 @@ async function bootstrap() {
   app.enableCors({
     origin: JSON.parse(configService.get<string>('CORS_ORIGINS')),
     allowedHeaders: [
-      'Access-Control-Allow-Origin',
       'Origin',
       'X-Requested-With',
       'Accept',
