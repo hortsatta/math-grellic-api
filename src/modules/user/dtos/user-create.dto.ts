@@ -8,7 +8,6 @@ import {
   IsUrl,
   MaxDate,
   MaxLength,
-  MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import dayjs from '#/common/configs/dayjs.config';
@@ -19,11 +18,6 @@ export abstract class UserCreateDto {
   @IsEmail()
   @MaxLength(255)
   email: string;
-
-  @IsString()
-  @MinLength(8)
-  @MaxLength(100)
-  password: string;
 
   @IsUrl()
   @MaxLength(255)

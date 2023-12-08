@@ -6,11 +6,17 @@ import {
   IsString,
   IsUrl,
   MaxLength,
+  MinLength,
 } from 'class-validator';
 import { UserCreateDto } from './user-create.dto';
 import { UserRole } from '../enums/user.enum';
 
 export class TeacherUserCreateDto extends UserCreateDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(100)
+  password: string;
+
   @IsEnum(UserRole)
   @Equals(UserRole.Teacher)
   @IsOptional()

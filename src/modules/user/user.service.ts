@@ -343,7 +343,10 @@ export class UserService {
 
     // Sign up to supabase auth
     const { data: supabaseData, error: supabaseError } =
-      await this.supabaseService.register(email, password);
+      await this.supabaseService.register(
+        email,
+        password == null ? 'qweasdzxc' : password,
+      );
     // Throw error if email is already used
     if (!!supabaseError) {
       throw new ConflictException('Email is already taken');
