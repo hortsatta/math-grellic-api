@@ -31,7 +31,7 @@ async function bootstrap() {
     ],
     exposedHeaders: 'Authorization',
     credentials: true,
-    methods: ['GET', 'PUT', 'OPTIONS', 'POST', 'DELETE'],
+    methods: ['GET', 'PUT', 'PATCH', 'OPTIONS', 'POST', 'DELETE'],
   });
 
   // Append api prefix to your base url
