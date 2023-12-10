@@ -90,10 +90,12 @@ export class LessonService {
 
   getTeacherLessonsByTeacherId(
     teacherId: number,
-    sort: string,
+    sort?: string,
     lessonIds?: number[],
     q?: string,
     status?: string,
+    withSchedules?: boolean,
+    withCompletions?: boolean,
   ): Promise<Lesson[]> {
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Lesson> = {
@@ -132,23 +134,8 @@ export class LessonService {
     return this.lessonRepo.find({
       where: generateWhere(),
       order: generateOrder(),
+      relations: { schedules: withSchedules, completions: withCompletions },
     });
-  }
-
-  getByIdsAndTeacherId(
-    ids: number[],
-    teacherId: number,
-    status?: string,
-  ): Promise<Lesson[]> {
-    const where: FindOptionsWhere<Lesson> = status
-      ? {
-          id: In(ids),
-          teacher: { id: teacherId },
-          status: In(status.split(',')),
-        }
-      : { id: In(ids), teacher: { id: teacherId } };
-
-    return this.lessonRepo.find({ where, relations: { schedules: true } });
   }
 
   getOneById(id: number): Promise<Lesson> {

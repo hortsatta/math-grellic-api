@@ -5,7 +5,6 @@ import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 
 import { CurrentUser } from '../user/decorators/current-user.decorator';
-import { StudentPerformanceResponseDto } from './dtos/student-performance-response.dto';
 import { UserRole } from '../user/enums/user.enum';
 import { User } from '../user/entities/user.entity';
 import { Exam } from '../exam/entities/exam.entity';
@@ -14,6 +13,8 @@ import { ExamResponseDto } from '../exam/dtos/exam-response.dto';
 import { ActivityResponseDto } from '../activity/dtos/activity-response.dto';
 import { StudentPerformance } from './models/performance.model';
 import { StudentPerformanceType } from './enums/performance.enum';
+import { StudentPerformanceResponseDto } from './dtos/student-performance-response.dto';
+import { TeacherClassPerformanceResponseDto } from './dtos/teacher-class-performance-response.dto';
 import { PerformanceService } from './performance.service';
 
 const TEACHER_URL = '/teachers';
@@ -24,6 +25,15 @@ export class PerformanceController {
   constructor(private readonly performanceService: PerformanceService) {}
 
   // TEACHERS
+
+  @Get(`${TEACHER_URL}/class`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(TeacherClassPerformanceResponseDto)
+  getClassPerformanceByTeacherId(@CurrentUser() user: User) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.performanceService.getClassPerformanceByTeacherId(teacherId);
+  }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/list`)
   @UseAuthGuard(UserRole.Teacher)
@@ -37,8 +47,10 @@ export class PerformanceController {
     @Query('skip') skip?: number,
     @Query('perf') performance?: StudentPerformanceType,
   ): Promise<[Partial<StudentPerformance>[], number]> {
+    const { id: teacherId } = user.teacherUserAccount;
+
     return this.performanceService.getPaginationStudentPerformancesByTeacherId(
-      user.teacherUserAccount.id,
+      teacherId,
       sort,
       !!take ? take : undefined,
       !!skip ? skip : undefined,

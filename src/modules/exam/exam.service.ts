@@ -138,6 +138,56 @@ export class ExamService {
     });
   }
 
+  getTeacherExamsByTeacherId(
+    teacherId: number,
+    sort?: string,
+    examIds?: number[],
+    q?: string,
+    status?: string,
+    withSchedules?: boolean,
+    withCompletions?: boolean,
+  ) {
+    const generateWhere = () => {
+      let baseWhere: FindOptionsWhere<Exam> = {
+        teacher: { id: teacherId },
+      };
+
+      if (examIds?.length) {
+        baseWhere = { ...baseWhere, id: In(examIds) };
+      }
+
+      if (q?.trim()) {
+        baseWhere = { ...baseWhere, title: ILike(`%${q}%`) };
+      }
+
+      if (status?.trim()) {
+        baseWhere = { ...baseWhere, status: In(status.split(',')) };
+      }
+
+      return baseWhere;
+    };
+
+    const generateOrder = (): FindOptionsOrder<Exam> => {
+      if (!sort) {
+        return { orderNumber: 'ASC' };
+      }
+
+      const [sortBy, sortOrder] = sort?.split(',') || [];
+
+      if (sortBy === 'scheduleDate') {
+        return { schedules: { startDate: sortOrder as FindOptionsOrderValue } };
+      }
+
+      return { [sortBy]: sortOrder };
+    };
+
+    return this.examRepo.find({
+      where: generateWhere(),
+      order: generateOrder(),
+      relations: { schedules: withSchedules, completions: withCompletions },
+    });
+  }
+
   async getOneBySlugAndTeacherId(
     slug: string,
     teacherId: number,
@@ -250,10 +300,13 @@ export class ExamService {
 
     // Validate if lessons from coveredLessonIds is owned by current user teacher
     if (coveredLessonIds?.length) {
-      const lessons = await this.lessonService.getByIdsAndTeacherId(
-        coveredLessonIds,
+      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
         teacherId,
+        undefined,
+        coveredLessonIds,
+        undefined,
         RecordStatus.Published,
+        true,
       );
       if (lessons.length !== coveredLessonIds.length) {
         throw new BadRequestException('Covered lessons is invalid');
@@ -397,10 +450,13 @@ export class ExamService {
 
     // Validate if lessons from coveredLessonIds is owned by current user teacher
     if (coveredLessonIds?.length) {
-      const lessons = await this.lessonService.getByIdsAndTeacherId(
-        coveredLessonIds,
+      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
         teacherId,
+        undefined,
+        coveredLessonIds,
+        undefined,
         RecordStatus.Published,
+        true,
       );
       if (lessons.length !== coveredLessonIds.length) {
         throw new BadRequestException('Covered lessons is invalid');

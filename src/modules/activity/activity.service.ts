@@ -379,6 +379,40 @@ export class ActivityService {
     });
   }
 
+  getTeacherActivitiesByTeacherId(
+    teacherId: number,
+    activityIds?: number[],
+    q?: string,
+    status?: string,
+    withCompletions?: boolean,
+  ) {
+    const generateWhere = () => {
+      let baseWhere: FindOptionsWhere<Activity> = {
+        teacher: { id: teacherId },
+      };
+
+      if (activityIds?.length) {
+        baseWhere = { ...baseWhere, id: In(activityIds) };
+      }
+
+      if (q?.trim()) {
+        baseWhere = { ...baseWhere, title: ILike(`%${q}%`) };
+      }
+
+      if (status?.trim()) {
+        baseWhere = { ...baseWhere, status: In(status.split(',')) };
+      }
+
+      return baseWhere;
+    };
+
+    return this.activityRepo.find({
+      where: generateWhere(),
+      order: { orderNumber: 'ASC' },
+      relations: { categories: { completions: withCompletions } },
+    });
+  }
+
   async getOneBySlugAndTeacherId(
     slug: string,
     teacherId: number,
