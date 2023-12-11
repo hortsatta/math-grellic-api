@@ -38,42 +38,29 @@ export class PerformanceService {
     private readonly activityService: ActivityService,
   ) {}
 
-  async generateOverallLessonRankings(
-    students: StudentUserAccount[],
-    teacherId: number,
-  ) {
-    const allLessons = await this.lessonService.getTeacherLessonsByTeacherId(
-      teacherId,
-      undefined,
-      undefined,
-      undefined,
-      RecordStatus.Published,
+  async generateOverallLessonRankings(students: StudentUserAccount[]) {
+    const transformedStudents = await Promise.all(
+      students.map(async (student) => {
+        const lessons = await this.lessonService.getAllByStudentId(student.id);
+
+        // Remove duplicate lesson completion
+        const filteredLessonCompletions = student.lessonCompletions
+          .sort(
+            (comA, comB) => comB.createdAt.valueOf() - comA.createdAt.valueOf(),
+          )
+          .filter(
+            (com, index, array) =>
+              array.findIndex((item) => item.lesson.id === com.lesson.id) ===
+              index,
+          );
+
+        return {
+          ...student,
+          lessonsCompletedCount: filteredLessonCompletions.length,
+          totalLessonCount: lessons.length,
+        };
+      }),
     );
-
-    const lessonsWithSchedule = allLessons.filter(
-      (lesson) => !!lesson.schedules.length,
-    );
-
-    const totalLessonCount = lessonsWithSchedule.length;
-
-    const transformedStudents = students.map((student) => {
-      // Remove duplicate lesson completion
-      const filteredLessonCompletions = student.lessonCompletions
-        .sort(
-          (comA, comB) => comB.createdAt.valueOf() - comA.createdAt.valueOf(),
-        )
-        .filter(
-          (com, index, array) =>
-            array.findIndex((item) => item.lesson.id === com.lesson.id) ===
-            index,
-        );
-
-      return {
-        ...student,
-        lessonsCompletedCount: filteredLessonCompletions.length,
-        totalLessonCount,
-      };
-    });
 
     const rankedStudents = transformedStudents
       .filter((s) => s.lessonsCompletedCount > 0)
@@ -646,10 +633,7 @@ export class PerformanceService {
       rankedStudents = activityRankings.rankedStudents;
       unrankedStudents = activityRankings.unrankedStudents;
     } else {
-      const lessonRankings = await this.generateOverallLessonRankings(
-        students,
-        teacherId,
-      );
+      const lessonRankings = await this.generateOverallLessonRankings(students);
       rankedStudents = lessonRankings.rankedStudents;
       unrankedStudents = lessonRankings.unrankedStudents;
     }
