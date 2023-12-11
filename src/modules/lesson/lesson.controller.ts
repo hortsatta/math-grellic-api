@@ -84,6 +84,21 @@ export class LessonController {
     );
   }
 
+  @Get(`${TEACHER_URL}/list/snippets`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(LessonResponseDto)
+  getLessonSnippetsByTeacherId(
+    @CurrentUser() user: User,
+    @Query('take') take?: number,
+  ): Promise<Lesson[]> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.lessonService.getLessonSnippetsByTeacherId(
+      teacherId,
+      take || 3,
+    );
+  }
+
   @Get(`/:slug${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)

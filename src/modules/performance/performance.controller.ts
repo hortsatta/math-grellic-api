@@ -7,8 +7,10 @@ import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interce
 import { CurrentUser } from '../user/decorators/current-user.decorator';
 import { UserRole } from '../user/enums/user.enum';
 import { User } from '../user/entities/user.entity';
+import { Lesson } from '../lesson/entities/lesson.entity';
 import { Exam } from '../exam/entities/exam.entity';
 import { Activity } from '../activity/entities/activity.entity';
+import { LessonResponseDto } from '../lesson/dtos/lesson-response.dto';
 import { ExamResponseDto } from '../exam/dtos/exam-response.dto';
 import { ActivityResponseDto } from '../activity/dtos/activity-response.dto';
 import { StudentPerformance } from './models/performance.model';
@@ -69,6 +71,21 @@ export class PerformanceController {
   ): Promise<StudentPerformance> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.performanceService.getStudentPerformanceByPublicIdAndTeacherId(
+      publicId,
+      teacherId,
+    );
+  }
+
+  @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/lessons`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(LessonResponseDto)
+  getStudentLessonByPublicIdAndTeacherId(
+    @Param('publicId') publicId: string,
+    @CurrentUser() user: User,
+  ): Promise<Lesson[]> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.performanceService.getStudentLessonsByPublicIdAndTeacherId(
       publicId,
       teacherId,
     );
@@ -146,9 +163,18 @@ export class PerformanceController {
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
   getStudentPerformanceByStudentId(
     @CurrentUser() user: User,
-  ): Promise<StudentPerformance> {
+  ): Promise<Partial<StudentPerformance>> {
     const { id: studentId } = user.studentUserAccount;
     return this.performanceService.getStudentPerformanceByStudentId(studentId);
+  }
+
+  @Get(`${STUDENT_URL}/lessons`)
+  @UseAuthGuard(UserRole.Student)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(LessonResponseDto)
+  getStudentLessonsByStudentId(@CurrentUser() user: User): Promise<Lesson[]> {
+    const { id: studentId } = user.studentUserAccount;
+    return this.performanceService.getStudentLessonsByStudentId(studentId);
   }
 
   @Get(`${STUDENT_URL}/exams`)

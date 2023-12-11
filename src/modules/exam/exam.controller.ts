@@ -62,6 +62,18 @@ export class ExamController {
     );
   }
 
+  @Get(`${TEACHER_URL}/list/snippets`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ExamResponseDto)
+  getExamSnippetsByTeacherId(
+    @CurrentUser() user: User,
+    @Query('take') take?: number,
+  ): Promise<Exam[]> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.examService.getExamSnippetsByTeacherId(teacherId, take || 3);
+  }
+
   @Get(`/:slug${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)

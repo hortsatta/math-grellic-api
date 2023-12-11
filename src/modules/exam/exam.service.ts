@@ -13,6 +13,7 @@ import {
   FindOptionsWhere,
   ILike,
   In,
+  IsNull,
   LessThanOrEqual,
   Not,
   Repository,
@@ -188,6 +189,112 @@ export class ExamService {
     });
   }
 
+  async getExamSnippetsByTeacherId(
+    teacherId: number,
+    take = 3,
+  ): Promise<Exam[]> {
+    const exams = await this.examRepo.find({
+      where: { teacher: { id: teacherId } },
+      relations: { schedules: true },
+    });
+
+    const publishedExamsWithoutSchedule = exams.filter(
+      (exam) =>
+        !exam.schedules.length && exam.status === RecordStatus.Published,
+    );
+
+    const draftExams = exams.filter(
+      (exam) => (exam.status = RecordStatus.Draft),
+    );
+
+    if (publishedExamsWithoutSchedule.length + draftExams.length >= take) {
+      return [...publishedExamsWithoutSchedule, ...draftExams].slice(0, take);
+    }
+
+    const publishedExamsWithSchedule = exams.filter(
+      (exam) =>
+        !!exam.schedules.length && exam.status === RecordStatus.Published,
+    );
+
+    const targetExams = [
+      ...publishedExamsWithoutSchedule,
+      ...draftExams,
+      ...publishedExamsWithSchedule,
+    ];
+
+    const lastIndex = !!targetExams.length
+      ? targetExams.length > take
+        ? take
+        : targetExams.length
+      : 0;
+
+    return targetExams.slice(0, lastIndex);
+  }
+
+  async getExamsWithCompletionsByStudentIdAndTeacherId(
+    studentId: number,
+    teacherId: number,
+    isStudent?: boolean,
+  ): Promise<Exam[]> {
+    const generateWhere = () => {
+      const baseWhere: FindOptionsWhere<Exam> = {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+      };
+
+      if (isStudent) {
+        return {
+          ...baseWhere,
+          schedules: {
+            startDate: LessThanOrEqual(dayjs().toDate()),
+            students: { id: studentId },
+          },
+        };
+      }
+
+      return {
+        ...baseWhere,
+        schedules: {
+          startDate: Not(IsNull()),
+          students: { id: studentId },
+        },
+      };
+    };
+
+    const exams = await this.examRepo.find({
+      where: generateWhere(),
+      relations: {
+        completions: { student: true },
+        schedules: { students: true },
+      },
+      order: { orderNumber: 'ASC' },
+    });
+
+    const transformedExams = exams.map((exam) => {
+      const completions = exam.completions.filter(
+        (completion) => completion.student.id === studentId,
+      );
+
+      const schedules = exam.schedules
+        .filter(
+          (schedule) =>
+            schedule.students?.some((student) => student.id === studentId),
+        )
+        .sort(
+          (scheduleA, scheduleB) =>
+            scheduleB.startDate.valueOf() - scheduleA.startDate.valueOf(),
+        );
+
+      return {
+        ...exam,
+        completions,
+        schedules,
+      };
+    });
+
+    return transformedExams;
+  }
+
   async getOneBySlugAndTeacherId(
     slug: string,
     teacherId: number,
@@ -223,38 +330,6 @@ export class ExamService {
     }
 
     return exam;
-  }
-
-  async getExamsWithCompletionsByStudentIdAndTeacherId(
-    studentId: number,
-    teacherId: number,
-  ): Promise<Exam[]> {
-    const exams = await this.examRepo.find({
-      where: {
-        status: RecordStatus.Published,
-        teacher: { id: teacherId },
-        schedules: {
-          startDate: LessThanOrEqual(dayjs().toDate()),
-          students: { id: studentId },
-        },
-      },
-      relations: {
-        completions: { student: true },
-      },
-    });
-
-    const transformedExams = exams.map((exam) => {
-      const completions = exam.completions.filter(
-        (completion) => completion.student.id === studentId,
-      );
-
-      return {
-        ...exam,
-        completions,
-      };
-    });
-
-    return transformedExams;
   }
 
   async create(examDto: ExamCreateDto, teacherId: number): Promise<Exam> {

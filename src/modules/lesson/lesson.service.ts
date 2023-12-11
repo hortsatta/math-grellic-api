@@ -14,6 +14,7 @@ import {
   ILike,
   In,
   IsNull,
+  LessThanOrEqual,
   MoreThan,
   Not,
   Repository,
@@ -136,6 +137,164 @@ export class LessonService {
       order: generateOrder(),
       relations: { schedules: withSchedules, completions: withCompletions },
     });
+  }
+
+  async getLessonSnippetsByTeacherId(
+    teacherId: number,
+    take = 3,
+  ): Promise<Lesson[]> {
+    const lessons = await this.lessonRepo.find({
+      where: { teacher: { id: teacherId } },
+      relations: { schedules: true },
+    });
+
+    const publishedLessonsWithoutSchedule = lessons.filter(
+      (lesson) =>
+        !lesson.schedules.length && lesson.status === RecordStatus.Published,
+    );
+
+    const draftLessons = lessons.filter(
+      (lesson) => (lesson.status = RecordStatus.Draft),
+    );
+
+    if (publishedLessonsWithoutSchedule.length + draftLessons.length >= take) {
+      return [...publishedLessonsWithoutSchedule, ...draftLessons].slice(
+        0,
+        take,
+      );
+    }
+
+    const publishedLessonsWithSchedule = lessons.filter(
+      (lesson) =>
+        !!lesson.schedules.length && lesson.status === RecordStatus.Published,
+    );
+
+    const targetLessons = [
+      ...publishedLessonsWithoutSchedule,
+      ...draftLessons,
+      ...publishedLessonsWithSchedule,
+    ];
+
+    const lastIndex = !!targetLessons.length
+      ? targetLessons.length > take
+        ? take
+        : targetLessons.length
+      : 0;
+
+    return targetLessons.slice(0, lastIndex);
+  }
+
+  async getAllByStudentId(studentId: number): Promise<Lesson[]> {
+    const allLessons = await this.lessonRepo.find({
+      where: {
+        status: RecordStatus.Published,
+      },
+      relations: {
+        schedules: { students: true },
+      },
+      order: { schedules: { startDate: 'ASC' } },
+    });
+
+    const lessonsWithSchedule = allLessons.filter((lesson) =>
+      lesson.schedules.some(
+        (schedule) =>
+          schedule.students != null ||
+          schedule.students.some((s) => s.id === studentId),
+      ),
+    );
+
+    const transformedLessons = lessonsWithSchedule.map((lesson) => {
+      const schedules = lesson.schedules.filter((schedule) =>
+        schedule.students.some((s) => s.id === studentId),
+      );
+
+      return { ...lesson, schedules };
+    });
+
+    return transformedLessons;
+  }
+
+  async getLessonsWithCompletionsByStudentIdAndTeacherId(
+    studentId: number,
+    teacherId: number,
+    isStudent?: boolean,
+  ): Promise<Lesson[]> {
+    const generateWhere = () => {
+      const baseWhere: FindOptionsWhere<Lesson> = {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+      };
+
+      if (isStudent) {
+        return [
+          {
+            ...baseWhere,
+            schedules: {
+              startDate: LessThanOrEqual(dayjs().toDate()),
+              students: { id: studentId },
+            },
+          },
+          {
+            ...baseWhere,
+            schedules: {
+              startDate: LessThanOrEqual(dayjs().toDate()),
+              students: { id: IsNull() },
+            },
+          },
+        ];
+      }
+
+      return [
+        {
+          ...baseWhere,
+          schedules: {
+            startDate: Not(IsNull()),
+            students: { id: studentId },
+          },
+        },
+        {
+          ...baseWhere,
+          schedules: {
+            startDate: Not(IsNull()),
+            students: { id: IsNull() },
+          },
+        },
+      ];
+    };
+
+    const lessons = await this.lessonRepo.find({
+      where: generateWhere(),
+      relations: {
+        completions: { student: true },
+        schedules: { students: true },
+      },
+      order: { orderNumber: 'ASC' },
+    });
+
+    const transformedLessons = lessons.map((lesson) => {
+      const completions = lesson.completions.filter(
+        (completion) => completion.student.id === studentId,
+      );
+
+      const schedules = lesson.schedules
+        .filter(
+          (schedule) =>
+            schedule.students?.length <= 0 ||
+            schedule.students?.some((student) => student.id === studentId),
+        )
+        .sort(
+          (scheduleA, scheduleB) =>
+            scheduleB.startDate.valueOf() - scheduleA.startDate.valueOf(),
+        );
+
+      return {
+        ...lesson,
+        completions,
+        schedules: schedules.length ? [schedules[0]] : [],
+      };
+    });
+
+    return transformedLessons;
   }
 
   getOneById(id: number): Promise<Lesson> {

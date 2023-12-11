@@ -366,6 +366,40 @@ export class ActivityService {
     return [sortedActivities, result[1]];
   }
 
+  async getActivitySnippetsByTeacherId(
+    teacherId: number,
+    take = 3,
+  ): Promise<Activity[]> {
+    const activities = await this.activityRepo.find({
+      where: { teacher: { id: teacherId } },
+      relations: {
+        categories: { typePoint: true, typeTime: true, typeStage: true },
+      },
+    });
+
+    const draftActivities = activities.filter(
+      (activity) => (activity.status = RecordStatus.Draft),
+    );
+
+    if (draftActivities.length >= take) {
+      return draftActivities.slice(0, take);
+    }
+
+    const publishedActivities = activities.filter(
+      (activity) => activity.status === RecordStatus.Published,
+    );
+
+    const targetActivities = [...draftActivities, ...publishedActivities];
+
+    const lastIndex = !!targetActivities.length
+      ? targetActivities.length > take
+        ? take
+        : targetActivities.length
+      : 0;
+
+    return targetActivities.slice(0, lastIndex);
+  }
+
   async getAllByStudentId(studentId: number): Promise<Activity[]> {
     const teacher = await this.userService.getTeacherByStudentId(studentId);
 

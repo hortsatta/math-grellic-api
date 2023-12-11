@@ -14,6 +14,7 @@ import { generateFullName } from '#/common/helpers/string.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { StudentUserAccount } from '../user/entities/student-user-account.entity';
 import { UserApprovalStatus } from '../user/enums/user.enum';
+import { Lesson } from '../lesson/entities/lesson.entity';
 import { Exam } from '../exam/entities/exam.entity';
 import { Activity } from '../activity/entities/activity.entity';
 import { ActivityCategory } from '../activity/entities/activity-category.entity';
@@ -37,6 +38,67 @@ export class PerformanceService {
     private readonly activityService: ActivityService,
   ) {}
 
+  async generateOverallLessonRankings(
+    students: StudentUserAccount[],
+    teacherId: number,
+  ) {
+    const allLessons = await this.lessonService.getTeacherLessonsByTeacherId(
+      teacherId,
+      undefined,
+      undefined,
+      undefined,
+      RecordStatus.Published,
+    );
+
+    const lessonsWithSchedule = allLessons.filter(
+      (lesson) => !!lesson.schedules.length,
+    );
+
+    const totalLessonCount = lessonsWithSchedule.length;
+
+    const transformedStudents = students.map((student) => {
+      // Remove duplicate lesson completion
+      const filteredLessonCompletions = student.lessonCompletions
+        .sort(
+          (comA, comB) => comB.createdAt.valueOf() - comA.createdAt.valueOf(),
+        )
+        .filter(
+          (com, index, array) =>
+            array.findIndex((item) => item.lesson.id === com.lesson.id) ===
+            index,
+        );
+
+      return {
+        ...student,
+        lessonsCompletedCount: filteredLessonCompletions.length,
+        totalLessonCount,
+      };
+    });
+
+    const rankedStudents = transformedStudents
+      .filter((s) => s.lessonsCompletedCount > 0)
+      .sort((a, b) => b.lessonsCompletedCount - a.lessonsCompletedCount);
+
+    const unrankedStudents = transformedStudents
+      .filter((s) => s.lessonsCompletedCount <= 0)
+      .sort((a, b) => {
+        const aFullname = generateFullName(
+          a.firstName,
+          a.lastName,
+          a.middleName,
+        );
+        const bFullname = generateFullName(
+          b.firstName,
+          b.lastName,
+          b.middleName,
+        );
+
+        return aFullname.localeCompare(bFullname);
+      });
+
+    return { rankedStudents, unrankedStudents };
+  }
+
   async generateOverallExamRankings(students: StudentUserAccount[]) {
     let previousScore = null;
     let currentRank = null;
@@ -45,12 +107,12 @@ export class PerformanceService {
       // Remove duplicate exam completion
       const filteredExamCompletions = student.examCompletions
         .sort(
-          (catA, catB) =>
-            catB.submittedAt.valueOf() - catA.submittedAt.valueOf(),
+          (comA, comB) =>
+            comB.submittedAt.valueOf() - comA.submittedAt.valueOf(),
         )
         .filter(
-          (cat, index, array) =>
-            array.findIndex((item) => item.exam.id === cat.exam.id) === index,
+          (com, index, array) =>
+            array.findIndex((item) => item.exam.id === com.exam.id) === index,
         );
 
       if (!filteredExamCompletions.length) {
@@ -215,6 +277,38 @@ export class PerformanceService {
       .map((s) => ({ ...s, overallActivityRank: null }));
 
     return { rankedStudents, unrankedStudents };
+  }
+
+  async generateOverallLessonDetailedPerformance(student: StudentUserAccount) {
+    const allLessons = await this.lessonService.getAllByStudentId(student.id);
+
+    const availableLessons = allLessons.filter((lesson) => {
+      const currentDateTime = dayjs().toDate();
+      const isAvailable = lesson.schedules.some(
+        (schedule) =>
+          dayjs(schedule.startDate).isBefore(currentDateTime) ||
+          dayjs(schedule.startDate).isSame(currentDateTime),
+      );
+
+      return isAvailable;
+    });
+
+    const lessonCompletions = student.lessonCompletions.filter(
+      (ec, index, self) =>
+        index === self.findIndex((t) => t.lesson.id === ec.lesson.id),
+    );
+
+    const overallLessonCompletionPercent = (() => {
+      const value = (lessonCompletions.length / allLessons.length) * 100;
+      return +value.toFixed(2);
+    })();
+
+    return {
+      totalLessonCount: allLessons.length,
+      currentLessonCount: availableLessons.length,
+      lessonsCompletedCount: lessonCompletions.length,
+      overallLessonCompletionPercent,
+    };
   }
 
   async generateOverallExamDetailedPerformance(
@@ -514,11 +608,13 @@ export class PerformanceService {
 
       if (performance === StudentPerformanceType.Exam) {
         return { ...baseRelations, examCompletions: { exam: true } };
-      } else {
+      } else if (performance === StudentPerformanceType.Activity) {
         return {
           ...baseRelations,
           activityCompletions: { activityCategory: { activity: true } },
         };
+      } else {
+        return { ...baseRelations, lessonCompletions: { lesson: true } };
       }
     };
 
@@ -535,10 +631,28 @@ export class PerformanceService {
         },
       });
 
-    const { rankedStudents, unrankedStudents } = await (performance ===
-    StudentPerformanceType.Exam
-      ? this.generateOverallExamRankings(students)
-      : this.generateOverallActivityRankings(students));
+    let rankedStudents,
+      unrankedStudents = [];
+
+    if (performance === StudentPerformanceType.Exam) {
+      const examRankings = await this.generateOverallExamRankings(students);
+
+      rankedStudents = examRankings.rankedStudents;
+      unrankedStudents = examRankings.unrankedStudents;
+    } else if (performance === StudentPerformanceType.Activity) {
+      const activityRankings =
+        await this.generateOverallActivityRankings(students);
+
+      rankedStudents = activityRankings.rankedStudents;
+      unrankedStudents = activityRankings.unrankedStudents;
+    } else {
+      const lessonRankings = await this.generateOverallLessonRankings(
+        students,
+        teacherId,
+      );
+      rankedStudents = lessonRankings.rankedStudents;
+      unrankedStudents = lessonRankings.unrankedStudents;
+    }
 
     let targetStudents = [...rankedStudents, ...unrankedStudents];
 
@@ -592,7 +706,7 @@ export class PerformanceService {
       loadEagerRelations: false,
       relations: {
         user: true,
-        lessonCompletions: true,
+        lessonCompletions: { lesson: true },
         activityCompletions: { activityCategory: { activity: true } },
         examCompletions: { exam: true },
       },
@@ -618,7 +732,7 @@ export class PerformanceService {
       },
       loadEagerRelations: false,
       relations: {
-        lessonCompletions: true,
+        lessonCompletions: { lesson: true },
         activityCompletions: { activityCategory: { activity: true } },
         examCompletions: { exam: true },
       },
@@ -635,6 +749,9 @@ export class PerformanceService {
         otherStudents,
       );
 
+    const lessonPerformance =
+      await this.generateOverallLessonDetailedPerformance(student);
+
     const transformedStudent = {
       ...student,
       lessonCompletions: undefined,
@@ -646,7 +763,32 @@ export class PerformanceService {
       ...transformedStudent,
       ...examPerformance,
       ...activityPerformance,
+      ...lessonPerformance,
     };
+  }
+
+  async getStudentLessonsByPublicIdAndTeacherId(
+    publicId: string,
+    teacherId: number,
+  ): Promise<Lesson[]> {
+    const student = await this.studentUserAccountRepo.findOne({
+      where: {
+        teacherUser: { id: teacherId },
+        user: {
+          publicId: publicId.toUpperCase(),
+          approvalStatus: UserApprovalStatus.Approved,
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return this.lessonService.getLessonsWithCompletionsByStudentIdAndTeacherId(
+      student.id,
+      teacherId,
+    );
   }
 
   async getStudentExamsByPublicIdAndTeacherId(
@@ -788,7 +930,7 @@ export class PerformanceService {
 
   async getStudentPerformanceByStudentId(
     studentId: number,
-  ): Promise<StudentPerformance> {
+  ): Promise<Partial<StudentPerformance>> {
     const student = await this.studentUserAccountRepo.findOne({
       where: {
         id: studentId,
@@ -798,7 +940,7 @@ export class PerformanceService {
       relations: {
         user: true,
         teacherUser: true,
-        lessonCompletions: true,
+        lessonCompletions: { lesson: true },
         activityCompletions: { activityCategory: true },
         examCompletions: { exam: true },
       },
@@ -824,7 +966,7 @@ export class PerformanceService {
       },
       loadEagerRelations: false,
       relations: {
-        lessonCompletions: true,
+        lessonCompletions: { lesson: true },
         activityCompletions: { activityCategory: { activity: true } },
         examCompletions: true,
       },
@@ -841,6 +983,12 @@ export class PerformanceService {
         otherStudents,
       );
 
+    const lessonPerformance =
+      await this.generateOverallLessonDetailedPerformance(student);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { totalLessonCount, ...moreLessonPerformance } = lessonPerformance;
+
     const transformedStudent = {
       ...student,
       lessonCompletions: undefined,
@@ -852,7 +1000,28 @@ export class PerformanceService {
       ...transformedStudent,
       ...examPerformance,
       ...activityPerformance,
+      ...moreLessonPerformance,
     };
+  }
+
+  async getStudentLessonsByStudentId(studentId: number): Promise<Lesson[]> {
+    const student = await this.studentUserAccountRepo.findOne({
+      where: {
+        id: studentId,
+        user: { approvalStatus: UserApprovalStatus.Approved },
+      },
+      relations: { teacherUser: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return this.lessonService.getLessonsWithCompletionsByStudentIdAndTeacherId(
+      student.id,
+      student.teacherUser.id,
+      true,
+    );
   }
 
   async getStudentExamsByStudentId(studentId: number): Promise<Exam[]> {
@@ -872,6 +1041,7 @@ export class PerformanceService {
       await this.examService.getExamsWithCompletionsByStudentIdAndTeacherId(
         student.id,
         student.teacherUser.id,
+        true,
       );
 
     const transformedExams = Promise.all(

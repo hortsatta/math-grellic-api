@@ -62,6 +62,21 @@ export class ActivityController {
     );
   }
 
+  @Get(`${TEACHER_URL}/list/snippets`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ActivityResponseDto)
+  getActivitySnippetsByTeacherId(
+    @CurrentUser() user: User,
+    @Query('take') take?: number,
+  ): Promise<Activity[]> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.activityService.getActivitySnippetsByTeacherId(
+      teacherId,
+      take || 3,
+    );
+  }
+
   @Get(`/:slug${TEACHER_URL}`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ActivityResponseDto)
