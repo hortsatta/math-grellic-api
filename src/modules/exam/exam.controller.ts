@@ -7,15 +7,19 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FastifyFilesInterceptor } from 'nest-fastify-multer';
 import dayjs from '#/common/configs/dayjs.config';
 
+import { imageValidationOptions } from '#/common/helpers/file.helper';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { UseAuthGuard } from '#/common/guards/auth.guard';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user/enums/user.enum';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
+import { FileValidationPipe } from '../upload/pipes/file-validation.pipe';
 import { Exam } from './entities/exam.entity';
 import { ExamResponseDto } from './dtos/exam-response.dto';
 import { ExamCreateDto } from './dtos/exam-create.dto';
@@ -90,8 +94,12 @@ export class ExamController {
   @Post()
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
+  @FastifyFilesInterceptor('files')
   create(
-    @Body() body: ExamCreateDto,
+    @UploadedFiles(new FileValidationPipe(imageValidationOptions))
+    files: Express.Multer.File[],
+    @Body()
+    body: ExamCreateDto,
     @CurrentUser() user: User,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
@@ -102,6 +110,11 @@ export class ExamController {
       ...(startDate && { startDate: dayjs(startDate).toDate() }),
       ...(endDate && { endDate: dayjs(endDate).toDate() }),
     };
+
+    console.log('f', files);
+    console.log(body);
+
+    return null;
 
     return this.examService.create(transformedBody, teacherId);
   }

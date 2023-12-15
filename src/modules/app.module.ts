@@ -9,6 +9,7 @@ import { ExamModule } from './exam/exam.module';
 import { ActivityModule } from './activity/activity.module';
 import { PerformanceModule } from './performance/performance.module';
 import { ScheduleModule } from './schedule/schedule.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ScheduleModule } from './schedule/schedule.module';
     ActivityModule,
     PerformanceModule,
     ScheduleModule,
+    UploadModule,
   ],
   controllers: [],
 })

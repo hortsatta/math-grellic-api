@@ -1,10 +1,13 @@
 import {
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsPositive,
   IsString,
 } from 'class-validator';
+
+import { ExActTextType } from '#/common/enums/content.enum';
 
 export class ExamQuestionChoiceCreateDto {
   @IsInt()
@@ -14,11 +17,11 @@ export class ExamQuestionChoiceCreateDto {
   @IsString()
   text: string;
 
-  @IsBoolean()
-  isCorrect: boolean;
+  @IsEnum(ExActTextType)
+  textType: ExActTextType;
 
   @IsBoolean()
-  isExpression: boolean;
+  isCorrect: boolean;
 
   @IsInt()
   @IsPositive()

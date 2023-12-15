@@ -26,7 +26,7 @@ import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
 import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
-import { SupabaseService } from './supabase.service';
+import { SupabaseService } from '../core/supabase.service';
 
 @Injectable()
 export class UserService {
