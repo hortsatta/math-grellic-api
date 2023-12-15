@@ -7,8 +7,8 @@ import {
   Not,
   Repository,
 } from 'typeorm';
-import dayjs from '#/common/configs/dayjs.config';
 
+import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { RecordStatus } from '#/common/enums/content.enum';

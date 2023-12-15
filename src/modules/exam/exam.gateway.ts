@@ -9,8 +9,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server, Socket } from 'socket.io';
-import dayjs from '#/common/configs/dayjs.config';
 
+import dayjs from '#/common/configs/dayjs.config';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';

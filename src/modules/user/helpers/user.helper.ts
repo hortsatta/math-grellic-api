@@ -1,7 +1,6 @@
-import dayjs from '#/common/configs/dayjs.config';
-
 import randomstring from 'randomstring';
 
+import dayjs from '#/common/configs/dayjs.config';
 import { UserRole } from '#/modules/user/enums/user.enum';
 
 const abbrvRoles = {

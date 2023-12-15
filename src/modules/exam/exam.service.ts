@@ -18,8 +18,8 @@ import {
   Not,
   Repository,
 } from 'typeorm';
-import dayjs from '#/common/configs/dayjs.config';
 
+import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
