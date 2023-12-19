@@ -7,19 +7,15 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFiles,
 } from '@nestjs/common';
-import { FastifyFilesInterceptor } from 'nest-fastify-multer';
-import dayjs from '#/common/configs/dayjs.config';
 
-import { imageValidationOptions } from '#/common/helpers/file.helper';
+import dayjs from '#/common/configs/dayjs.config';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { UseAuthGuard } from '#/common/guards/auth.guard';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user/enums/user.enum';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
-import { FileValidationPipe } from '../upload/pipes/file-validation.pipe';
 import { Exam } from './entities/exam.entity';
 import { ExamResponseDto } from './dtos/exam-response.dto';
 import { ExamCreateDto } from './dtos/exam-create.dto';
@@ -94,12 +90,8 @@ export class ExamController {
   @Post()
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
-  @FastifyFilesInterceptor('files')
   create(
-    @UploadedFiles(new FileValidationPipe(imageValidationOptions))
-    files: Express.Multer.File[],
-    @Body()
-    body: ExamCreateDto,
+    @Body() body: ExamCreateDto,
     @CurrentUser() user: User,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
@@ -111,11 +103,6 @@ export class ExamController {
       ...(endDate && { endDate: dayjs(endDate).toDate() }),
     };
 
-    console.log('f', files);
-    console.log(body);
-
-    return null;
-
     return this.examService.create(transformedBody, teacherId);
   }
 
@@ -124,9 +111,9 @@ export class ExamController {
   @UseSerializeInterceptor(ExamResponseDto)
   update(
     @Param('slug') slug: string,
-    @Query('schedule') scheduleId: number,
     @Body() body: ExamUpdateDto,
     @CurrentUser() user: User,
+    @Query('schedule') scheduleId?: number,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
     const { startDate, endDate, ...moreBody } = body;
@@ -141,6 +128,31 @@ export class ExamController {
       slug,
       transformedBody,
       teacherId,
+      scheduleId,
+    );
+  }
+
+  @Post('/validate')
+  @UseAuthGuard(UserRole.Teacher)
+  async validateExamUpsert(
+    @Body() body: ExamCreateDto | ExamUpdateDto,
+    @CurrentUser() user: User,
+    @Query('slug') slug?: string,
+    @Query('schedule') scheduleId?: number,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    const { startDate, endDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+      ...(endDate && { endDate: dayjs(endDate).toDate() }),
+    };
+
+    return this.examService.validateUpsert(
+      transformedBody,
+      teacherId,
+      slug,
       scheduleId,
     );
   }

@@ -1,8 +1,11 @@
-import { Body, Controller, Post, UploadedFiles } from '@nestjs/common';
+import { Controller, Post, UploadedFiles } from '@nestjs/common';
 import { FastifyFilesInterceptor } from 'nest-fastify-multer';
 
+import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { CurrentUser } from '../user/decorators/current-user.decorator';
+import { UserRole } from '../user/enums/user.enum';
+import { User } from '../user/entities/user.entity';
 import { FileValidationPipe } from './pipes/file-validation.pipe';
-import { UploadFileOptionsDto } from './dtos/upload-file-options.dto';
 import { UploadService } from './upload.service';
 
 const imageValidationOptions = {
@@ -14,16 +17,27 @@ const imageValidationOptions = {
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
-  @Post('/images')
+  @Post('/exams/images')
+  @UseAuthGuard(UserRole.Teacher)
   @FastifyFilesInterceptor('files')
-  async uploadImages(
+  async uploadExamImages(
     @UploadedFiles(new FileValidationPipe(imageValidationOptions))
     files: Express.Multer.File[],
-    @Body() body: UploadFileOptionsDto,
+    @CurrentUser() user: User,
   ): Promise<string[]> {
-    console.log('files', files);
-    console.log('body', body);
+    const { publicId } = user;
+    return this.uploadService.uploadExActImages(files, publicId, true);
+  }
 
-    return this.uploadService.uploadImages(files, body);
+  @Post('/activities/images')
+  @UseAuthGuard(UserRole.Teacher)
+  @FastifyFilesInterceptor('files')
+  async uploadActivitiesImages(
+    @UploadedFiles(new FileValidationPipe(imageValidationOptions))
+    files: Express.Multer.File[],
+    @CurrentUser() user: User,
+  ): Promise<string[]> {
+    const { publicId } = user;
+    return this.uploadService.uploadExActImages(files, publicId, false);
   }
 }

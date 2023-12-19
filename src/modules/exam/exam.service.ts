@@ -55,43 +55,6 @@ export class ExamService {
     private readonly userService: UserService,
   ) {}
 
-  async generateExamRankings(exam: Exam, teacherId: number) {
-    const students = await this.userService.getStudentsByTeacherId(teacherId);
-
-    const studentIds = students.map((student) => student.id);
-
-    const completions = await this.examCompletionRepo.find({
-      where: { exam: { id: exam.id }, student: { id: In(studentIds) } },
-      relations: { student: true },
-      order: { submittedAt: 'DESC' },
-    });
-
-    // Assign completions
-    const studentData = studentIds.map((studentId) => {
-      const completion = completions.find(
-        (com) => com.student.id === studentId,
-      );
-      return {
-        studentId,
-        completions: completion ? [completion] : [],
-      };
-    });
-
-    const completeStudentData = studentData
-      .filter((data) => !!data.completions.length)
-      .sort(
-        (dataA, dataB) =>
-          dataB.completions[0].score - dataA.completions[0].score,
-      )
-      .map((data, index) => ({ ...data, rank: index + 1 }));
-
-    const incompleteStudentData = studentData
-      .filter((data) => !data.completions.length)
-      .map((data) => ({ ...data, rank: null }));
-
-    return [...completeStudentData, ...incompleteStudentData];
-  }
-
   getPaginationTeacherExamsByTeacherId(
     teacherId: number,
     sort: string,
@@ -332,6 +295,31 @@ export class ExamService {
     return exam;
   }
 
+  async validateUpsert(
+    examDto: ExamCreateDto | ExamUpdateDto,
+    teacherId: number,
+    slug?: string,
+    scheduleId?: number,
+  ) {
+    if (!slug?.trim()) {
+      return this.validateCreateExam(examDto as ExamCreateDto, teacherId);
+    }
+
+    // Find exam, throw error if none found
+    const exam = await this.examRepo.findOne({
+      where: { slug, teacher: { id: teacherId } },
+      relations: { questions: { choices: true } },
+    });
+
+    return this.validateUpdateExam(
+      examDto as ExamUpdateDto,
+      slug,
+      exam,
+      teacherId,
+      scheduleId,
+    );
+  }
+
   async create(examDto: ExamCreateDto, teacherId: number): Promise<Exam> {
     const {
       startDate,
@@ -342,76 +330,7 @@ export class ExamService {
       ...moreExamDto
     } = examDto;
 
-    // Check if passing points is more than the exam's total points
-    if (
-      moreExamDto.passingPoints >
-      moreExamDto.pointsPerQuestion * moreExamDto.visibleQuestionsCount
-    ) {
-      throw new BadRequestException('Passing points is more that total points');
-    }
-
-    // Validate exam order number if unique for current teacher user
-    const orderNumberCount = await this.examRepo.count({
-      where: {
-        orderNumber: moreExamDto.orderNumber,
-        teacher: { id: teacherId },
-      },
-    });
-    if (!!orderNumberCount) {
-      throw new ConflictException('Exam number is already present');
-    }
-
-    // Check if all questions have atleast one isCorrect choice
-    questions.forEach((question) => {
-      const isCorrectChoice = question.choices.find(
-        (choice) => choice.isCorrect,
-      );
-      if (!isCorrectChoice) {
-        throw new BadRequestException(
-          'Question should have at least 1 correct choice',
-        );
-      }
-    });
-
-    // Validate if lessons from coveredLessonIds is owned by current user teacher
-    if (coveredLessonIds?.length) {
-      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
-        teacherId,
-        undefined,
-        coveredLessonIds,
-        undefined,
-        RecordStatus.Published,
-        true,
-      );
-      if (lessons.length !== coveredLessonIds.length) {
-        throw new BadRequestException('Covered lessons is invalid');
-      }
-    }
-
-    // FOR SCHEDULE, check before creating exam to avoid conflicts
-    // If schedule is present then validate students
-    // Check start date and end date if no conflicts with other schedules/exams
-    if (startDate) {
-      if (
-        !endDate ||
-        dayjs(startDate).isAfter(endDate) ||
-        dayjs(startDate).isSame(endDate)
-      ) {
-        throw new BadRequestException('Schedule is invalid');
-      }
-
-      const { error: scheduleError } =
-        await this.examScheduleService.validateScheduleUpsert(
-          startDate,
-          endDate,
-          teacherId,
-          studentIds,
-        );
-
-      if (scheduleError) {
-        throw scheduleError;
-      }
-    }
+    await this.validateCreateExam(examDto, teacherId);
 
     // Create covered lessons object
     const coveredLessons = coveredLessonIds
@@ -468,13 +387,6 @@ export class ExamService {
       questions,
       ...moreExamDto
     } = examDto;
-    // Check if passing points is more than the exam's total points
-    if (
-      moreExamDto.passingPoints >
-      moreExamDto.pointsPerQuestion * moreExamDto.visibleQuestionsCount
-    ) {
-      throw new BadRequestException('Passing points is more that total points');
-    }
 
     // Find exam, throw error if none found
     const exam = await this.examRepo.findOne({
@@ -482,113 +394,7 @@ export class ExamService {
       relations: { questions: { choices: true } },
     });
 
-    if (!exam) {
-      throw new NotFoundException('Exam not found');
-    }
-
-    // Check if someone has already completed exam, if true then cancel update
-    const completionCount = await this.examCompletionRepo.count({
-      where: { exam: { id: exam.id } },
-    });
-
-    if (completionCount > 0) {
-      throw new BadRequestException(
-        'Cannot update exams that are already taken',
-      );
-    }
-
-    // Validate exam order number if unique for current teacher user
-    // Except order number of target exam
-    const orderNumberCount = await this.examRepo.count({
-      where: {
-        orderNumber: moreExamDto.orderNumber,
-        slug: Not(slug),
-        teacher: { id: teacherId },
-      },
-    });
-    if (!!orderNumberCount) {
-      throw new ConflictException('Exam number is already present');
-    }
-
-    // Check if all questions have atleast one isCorrect choice
-    questions.forEach((question) => {
-      const hasCorrectChoice = question.choices.some(
-        (choice) => choice.isCorrect,
-      );
-
-      if (!hasCorrectChoice) {
-        throw new BadRequestException(
-          'Question should have at least 1 correct choice',
-        );
-      }
-    });
-
-    // Validate if lessons from coveredLessonIds is owned by current user teacher
-    if (coveredLessonIds?.length) {
-      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
-        teacherId,
-        undefined,
-        coveredLessonIds,
-        undefined,
-        RecordStatus.Published,
-        true,
-      );
-      if (lessons.length !== coveredLessonIds.length) {
-        throw new BadRequestException('Covered lessons is invalid');
-      }
-    }
-
-    // FOR SCHEDULE
-    // If schedule is present then validate students
-    // Check start date and end date if no conflicts with other schedules/exams
-    if (startDate && !scheduleId) {
-      if (
-        !endDate ||
-        dayjs(startDate).isAfter(endDate) ||
-        dayjs(startDate).isSame(endDate)
-      ) {
-        throw new BadRequestException('Schedule is invalid');
-      }
-
-      const { error: scheduleError } =
-        await this.examScheduleService.validateScheduleUpsert(
-          startDate,
-          endDate,
-          teacherId,
-          studentIds,
-          exam.id,
-        );
-
-      if (scheduleError) {
-        throw scheduleError;
-      }
-    } else if (scheduleId) {
-      const examSchedule =
-        await this.examScheduleService.getOneById(scheduleId);
-
-      const { error: scheduleError } =
-        await this.examScheduleService.validateScheduleUpsert(
-          startDate || examSchedule.startDate,
-          endDate || examSchedule.endDate,
-          teacherId,
-          studentIds,
-          exam.id,
-          scheduleId,
-        );
-
-      if (scheduleError) {
-        throw scheduleError;
-      }
-    }
-
-    // Check if schedule id, if present then fetch schedule or throw error if none found
-    const schedule = !!scheduleId
-      ? await this.examScheduleService.getOneById(scheduleId)
-      : null;
-
-    if (scheduleId && !schedule) {
-      throw new BadRequestException('Schedule is invalid');
-    }
+    await this.validateUpdateExam(examDto, slug, exam, teacherId, scheduleId);
 
     const coveredLessons = coveredLessonIds
       ? coveredLessonIds.map((lessonId) => ({ id: lessonId }))
@@ -1157,5 +963,259 @@ export class ExamService {
     });
 
     return !!result.affected;
+  }
+
+  //  MISC
+
+  async validateCreateExam(examDto: ExamCreateDto, teacherId: number) {
+    const {
+      startDate,
+      endDate,
+      studentIds,
+      coveredLessonIds,
+      questions,
+      ...moreExamDto
+    } = examDto;
+
+    // Check if passing points is more than the exam's total points
+    if (
+      moreExamDto.passingPoints >
+      moreExamDto.pointsPerQuestion * moreExamDto.visibleQuestionsCount
+    ) {
+      throw new BadRequestException('Passing points is more that total points');
+    }
+
+    // Validate exam order number if unique for current teacher user
+    const orderNumberCount = await this.examRepo.count({
+      where: {
+        orderNumber: moreExamDto.orderNumber,
+        teacher: { id: teacherId },
+      },
+    });
+    if (!!orderNumberCount) {
+      throw new ConflictException('Exam number is already present');
+    }
+
+    // Check if all questions have atleast one isCorrect choice
+    questions.forEach((question) => {
+      const isCorrectChoice = question.choices.find(
+        (choice) => choice.isCorrect,
+      );
+      if (!isCorrectChoice) {
+        throw new BadRequestException(
+          'Question should have at least 1 correct choice',
+        );
+      }
+    });
+
+    // Validate if lessons from coveredLessonIds is owned by current user teacher
+    if (coveredLessonIds?.length) {
+      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
+        teacherId,
+        undefined,
+        coveredLessonIds,
+        undefined,
+        RecordStatus.Published,
+        true,
+      );
+      if (lessons.length !== coveredLessonIds.length) {
+        throw new BadRequestException('Covered lessons is invalid');
+      }
+    }
+
+    // FOR SCHEDULE, check before creating exam to avoid conflicts
+    // If schedule is present then validate students
+    // Check start date and end date if no conflicts with other schedules/exams
+    if (startDate) {
+      if (
+        !endDate ||
+        dayjs(startDate).isAfter(endDate) ||
+        dayjs(startDate).isSame(endDate)
+      ) {
+        throw new BadRequestException('Schedule is invalid');
+      }
+
+      const { error: scheduleError } =
+        await this.examScheduleService.validateScheduleUpsert(
+          startDate,
+          endDate,
+          teacherId,
+          studentIds,
+        );
+
+      if (scheduleError) {
+        throw scheduleError;
+      }
+    }
+  }
+
+  async validateUpdateExam(
+    examDto: ExamUpdateDto,
+    slug: string,
+    exam: Exam,
+    teacherId: number,
+    scheduleId?: number,
+  ) {
+    const {
+      startDate,
+      endDate,
+      studentIds,
+      coveredLessonIds,
+      questions,
+      ...moreExamDto
+    } = examDto;
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    // Check if passing points is more than the exam's total points
+    if (
+      moreExamDto.passingPoints >
+      moreExamDto.pointsPerQuestion * moreExamDto.visibleQuestionsCount
+    ) {
+      throw new BadRequestException('Passing points is more that total points');
+    }
+
+    // Check if someone has already completed exam, if true then cancel update
+    const completionCount = await this.examCompletionRepo.count({
+      where: { exam: { id: exam.id } },
+    });
+
+    if (completionCount > 0) {
+      throw new BadRequestException(
+        'Cannot update exams that are already taken',
+      );
+    }
+
+    // Validate exam order number if unique for current teacher user
+    // Except order number of target exam
+    const orderNumberCount = await this.examRepo.count({
+      where: {
+        orderNumber: moreExamDto.orderNumber,
+        slug: Not(slug),
+        teacher: { id: teacherId },
+      },
+    });
+    if (!!orderNumberCount) {
+      throw new ConflictException('Exam number is already present');
+    }
+
+    // Check if all questions have atleast one isCorrect choice
+    questions.forEach((question) => {
+      const hasCorrectChoice = question.choices.some(
+        (choice) => choice.isCorrect,
+      );
+
+      if (!hasCorrectChoice) {
+        throw new BadRequestException(
+          'Question should have at least 1 correct choice',
+        );
+      }
+    });
+
+    // Validate if lessons from coveredLessonIds is owned by current user teacher
+    if (coveredLessonIds?.length) {
+      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
+        teacherId,
+        undefined,
+        coveredLessonIds,
+        undefined,
+        RecordStatus.Published,
+        true,
+      );
+      if (lessons.length !== coveredLessonIds.length) {
+        throw new BadRequestException('Covered lessons is invalid');
+      }
+    }
+
+    // FOR SCHEDULE
+    // If schedule is present then validate students
+    // Check start date and end date if no conflicts with other schedules/exams
+    if (startDate && !scheduleId) {
+      if (
+        !endDate ||
+        dayjs(startDate).isAfter(endDate) ||
+        dayjs(startDate).isSame(endDate)
+      ) {
+        throw new BadRequestException('Schedule is invalid');
+      }
+
+      const { error: scheduleError } =
+        await this.examScheduleService.validateScheduleUpsert(
+          startDate,
+          endDate,
+          teacherId,
+          studentIds,
+          exam.id,
+        );
+
+      if (scheduleError) {
+        throw scheduleError;
+      }
+    } else if (scheduleId) {
+      const examSchedule =
+        await this.examScheduleService.getOneById(scheduleId);
+
+      const { error: scheduleError } =
+        await this.examScheduleService.validateScheduleUpsert(
+          startDate || examSchedule.startDate,
+          endDate || examSchedule.endDate,
+          teacherId,
+          studentIds,
+          exam.id,
+          scheduleId,
+        );
+
+      if (scheduleError) {
+        throw scheduleError;
+      }
+    }
+
+    // Check if schedule id, if present then fetch schedule or throw error if none found
+    const schedule = !!scheduleId
+      ? await this.examScheduleService.getOneById(scheduleId)
+      : null;
+
+    if (scheduleId && !schedule) {
+      throw new BadRequestException('Schedule is invalid');
+    }
+  }
+
+  async generateExamRankings(exam: Exam, teacherId: number) {
+    const students = await this.userService.getStudentsByTeacherId(teacherId);
+
+    const studentIds = students.map((student) => student.id);
+
+    const completions = await this.examCompletionRepo.find({
+      where: { exam: { id: exam.id }, student: { id: In(studentIds) } },
+      relations: { student: true },
+      order: { submittedAt: 'DESC' },
+    });
+
+    // Assign completions
+    const studentData = studentIds.map((studentId) => {
+      const completion = completions.find(
+        (com) => com.student.id === studentId,
+      );
+      return {
+        studentId,
+        completions: completion ? [completion] : [],
+      };
+    });
+
+    const completeStudentData = studentData
+      .filter((data) => !!data.completions.length)
+      .sort(
+        (dataA, dataB) =>
+          dataB.completions[0].score - dataA.completions[0].score,
+      )
+      .map((data, index) => ({ ...data, rank: index + 1 }));
+
+    const incompleteStudentData = studentData
+      .filter((data) => !data.completions.length)
+      .map((data) => ({ ...data, rank: null }));
+
+    return [...completeStudentData, ...incompleteStudentData];
   }
 }
