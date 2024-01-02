@@ -21,6 +21,8 @@ import { ActivityCreateDto } from './dtos/activity-create.dto';
 import { ActivityUpdateDto } from './dtos/activity-update.dto';
 import { ActivityResponseDto } from './dtos/activity-response.dto';
 import { StudentActivityListResponseDto } from './dtos/student-activity-list-response.dto';
+import { ActivityCategoryCompletionCreateDto } from './dtos/activity-category-completion-create.dto';
+import { ActivityCategoryCompletionResponseDto } from './dtos/activity-category-completion-response.dto';
 import { ActivityService } from './activity.service';
 
 const TEACHER_URL = '/teachers';
@@ -94,6 +96,17 @@ export class ActivityController {
     );
   }
 
+  @Post('/validate')
+  @UseAuthGuard(UserRole.Teacher)
+  async validateActivityUpsert(
+    @Body() body: ActivityCreateDto | ActivityUpdateDto,
+    @CurrentUser() user: User,
+    @Query('slug') slug?: string,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.activityService.validateUpsert(body, teacherId, slug);
+  }
+
   @Post()
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ActivityResponseDto)
@@ -150,5 +163,41 @@ export class ActivityController {
   ) {
     const { id: studentId } = user.studentUserAccount;
     return this.activityService.getOneBySlugAndStudentId(slug, studentId);
+  }
+
+  @Post(`/:slug${STUDENT_URL}/completion/:categoryId`)
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(ActivityCategoryCompletionResponseDto)
+  setActivityCategoryCompletionBySlugAndStudentId(
+    @Body() body: ActivityCategoryCompletionCreateDto,
+    @Param('slug') slug: string,
+    @Param('categoryId') categoryId: number,
+    @CurrentUser() user: User,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.activityService.createActivityCategoryCompletionBySlugAndStudentId(
+      body,
+      slug,
+      categoryId,
+      studentId,
+    );
+  }
+
+  @Patch(`/:slug${STUDENT_URL}/completion/:categoryId`)
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(ActivityCategoryCompletionResponseDto)
+  updateActivityCategoryCompletionBySlugAndStudentId(
+    @Body() body: ActivityCategoryCompletionCreateDto,
+    @Param('slug') slug: string,
+    @Param('categoryId') categoryId: number,
+    @CurrentUser() user: User,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.activityService.updateActivityCategoryCompletionBySlugAndStudentId(
+      body,
+      slug,
+      categoryId,
+      studentId,
+    );
   }
 }

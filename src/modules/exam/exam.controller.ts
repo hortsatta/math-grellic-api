@@ -192,7 +192,7 @@ export class ExamController {
     return this.examService.getOneBySlugAndStudentId(slug, studentId);
   }
 
-  @Post(`:slug${STUDENT_URL}/completion`)
+  @Post(`/:slug${STUDENT_URL}/completion`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ExamCompletionResponseDto)
   setExamCompletionBySlugAndStudentId(

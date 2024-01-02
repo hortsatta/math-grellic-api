@@ -190,7 +190,7 @@ export class LessonController {
     return this.lessonService.getOneBySlugAndStudentId(slug, studentId);
   }
 
-  @Post(`:slug${STUDENT_URL}/completion`)
+  @Post(`/:slug${STUDENT_URL}/completion`)
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonCompletionResponseDto)
   setLessonCompletionBySlugAndStudentId(

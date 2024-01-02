@@ -881,13 +881,11 @@ export class ExamService {
     const currentDateTime = dayjs();
 
     const exam = await this.examRepo.findOne({
-      where: [
-        {
-          slug,
-          status: RecordStatus.Published,
-          schedules: { students: { id: studentId } },
-        },
-      ],
+      where: {
+        slug,
+        status: RecordStatus.Published,
+        schedules: { students: { id: studentId } },
+      },
       relations: { schedules: true, completions: true },
     });
 
@@ -944,7 +942,7 @@ export class ExamService {
 
     const completion = this.examCompletionRepo.create({
       score,
-      submittedAt: currentDateTime,
+      submittedAt: currentDateTime.date(),
       exam,
       questionAnswers: newQuestionAnswers,
       student: { id: studentId },

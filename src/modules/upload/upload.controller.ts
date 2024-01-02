@@ -26,7 +26,7 @@ export class UploadController {
     @CurrentUser() user: User,
   ): Promise<string[]> {
     const { publicId } = user;
-    return this.uploadService.uploadExActImages(files, publicId, true);
+    return this.uploadService.uploadExamImages(files, publicId);
   }
 
   @Post('/activities/images')
@@ -38,6 +38,6 @@ export class UploadController {
     @CurrentUser() user: User,
   ): Promise<string[]> {
     const { publicId } = user;
-    return this.uploadService.uploadExActImages(files, publicId, false);
+    return this.uploadService.uploadActivityImages(files, publicId);
   }
 }
