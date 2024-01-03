@@ -30,6 +30,10 @@ export class ActivityCategoryQuestionCreateDto {
   @IsOptional()
   stageNumber: number;
 
+  @IsString()
+  @IsOptional()
+  hintText: string;
+
   @IsInt()
   @IsPositive()
   @IsOptional()

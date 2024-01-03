@@ -19,6 +19,9 @@ export class ActivityCategoryQuestionResponseDto extends BaseResponseDto {
   stageNumber: number;
 
   @Expose()
+  hintText: string;
+
+  @Expose()
   @Type(() => ActivityCategoryResponseDto)
   activityCategory: ActivityCategoryResponseDto;
 

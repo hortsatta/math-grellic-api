@@ -25,11 +25,6 @@ export class ActivityCategoryQuestionUpdateDto {
   @IsOptional()
   orderNumber: number;
 
-  @IsInt()
-  @IsPositive()
-  @IsOptional()
-  stageNumber: number;
-
   @IsString()
   @IsOptional()
   text: string;
@@ -37,6 +32,15 @@ export class ActivityCategoryQuestionUpdateDto {
   @IsEnum(ExActTextType)
   @IsOptional()
   textType: ExActTextType;
+
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  stageNumber: number;
+
+  @IsString()
+  @IsOptional()
+  hintText: string;
 
   @IsArray()
   @ArrayNotEmpty()
