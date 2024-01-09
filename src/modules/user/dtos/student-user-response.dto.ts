@@ -16,6 +16,9 @@ export class StudentUserResponseDto extends UserAccountResponseDto {
   aboutMe: string;
 
   @Expose()
+  messengerLink: string;
+
+  @Expose()
   @Type(() => LessonScheduleResponseDto)
   lessonSchedules: LessonScheduleResponseDto[];
 

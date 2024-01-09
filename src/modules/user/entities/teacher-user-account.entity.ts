@@ -27,6 +27,9 @@ export class TeacherUserAccount extends UserAccountEntity {
   @Column({ type: 'varchar', length: 255, array: true, default: [] })
   socialMediaLinks: string[];
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  messengerLink: string;
+
   @Column({ type: 'varchar', length: 255, array: true, default: [] })
   emails: string[];
 

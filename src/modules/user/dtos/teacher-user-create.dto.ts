@@ -48,6 +48,11 @@ export class TeacherUserCreateDto extends UserCreateDto {
   @IsOptional()
   socialMediaLinks: string[];
 
+  @IsUrl()
+  @MaxLength(255)
+  @IsOptional()
+  messengerLink: string;
+
   @IsEmail(null, { each: true })
   @MaxLength(255, { each: true })
   @IsOptional()

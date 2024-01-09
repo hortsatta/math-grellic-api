@@ -21,6 +21,9 @@ export class TeacherUserResponseDto extends UserAccountResponseDto {
   socialMediaLinks: string[];
 
   @Expose()
+  messengerLink: string;
+
+  @Expose()
   emails: string[];
 }
 

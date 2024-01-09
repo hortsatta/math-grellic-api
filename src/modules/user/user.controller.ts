@@ -18,6 +18,7 @@ import { User } from './entities/user.entity';
 import { StudentUserAccount } from './entities/student-user-account.entity';
 import { UserResponseDto } from './dtos/user-response.dto';
 import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
+import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
 import { StudentUserResponseDto } from './dtos/student-user-response.dto';
@@ -126,6 +127,17 @@ export class UserController {
     return this.userService.getStudentByIdAndTeacherId(studentId, teacherId);
   }
 
+  @Patch(`${TEACHER_URL}`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(UserResponseDto)
+  updateCurrentTeacherUser(
+    @Body() body: TeacherUserUpdateDto,
+    @CurrentUser() user: User,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.userService.updateTeacherUser(teacherId, body);
+  }
+
   @Patch(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
   @UseAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
@@ -166,10 +178,30 @@ export class UserController {
 
   // STUDENTS
 
+  @Get(`${STUDENT_URL}/teacher`)
+  @UseSerializeInterceptor(UserResponseDto)
+  getAssignedTeacherByStudentId(
+    @CurrentUser() user: User,
+  ): Promise<Partial<User>> {
+    const { id: studentId } = user.studentUserAccount;
+    return this.userService.getAssignedTeacherByStudentId(studentId);
+  }
+
   @Post(`${STUDENT_URL}/register`)
   @UseSerializeInterceptor(UserResponseDto)
   registerStudent(@Body() body: StudentUserCreateDto): Promise<User> {
     return this.userService.createStudentUser(body);
+  }
+
+  @Patch(`${STUDENT_URL}`)
+  @UseAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(UserResponseDto)
+  updateCurrentStudentUser(
+    @Body() body: StudentUserUpdateDto,
+    @CurrentUser() user: User,
+  ) {
+    const { id: studentId } = user.studentUserAccount;
+    return this.userService.updateStudentUser(studentId, body);
   }
 
   // TODO

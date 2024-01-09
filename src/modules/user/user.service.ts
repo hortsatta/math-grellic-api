@@ -250,7 +250,10 @@ export class UserService {
   getTeacherByStudentId(id: number): Promise<TeacherUserAccount> {
     return this.teacherUserAccountRepo.findOne({
       where: {
-        students: { id, user: { approvalStatus: UserApprovalStatus.Approved } },
+        students: {
+          id,
+          user: { approvalStatus: UserApprovalStatus.Approved },
+        },
         user: { approvalStatus: UserApprovalStatus.Approved },
       },
       loadEagerRelations: false,
@@ -261,6 +264,72 @@ export class UserService {
         },
       },
     });
+  }
+
+  async getAssignedTeacherByStudentId(id: number): Promise<Partial<User>> {
+    const user = await this.userRepo.findOne({
+      where: {
+        approvalStatus: UserApprovalStatus.Approved,
+        teacherUserAccount: {
+          students: {
+            id,
+            user: { approvalStatus: UserApprovalStatus.Approved },
+          },
+        },
+      },
+      loadEagerRelations: false,
+      relations: { teacherUserAccount: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    const {
+      email,
+      profileImageUrl,
+      publicId,
+      role,
+      teacherUserAccount: {
+        aboutMe,
+        birthDate,
+        educationalBackground,
+        emails,
+        firstName,
+        gender,
+        lastName,
+        messengerLink,
+        middleName,
+        phoneNumber,
+        socialMediaLinks,
+        teachingCertifications,
+        teachingExperience,
+        website,
+      },
+    } = user;
+
+    return {
+      email,
+      profileImageUrl,
+      publicId,
+      role,
+      teacherUserAccount: {
+        aboutMe,
+        birthDate,
+        educationalBackground,
+        emails,
+        firstName,
+        gender,
+        lastName,
+        messengerLink,
+        middleName,
+        phoneNumber,
+        socialMediaLinks,
+        teachingCertifications,
+        teachingExperience,
+        website,
+      } as TeacherUserAccount,
+    };
   }
 
   getOneByEmail(email: string) {

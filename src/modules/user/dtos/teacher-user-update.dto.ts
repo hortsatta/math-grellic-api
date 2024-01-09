@@ -42,6 +42,11 @@ export class TeacherUserUpdateDto extends UserUpdateDto {
   @IsOptional()
   socialMediaLinks: string[];
 
+  @IsUrl()
+  @MaxLength(255)
+  @IsOptional()
+  messengerLink: string;
+
   @IsEmail(null, { each: true })
   @MaxLength(255, { each: true })
   @IsOptional()
