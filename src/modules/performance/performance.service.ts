@@ -562,6 +562,171 @@ export class PerformanceService {
     };
   }
 
+  async getLessonPerformanceByTeacherId(teacherId: number) {
+    // Get all students (with completions) of teacher
+    const students = await this.studentUserAccountRepo.find({
+      where: {
+        teacherUser: { id: teacherId },
+        user: { approvalStatus: UserApprovalStatus.Approved },
+        lessonCompletions: { lesson: true },
+      },
+    });
+
+    // LESSONS
+    // Get all lessons and calculate overall class lesson completion
+
+    const allLessons = await this.lessonService.getTeacherLessonsByTeacherId(
+      teacherId,
+      undefined,
+      undefined,
+      undefined,
+      RecordStatus.Published,
+      true,
+    );
+
+    const availableLessons = allLessons.filter(
+      (lesson) => lesson.schedules?.length,
+    );
+
+    const totalLessonPoints = students.length * availableLessons.length;
+    let currentLessonPoints = 0;
+
+    availableLessons.forEach((lesson) => {
+      students.forEach((student) => {
+        const hasCompletion =
+          student.lessonCompletions?.some(
+            (com) => com.lesson.id === lesson.id,
+          ) || false;
+
+        if (hasCompletion) {
+          currentLessonPoints += 1;
+        }
+      });
+    });
+
+    const overallLessonCompletionPercent = +(
+      (currentLessonPoints / totalLessonPoints) *
+      100
+    ).toFixed(2);
+
+    const totalLessonDurationSeconds = allLessons.reduce(
+      (total, lesson) => total + lesson.durationSeconds,
+      0,
+    );
+
+    return {
+      totalLessonCount: allLessons.length,
+      totalLessonDurationSeconds,
+      overallLessonCompletionPercent,
+    };
+  }
+
+  async getExamPerformanceByTeacherId(teacherId: number) {
+    // Get all students (with completions) of teacher
+    const students = await this.studentUserAccountRepo.find({
+      where: {
+        teacherUser: { id: teacherId },
+        user: { approvalStatus: UserApprovalStatus.Approved },
+        examCompletions: { exam: true },
+      },
+    });
+
+    const allExams = await this.examService.getTeacherExamsByTeacherId(
+      teacherId,
+      undefined,
+      undefined,
+      undefined,
+      RecordStatus.Published,
+      true,
+    );
+
+    const availableExams = allExams.filter((exam) => exam.schedules?.length);
+
+    const totalExamCompletionPoints = students.length * availableExams.length;
+    let currentExamCompletionPoints = 0;
+
+    availableExams.forEach((exam) => {
+      students.forEach((student) => {
+        const hasCompletion =
+          student.examCompletions?.some((com) => com.exam.id === exam.id) ||
+          false;
+
+        if (hasCompletion) {
+          currentExamCompletionPoints += 1;
+        }
+      });
+    });
+
+    const overallExamCompletionPercent = +(
+      (currentExamCompletionPoints / totalExamCompletionPoints) *
+      100
+    ).toFixed(2);
+
+    const totalExamPoints = allExams.reduce(
+      (total, exam) =>
+        total + exam.visibleQuestionsCount * exam.pointsPerQuestion,
+      0,
+    );
+
+    return {
+      totalExamCount: allExams.length,
+      totalExamPoints,
+      overallExamCompletionPercent,
+    };
+  }
+
+  async getActivityPerformanceByTeacherId(teacherId: number) {
+    // Get all students (with completions) of teacher
+    const students = await this.studentUserAccountRepo.find({
+      where: {
+        teacherUser: { id: teacherId },
+        user: { approvalStatus: UserApprovalStatus.Approved },
+        lessonCompletions: { lesson: true },
+        examCompletions: { exam: true },
+        activityCompletions: { activityCategory: true },
+      },
+    });
+
+    const allActivities =
+      await this.activityService.getTeacherActivitiesByTeacherId(
+        teacherId,
+        undefined,
+        undefined,
+        RecordStatus.Published,
+      );
+
+    const allActivityCategories = allActivities.reduce(
+      (total, activity) => [...total, ...activity.categories],
+      [],
+    );
+
+    const totalActivityPoints = students.length * allActivityCategories.length;
+    let currentActivityPoints = 0;
+
+    allActivityCategories.forEach((category: ActivityCategory) => {
+      students.forEach((student) => {
+        const hasCompletion =
+          student.activityCompletions?.some(
+            (com) => com.activityCategory.id === category.id,
+          ) || false;
+
+        if (hasCompletion) {
+          currentActivityPoints += 1;
+        }
+      });
+    });
+
+    const overallActivityCompletionPercent = +(
+      (currentActivityPoints / totalActivityPoints) *
+      100
+    ).toFixed(2);
+
+    return {
+      totalActivityCount: allActivities.length,
+      overallActivityCompletionPercent,
+    };
+  }
+
   async getPaginationStudentPerformancesByTeacherId(
     teacherId: number,
     sort: string,

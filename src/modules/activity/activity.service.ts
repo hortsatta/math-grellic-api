@@ -31,6 +31,7 @@ import { ActivityCategory } from './entities/activity-category.entity';
 import { ActivityCategoryQuestion } from './entities/activity-category-question.entity';
 import { ActivityCategoryQuestionChoice } from './entities/activity-category-question-choice.entity';
 import { ActivityCategoryCompletionCreateDto } from './dtos/activity-category-completion-create.dto';
+import { ActivityCategoryCompletionUpdateDto } from './dtos/activity-category-completion-update.dto';
 import { ActivityCategoryCompletion } from './entities/activity-category-completion.entity';
 
 @Injectable()
@@ -716,7 +717,7 @@ export class ActivityService {
   }
 
   async updateActivityCategoryCompletionBySlugAndStudentId(
-    body: ActivityCategoryCompletionCreateDto,
+    body: ActivityCategoryCompletionUpdateDto,
     slug: string,
     categoryId: number,
     studentId: number,

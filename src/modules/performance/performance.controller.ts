@@ -17,6 +17,9 @@ import { StudentPerformance } from './models/performance.model';
 import { StudentPerformanceType } from './enums/performance.enum';
 import { StudentPerformanceResponseDto } from './dtos/student-performance-response.dto';
 import { TeacherClassPerformanceResponseDto } from './dtos/teacher-class-performance-response.dto';
+import { TeacherLessonPerformanceResponseDto } from './dtos/teacher-lesson-performance-response.dto';
+import { TeacherExamPerformanceResponseDto } from './dtos/teacher-exam-performance-response.dto';
+import { TeacherActivityPerformanceResponseDto } from './dtos/teacher-activity-performance-response.dto';
 import { PerformanceService } from './performance.service';
 
 const TEACHER_URL = '/teachers';
@@ -30,11 +33,34 @@ export class PerformanceController {
 
   @Get(`${TEACHER_URL}/class`)
   @UseAuthGuard(UserRole.Teacher)
-  @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(TeacherClassPerformanceResponseDto)
   getClassPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
     return this.performanceService.getClassPerformanceByTeacherId(teacherId);
+  }
+
+  @Get(`${TEACHER_URL}/lessons`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(TeacherLessonPerformanceResponseDto)
+  getLessonPerformanceByTeacherId(@CurrentUser() user: User) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.performanceService.getLessonPerformanceByTeacherId(teacherId);
+  }
+
+  @Get(`${TEACHER_URL}/exams`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(TeacherExamPerformanceResponseDto)
+  getExamPerformanceByTeacherId(@CurrentUser() user: User) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.performanceService.getExamPerformanceByTeacherId(teacherId);
+  }
+
+  @Get(`${TEACHER_URL}/activities`)
+  @UseAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(TeacherActivityPerformanceResponseDto)
+  getActivityPerformanceByTeacherId(@CurrentUser() user: User) {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.performanceService.getActivityPerformanceByTeacherId(teacherId);
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/list`)

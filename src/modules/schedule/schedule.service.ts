@@ -276,52 +276,6 @@ export class ScheduleService {
     return { lessonSchedules, examSchedules, meetingSchedules };
   }
 
-  async getTimelineSchedulesByDateRangeAndStudentId(
-    fromDate: Date,
-    toDate: Date,
-    studentId: number,
-  ) {
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
-
-    if (!teacher) {
-      throw new NotFoundException('Student not found');
-    }
-
-    const lessonSchedules =
-      await this.lessonScheduleService.getByDateRangeAndTeacherAndStudentId(
-        fromDate,
-        toDate,
-        teacher.id,
-        studentId,
-      );
-
-    const examSchedules =
-      await this.examScheduleService.getByDateRangeAndTeacherAndStudentId(
-        fromDate,
-        toDate,
-        teacher.id,
-        studentId,
-      );
-
-    const meetingScheduleBaseWhere: FindOptionsWhere<MeetingSchedule> = {
-      startDate: Between(fromDate, toDate),
-      teacher: { id: teacher.id },
-    };
-
-    const meetingSchedules = await this.repo.find({
-      where: [
-        {
-          ...meetingScheduleBaseWhere,
-          students: { id: IsNull() },
-        },
-        { ...meetingScheduleBaseWhere, students: { id: studentId } },
-      ],
-      order: { startDate: 'ASC' },
-    });
-
-    return { lessonSchedules, examSchedules, meetingSchedules };
-  }
-
   async create(
     meetingScheduleDto: MeetingScheduleCreateDto,
     teacherId: number,
@@ -479,5 +433,51 @@ export class ScheduleService {
       currentMeetingSchedules,
       previousMeetingSchedules,
     };
+  }
+
+  async getTimelineSchedulesByDateRangeAndStudentId(
+    fromDate: Date,
+    toDate: Date,
+    studentId: number,
+  ) {
+    const teacher = await this.userService.getTeacherByStudentId(studentId);
+
+    if (!teacher) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const lessonSchedules =
+      await this.lessonScheduleService.getByDateRangeAndTeacherAndStudentId(
+        fromDate,
+        toDate,
+        teacher.id,
+        studentId,
+      );
+
+    const examSchedules =
+      await this.examScheduleService.getByDateRangeAndTeacherAndStudentId(
+        fromDate,
+        toDate,
+        teacher.id,
+        studentId,
+      );
+
+    const meetingScheduleBaseWhere: FindOptionsWhere<MeetingSchedule> = {
+      startDate: Between(fromDate, toDate),
+      teacher: { id: teacher.id },
+    };
+
+    const meetingSchedules = await this.repo.find({
+      where: [
+        {
+          ...meetingScheduleBaseWhere,
+          students: { id: IsNull() },
+        },
+        { ...meetingScheduleBaseWhere, students: { id: studentId } },
+      ],
+      order: { startDate: 'ASC' },
+    });
+
+    return { lessonSchedules, examSchedules, meetingSchedules };
   }
 }

@@ -22,6 +22,7 @@ import { ActivityUpdateDto } from './dtos/activity-update.dto';
 import { ActivityResponseDto } from './dtos/activity-response.dto';
 import { StudentActivityListResponseDto } from './dtos/student-activity-list-response.dto';
 import { ActivityCategoryCompletionCreateDto } from './dtos/activity-category-completion-create.dto';
+import { ActivityCategoryCompletionUpdateDto } from './dtos/activity-category-completion-update.dto';
 import { ActivityCategoryCompletionResponseDto } from './dtos/activity-category-completion-response.dto';
 import { ActivityService } from './activity.service';
 
@@ -187,7 +188,7 @@ export class ActivityController {
   @UseAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityCategoryCompletionResponseDto)
   updateActivityCategoryCompletionBySlugAndStudentId(
-    @Body() body: ActivityCategoryCompletionCreateDto,
+    @Body() body: ActivityCategoryCompletionUpdateDto,
     @Param('slug') slug: string,
     @Param('categoryId') categoryId: number,
     @CurrentUser() user: User,
