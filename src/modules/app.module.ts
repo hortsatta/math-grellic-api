@@ -10,6 +10,7 @@ import { ActivityModule } from './activity/activity.module';
 import { PerformanceModule } from './performance/performance.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { UploadModule } from './upload/upload.module';
+import { AnnouncementModule } from './announcement/announcement.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { UploadModule } from './upload/upload.module';
     ActivityModule,
     PerformanceModule,
     ScheduleModule,
+    AnnouncementModule,
     UploadModule,
   ],
   controllers: [],

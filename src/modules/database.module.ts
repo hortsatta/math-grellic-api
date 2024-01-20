@@ -26,6 +26,7 @@ import { ActivityCategoryTypeStage } from './activity/entities/activity-category
 import { ActivityCategoryCompletion } from './activity/entities/activity-category-completion.entity';
 import { ActivityCategoryCompletionQuestionAnswer } from './activity/entities/activity-category-completion-question-answer.entity';
 import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
+import { Announcement } from './announcement/entities/announcement.entity';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
             ActivityCategoryCompletion,
             ActivityCategoryCompletionQuestionAnswer,
             MeetingSchedule,
+            Announcement,
           ],
           synchronize: process.env.NODE_ENV !== 'production',
           ssl,

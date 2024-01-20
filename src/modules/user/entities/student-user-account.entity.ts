@@ -8,9 +8,10 @@ import {
   OneToOne,
 } from 'typeorm';
 
-import { MeetingSchedule } from '#/modules/schedule/entities/meeting-schedule.entity';
 import { LessonSchedule } from '#/modules/lesson/entities/lesson-schedule.entity';
 import { ExamSchedule } from '#/modules/exam/entities/exam-schedule.entity';
+import { MeetingSchedule } from '#/modules/schedule/entities/meeting-schedule.entity';
+import { Announcement } from '#/modules/announcement/entities/announcement.entity';
 import { LessonCompletion } from '#/modules/lesson/entities/lesson-completion.entity';
 import { ExamCompletion } from '#/modules/exam/entities/exam-completion.entity';
 import { ActivityCategoryCompletion } from '#/modules/activity/entities/activity-category-completion.entity';
@@ -48,6 +49,9 @@ export class StudentUserAccount extends UserAccountEntity {
     (meetingSchedule) => meetingSchedule.students,
   )
   meetingSchedules: MeetingSchedule[];
+
+  @ManyToMany(() => Announcement, (announcement) => announcement.students)
+  announcements: Announcement[];
 
   @OneToMany(
     () => LessonCompletion,
