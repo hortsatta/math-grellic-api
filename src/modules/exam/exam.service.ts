@@ -167,7 +167,7 @@ export class ExamService {
     );
 
     const draftExams = exams.filter(
-      (exam) => (exam.status = RecordStatus.Draft),
+      (exam) => exam.status === RecordStatus.Draft,
     );
 
     if (publishedExamsWithoutSchedule.length + draftExams.length >= take) {

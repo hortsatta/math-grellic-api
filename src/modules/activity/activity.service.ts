@@ -126,7 +126,7 @@ export class ActivityService {
     });
 
     const draftActivities = activities.filter(
-      (activity) => (activity.status = RecordStatus.Draft),
+      (activity) => activity.status === RecordStatus.Draft,
     );
 
     if (draftActivities.length >= take) {

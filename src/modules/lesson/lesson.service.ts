@@ -154,7 +154,7 @@ export class LessonService {
     );
 
     const draftLessons = lessons.filter(
-      (lesson) => (lesson.status = RecordStatus.Draft),
+      (lesson) => lesson.status === RecordStatus.Draft,
     );
 
     if (publishedLessonsWithoutSchedule.length + draftLessons.length >= take) {
