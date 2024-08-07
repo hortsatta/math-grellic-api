@@ -37,7 +37,7 @@
     "fastify": "^4.22.0",
     "fastify-multer": "^2.0.3",
     "jsonwebtoken": "^9.0.2",
-    "nest-fastify-multer": "^1.0.1",
+    "nest-fastify-multer": "^2.0.0",
     "pg": "^8.11.3",
     "randomstring": "^1.3.0",
     "reflect-metadata": "^0.1.13",

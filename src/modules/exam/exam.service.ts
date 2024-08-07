@@ -942,7 +942,7 @@ export class ExamService {
 
     const completion = this.examCompletionRepo.create({
       score,
-      submittedAt: currentDateTime.date(),
+      submittedAt: currentDateTime.toDate(),
       exam,
       questionAnswers: newQuestionAnswers,
       student: { id: studentId },

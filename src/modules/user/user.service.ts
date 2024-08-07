@@ -137,7 +137,6 @@ export class UserService {
     ids: number[],
     status?: UserApprovalStatus,
   ): Promise<StudentUserAccount[]> {
-    console.log(1);
     const where: FindOptionsWhere<StudentUserAccount> = status
       ? { id: In(ids), user: { approvalStatus: status } }
       : { id: In(ids) };
