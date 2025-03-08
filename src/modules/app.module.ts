@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { DatabaseModule } from './database.module';
 import { CoreModule } from './core/core.module';
+import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { LessonModule } from './lesson/lesson.module';
 import { ExamModule } from './exam/exam.module';
@@ -19,6 +20,7 @@ import { AnnouncementModule } from './announcement/announcement.module';
       envFilePath: `.env.${process.env.NODE_ENV}`,
     }),
     DatabaseModule,
+    AuthModule,
     UserModule,
     CoreModule,
     LessonModule,
@@ -30,5 +32,6 @@ import { AnnouncementModule } from './announcement/announcement.module';
     UploadModule,
   ],
   controllers: [],
+  providers: [],
 })
 export class AppModule {}

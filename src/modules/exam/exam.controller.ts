@@ -12,7 +12,7 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user/enums/user.enum';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
@@ -39,7 +39,7 @@ export class ExamController {
   // TEACHERS
 
   @Get(`${TEACHER_URL}/list`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getTeacherExamsByTeacherId(
@@ -63,7 +63,7 @@ export class ExamController {
   }
 
   @Get(`${TEACHER_URL}/list/snippets`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getExamSnippetsByTeacherId(
@@ -75,7 +75,7 @@ export class ExamController {
   }
 
   @Get(`/:slug${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndTeacherId(
@@ -88,7 +88,7 @@ export class ExamController {
   }
 
   @Post()
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
   create(
     @Body() body: ExamCreateDto,
@@ -107,7 +107,7 @@ export class ExamController {
   }
 
   @Patch('/:slug')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
   update(
     @Param('slug') slug: string,
@@ -133,7 +133,7 @@ export class ExamController {
   }
 
   @Post('/validate')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   async validateExamUpsert(
     @Body() body: ExamCreateDto | ExamUpdateDto,
     @CurrentUser() user: User,
@@ -158,7 +158,7 @@ export class ExamController {
   }
 
   @Delete('/:slug')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   delete(
     @Param('slug') slug: string,
     @CurrentUser() user: User,
@@ -170,7 +170,7 @@ export class ExamController {
   // STUDENTS
 
   @Get(`${STUDENT_URL}/list`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentExamListResponseDto)
   getStudentExamsByStudentId(
     @CurrentUser() user: User,
@@ -181,7 +181,7 @@ export class ExamController {
   }
 
   @Get(`/:slug${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ExamResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndStudentId(
@@ -193,7 +193,7 @@ export class ExamController {
   }
 
   @Post(`/:slug${STUDENT_URL}/completion`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ExamCompletionResponseDto)
   setExamCompletionBySlugAndStudentId(
     @Body() body: ExamCompletionCreateDto,
@@ -211,7 +211,7 @@ export class ExamController {
   // SCHEDULES
 
   @Post(`${SCHEDULE_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamScheduleResponseDto)
   createSchedule(
     @Body() body: ExamScheduleCreateDto,
@@ -229,7 +229,7 @@ export class ExamController {
   }
 
   @Patch(`${SCHEDULE_URL}/:scheduleId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamScheduleResponseDto)
   updateSchedule(
     @Param('scheduleId') scheduleId: number,
@@ -253,7 +253,7 @@ export class ExamController {
   }
 
   @Delete(`${SCHEDULE_URL}/:scheduleId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   deleteSchedule(
     @Param('scheduleId') scheduleId: number,
     @CurrentUser() user: User,

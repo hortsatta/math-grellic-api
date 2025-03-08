@@ -7,9 +7,6 @@ import { StudentUserResponseDto } from './student-user-response.dto';
 
 export class UserResponseDto extends BaseResponseDto {
   @Expose()
-  supabaseUserId: string;
-
-  @Expose()
   publicId: string;
 
   @Expose()

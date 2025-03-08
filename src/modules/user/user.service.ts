@@ -16,6 +16,8 @@ import {
   Repository,
 } from 'typeorm';
 
+import dayjs from '#/common/configs/dayjs.config';
+import { encryptPassword } from '#/common/helpers/password.helper';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generatePublicId } from '#/modules/user/helpers/user.helper';
 import { UserApprovalStatus, UserRole } from './enums/user.enum';
@@ -26,7 +28,6 @@ import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
 import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
-import { SupabaseService } from '../core/supabase.service';
 
 @Injectable()
 export class UserService {
@@ -36,7 +37,6 @@ export class UserService {
     private readonly teacherUserAccountRepo: Repository<TeacherUserAccount>,
     @InjectRepository(StudentUserAccount)
     private readonly studentUserAccountRepo: Repository<StudentUserAccount>,
-    private readonly supabaseService: SupabaseService,
   ) {}
 
   private async create(
@@ -60,6 +60,17 @@ export class UserService {
       publicId,
     } as User);
     return this.userRepo.save(newUser);
+  }
+
+  findOneByEmail(email: string): Promise<User> {
+    return this.userRepo.findOne({ where: { email } });
+  }
+
+  updateLastLoginDate(user: User) {
+    return this.userRepo.save({
+      ...user,
+      lastLoginAt: dayjs().toDate(),
+    });
   }
 
   async getPaginationStudentsByTeacherId(
@@ -355,20 +366,16 @@ export class UserService {
   async createTeacherUser(userDto: TeacherUserCreateDto): Promise<User> {
     const { email, password, profileImageUrl, approvalStatus, ...moreUserDto } =
       userDto;
-
-    // Sign up to supabase auth
-    const { data: supabaseData, error: supabaseError } =
-      await this.supabaseService.register(email, password);
-    // Throw error if email is already used
-    if (!!supabaseError) {
-      throw new ConflictException('Email is already taken');
-    }
-
+    // Check if email is existing, if true then cancel creation
+    const existingUser = await this.userRepo.findOne({ where: { email } });
+    if (!!existingUser) throw new ConflictException('Email is already taken');
+    // Encrypt password; create and save user details
+    const encryptedPassword = await encryptPassword(password);
     // Create and save user base details
     const user = await this.create(
       {
-        supabaseUserId: supabaseData.user.id,
         email,
+        password: encryptedPassword,
         profileImageUrl,
         approvalStatus,
       },
@@ -410,22 +417,16 @@ export class UserService {
       throw new ConflictException('Email is already taken');
     }
 
-    // Sign up to supabase auth
-    const { data: supabaseData, error: supabaseError } =
-      await this.supabaseService.register(
-        email,
-        password == null ? 'qweasdzxc' : password,
-      );
-    // Throw error if email is already used
-    if (!!supabaseError) {
-      throw new ConflictException('Email is already taken');
-    }
-
+    // Check if email is existing, if true then cancel creation
+    const existingUser = await this.userRepo.findOne({ where: { email } });
+    if (!!existingUser) throw new ConflictException('Email is already taken');
+    // Encrypt password; create and save user details
+    const encryptedPassword = await encryptPassword(password);
     // Create and save user base details
     const user = await this.create(
       {
-        supabaseUserId: supabaseData.user.id,
         email,
+        password: encryptedPassword,
         profileImageUrl,
         approvalStatus,
       },

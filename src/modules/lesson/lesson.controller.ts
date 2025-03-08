@@ -12,7 +12,7 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user/enums/user.enum';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
@@ -40,7 +40,7 @@ export class LessonController {
 
   // Fetch lessons for the current teacher user
   @Get(`${TEACHER_URL}/list`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
   getPaginatedTeacherLessonsByTeacherId(
@@ -63,7 +63,7 @@ export class LessonController {
   }
 
   @Get(`${TEACHER_URL}/list/all`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
   getTeacherLessonsByTeacherId(
@@ -85,7 +85,7 @@ export class LessonController {
   }
 
   @Get(`${TEACHER_URL}/list/snippets`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
   getLessonSnippetsByTeacherId(
@@ -100,7 +100,7 @@ export class LessonController {
   }
 
   @Get(`/:slug${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndTeacherId(
@@ -113,7 +113,7 @@ export class LessonController {
   }
 
   @Post()
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   create(
     @Body() body: LessonCreateDto,
@@ -131,7 +131,7 @@ export class LessonController {
   }
 
   @Patch('/:slug')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   update(
     @Param('slug') slug: string,
@@ -156,7 +156,7 @@ export class LessonController {
   }
 
   @Delete('/:slug')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   delete(
     @Param('slug') slug: string,
     @CurrentUser() user: User,
@@ -168,7 +168,7 @@ export class LessonController {
   // STUDENTS
 
   @Get(`${STUDENT_URL}/list`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentLessonListResponseDto)
   getStudentLessonsByStudentId(
     @CurrentUser() user: User,
@@ -179,7 +179,7 @@ export class LessonController {
   }
 
   @Get(`/:slug${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndStudentId(
@@ -191,7 +191,7 @@ export class LessonController {
   }
 
   @Post(`/:slug${STUDENT_URL}/completion`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonCompletionResponseDto)
   setLessonCompletionBySlugAndStudentId(
     @Body() body: LessonCompletionUpsertDto,
@@ -209,7 +209,7 @@ export class LessonController {
   // SCHEDULES
 
   @Post(`${SCHEDULE_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonScheduleResponseDto)
   createSchedule(
     @Body() body: LessonScheduleCreateDto,
@@ -226,7 +226,7 @@ export class LessonController {
   }
 
   @Patch(`${SCHEDULE_URL}/:scheduleId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonScheduleResponseDto)
   updateSchedule(
     @Param('scheduleId') scheduleId: number,
@@ -249,7 +249,7 @@ export class LessonController {
   }
 
   @Delete(`${SCHEDULE_URL}/:scheduleId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   deleteDelete(
     @Param('scheduleId') scheduleId: number,
     @CurrentUser() user: User,

@@ -12,7 +12,7 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { UserRole } from '../user/enums/user.enum';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
 import { User } from '../user/entities/user.entity';
@@ -34,7 +34,7 @@ export class ScheduleController {
   // TEACHERS
 
   @Get(`${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TimelineSchedulesResponseDto)
   getSchedulesByDateRangeAndTeacherId(
     @Query('from') from: string,
@@ -53,7 +53,7 @@ export class ScheduleController {
   }
 
   @Get(`/meetings${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   getTeacherMeetingSchedulesByTeacherId(
     @CurrentUser() user: User,
@@ -74,7 +74,7 @@ export class ScheduleController {
   }
 
   @Get(`/:id${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   @UseFilterFieldsInterceptor()
   getOneByIdAndTeacherId(
@@ -86,7 +86,7 @@ export class ScheduleController {
   }
 
   @Post()
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   create(
     @Body() body: MeetingScheduleCreateDto,
@@ -104,7 +104,7 @@ export class ScheduleController {
   }
 
   @Patch('/:id')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   update(
     @Param('id') id: number,
@@ -124,7 +124,7 @@ export class ScheduleController {
   }
 
   @Delete('/:id')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   delete(@Param('id') id: number, @CurrentUser() user: User): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.scheduleService.delete(id, teacherId);
@@ -133,7 +133,7 @@ export class ScheduleController {
   // STUDENTS
 
   @Get(`${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(TimelineSchedulesResponseDto)
   getSchedulesByDateRangeAndStudentId(
     @Query('from') from: string,
@@ -152,7 +152,7 @@ export class ScheduleController {
   }
 
   @Get(`/meetings${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentMeetingScheduleListResponseDto)
   getStudentMeetingSchedulesByStudentId(@CurrentUser() user: User) {
     const { id: studentId } = user.studentUserAccount;
@@ -162,7 +162,7 @@ export class ScheduleController {
   }
 
   @Get(`/:id${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(MeetingScheduleResponseDto)
   @UseFilterFieldsInterceptor()
   getOneByIdAndStudentId(

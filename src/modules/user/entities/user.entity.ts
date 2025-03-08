@@ -7,9 +7,6 @@ import { StudentUserAccount } from './student-user-account.entity';
 
 @Entity()
 export class User extends BaseEntity {
-  @Column({ type: 'uuid', unique: true })
-  supabaseUserId: string;
-
   @Column({ type: 'varchar', length: 11, unique: true, nullable: true })
   publicId: string;
 
@@ -21,6 +18,9 @@ export class User extends BaseEntity {
 
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  password: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   profileImageUrl: string;
@@ -34,6 +34,9 @@ export class User extends BaseEntity {
 
   @Column({ type: 'timestamp', nullable: true })
   approvalDate: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastLoginAt: Date;
 
   @OneToOne(
     () => TeacherUserAccount,

@@ -11,7 +11,7 @@ import {
 
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user/enums/user.enum';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
@@ -34,7 +34,7 @@ export class ActivityController {
   constructor(private readonly activityService: ActivityService) {}
 
   @Get('/games')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   getActivityGames() {
     return activityGameType;
   }
@@ -42,7 +42,7 @@ export class ActivityController {
   // TEACHERS
 
   @Get(`${TEACHER_URL}/list`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getTeacherActivitiesByTeacherId(
@@ -66,7 +66,7 @@ export class ActivityController {
   }
 
   @Get(`${TEACHER_URL}/list/snippets`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getActivitySnippetsByTeacherId(
@@ -81,7 +81,7 @@ export class ActivityController {
   }
 
   @Get(`/:slug${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ActivityResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndTeacherId(
@@ -98,7 +98,7 @@ export class ActivityController {
   }
 
   @Post('/validate')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   async validateActivityUpsert(
     @Body() body: ActivityCreateDto | ActivityUpdateDto,
     @CurrentUser() user: User,
@@ -109,7 +109,7 @@ export class ActivityController {
   }
 
   @Post()
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ActivityResponseDto)
   create(
     @Body() body: ActivityCreateDto,
@@ -120,7 +120,7 @@ export class ActivityController {
   }
 
   @Patch('/:slug')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ActivityResponseDto)
   update(
     @Param('slug') slug: string,
@@ -132,7 +132,7 @@ export class ActivityController {
   }
 
   @Delete('/:slug')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   delete(
     @Param('slug') slug: string,
     @CurrentUser() user: User,
@@ -144,7 +144,7 @@ export class ActivityController {
   // STUDENTS
 
   @Get(`${STUDENT_URL}/list`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentActivityListResponseDto)
   getStudentActivitiesByStudentId(
     @CurrentUser() user: User,
@@ -155,7 +155,7 @@ export class ActivityController {
   }
 
   @Get(`/:slug${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndStudentId(
@@ -167,7 +167,7 @@ export class ActivityController {
   }
 
   @Post(`/:slug${STUDENT_URL}/completion/:categoryId`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityCategoryCompletionResponseDto)
   setActivityCategoryCompletionBySlugAndStudentId(
     @Body() body: ActivityCategoryCompletionCreateDto,
@@ -185,7 +185,7 @@ export class ActivityController {
   }
 
   @Patch(`/:slug${STUDENT_URL}/completion/:categoryId`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityCategoryCompletionResponseDto)
   updateActivityCategoryCompletionBySlugAndStudentId(
     @Body() body: ActivityCategoryCompletionUpdateDto,

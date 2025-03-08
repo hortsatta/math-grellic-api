@@ -1,9 +1,8 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 
-import { UseAuthGuard } from '#/common/guards/auth.guard';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
 import { UserRole } from '../user/enums/user.enum';
 import { User } from '../user/entities/user.entity';
@@ -32,7 +31,7 @@ export class PerformanceController {
   // TEACHERS
 
   @Get(`${TEACHER_URL}/class`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherClassPerformanceResponseDto)
   getClassPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
@@ -40,7 +39,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}/lessons`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherLessonPerformanceResponseDto)
   getLessonPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
@@ -48,7 +47,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}/exams`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherExamPerformanceResponseDto)
   getExamPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
@@ -56,7 +55,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}/activities`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherActivityPerformanceResponseDto)
   getActivityPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
@@ -64,7 +63,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/list`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
   getStudentPerformancesByCurrentTeacherUser(
@@ -88,7 +87,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
   getStudentPerformanceByPublicIdAndTeacherId(
@@ -103,7 +102,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/lessons`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
   getStudentLessonByPublicIdAndTeacherId(
@@ -118,7 +117,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/exams`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamsByPublicIdAndTeacherId(
@@ -133,7 +132,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/exams/:slug`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamWithCompletionsByPublicIdAndSlug(
@@ -150,7 +149,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/activities`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivitiesByPublicIdAndTeacherId(
@@ -165,7 +164,7 @@ export class PerformanceController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId/activities/:slug`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivityWithCompletionsByPublicIdAndSlug(
@@ -184,7 +183,7 @@ export class PerformanceController {
   // STUDENTS
 
   @Get(`${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
   getStudentPerformanceByStudentId(
@@ -195,7 +194,7 @@ export class PerformanceController {
   }
 
   @Get(`${STUDENT_URL}/lessons`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
   getStudentLessonsByStudentId(@CurrentUser() user: User): Promise<Lesson[]> {
@@ -204,7 +203,7 @@ export class PerformanceController {
   }
 
   @Get(`${STUDENT_URL}/exams`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamsByStudentId(@CurrentUser() user: User): Promise<Exam[]> {
@@ -213,7 +212,7 @@ export class PerformanceController {
   }
 
   @Get(`${STUDENT_URL}/exams/:slug`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamWithCompletionsBySlugAndStudentId(
@@ -228,7 +227,7 @@ export class PerformanceController {
   }
 
   @Get(`${STUDENT_URL}/activities`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivitiesByStudentId(
@@ -239,7 +238,7 @@ export class PerformanceController {
   }
 
   @Get(`${STUDENT_URL}/activities/:slug`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivityWithCompletionsBySlugAndStudentId(

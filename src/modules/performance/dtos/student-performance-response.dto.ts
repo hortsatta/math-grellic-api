@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 
-import { StudentUserResponseDto } from '../../user/dtos/student-user-response.dto';
+import { StudentUserResponseDto } from '#/modules/user/dtos/student-user-response.dto';
 
 export class StudentPerformanceResponseDto extends StudentUserResponseDto {
   @Expose()

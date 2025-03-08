@@ -1,7 +1,7 @@
 import { Controller, Post, UploadedFiles } from '@nestjs/common';
 import { FastifyFilesInterceptor } from 'nest-fastify-multer';
 
-import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
 import { UserRole } from '../user/enums/user.enum';
 import { User } from '../user/entities/user.entity';
@@ -18,7 +18,7 @@ export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
   @Post('/exams/images')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @FastifyFilesInterceptor('files')
   async uploadExamImages(
     @UploadedFiles(new FileValidationPipe(imageValidationOptions))
@@ -30,7 +30,7 @@ export class UploadController {
   }
 
   @Post('/activities/images')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @FastifyFilesInterceptor('files')
   async uploadActivitiesImages(
     @UploadedFiles(new FileValidationPipe(imageValidationOptions))

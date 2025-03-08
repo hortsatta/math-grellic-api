@@ -11,7 +11,7 @@ import {
 
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-import { UseAuthGuard } from '#/common/guards/auth.guard';
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from './entities/user.entity';
@@ -32,14 +32,14 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('/me')
-  @UseAuthGuard()
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
   me(@CurrentUser() user: User): User {
     return user;
   }
 
   @Patch('/approve/:studentId')
-  @UseAuthGuard([UserRole.Admin, UserRole.Teacher])
+  @UseJwtAuthGuard([UserRole.Admin, UserRole.Teacher])
   approveUser(
     @CurrentUser() user: User,
     @Param('studentId') studentId: number,
@@ -60,7 +60,7 @@ export class UserController {
   // TEACHERS
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/list`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentUserResponseDto)
   getStudentsByTeacherId(
@@ -84,7 +84,7 @@ export class UserController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/list/all`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentUserResponseDto)
   getAllStudentsByTeacherId(
@@ -105,7 +105,7 @@ export class UserController {
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/count`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   getStudentCountByTeacherId(
     @CurrentUser() user: User,
     @Query('status') status?: UserApprovalStatus,
@@ -116,7 +116,7 @@ export class UserController {
 
   // @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId`)
   @Get(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentUserResponseDto)
   getStudentByPublicIdAndTeacherId(
@@ -128,7 +128,7 @@ export class UserController {
   }
 
   @Patch(`${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
   updateCurrentTeacherUser(
     @Body() body: TeacherUserUpdateDto,
@@ -139,7 +139,7 @@ export class UserController {
   }
 
   @Patch(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
   updateStudentByIdAndTeacherId(
     @Param('studentId') studentId: number,
@@ -149,7 +149,7 @@ export class UserController {
   }
 
   @Delete(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
   deleteStudentByIdAndTeacherId(
     @Param('studentId') studentId: number,
@@ -167,7 +167,7 @@ export class UserController {
 
   // TODO
   // @Patch(`${TEACHER_URL}/:id`)
-  // @UseAuthGuard(UserRole.Teacher)
+  // @UseJwtAuthGuard(UserRole.Teacher)
   // @UseSerializeInterceptor(UserResponseDto)
   // updateTeacher(
   //   @Param('id') id: number,
@@ -194,7 +194,7 @@ export class UserController {
   }
 
   @Patch(`${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(UserResponseDto)
   updateCurrentStudentUser(
     @Body() body: StudentUserUpdateDto,
@@ -206,7 +206,7 @@ export class UserController {
 
   // TODO
   // @Patch(`${STUDENT_URL}/:id`)
-  // @UseAuthGuard(UserRole.Student)
+  // @UseJwtAuthGuard(UserRole.Student)
   // @UseSerializeInterceptor(UserResponseDto)
   // updateStudent(
   //   @Param('id') id: number,

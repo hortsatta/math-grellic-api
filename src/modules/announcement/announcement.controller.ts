@@ -10,9 +10,9 @@ import {
 
 import dayjs from '#/common/configs/dayjs.config';
 import { AnnouncementService } from './announcement.service';
-import { UseAuthGuard } from '#/common/guards/auth.guard';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
+import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
 import { UserRole } from '../user/enums/user.enum';
 import { User } from '../user/entities/user.entity';
@@ -33,7 +33,7 @@ export class AnnouncementController {
   // TEACHERS
 
   @Get(`${TEACHER_URL}/list`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherAnnouncementsResponseDto)
   getAnnouncementsByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
@@ -41,7 +41,7 @@ export class AnnouncementController {
   }
 
   @Get(`/:id${TEACHER_URL}`)
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(AnnouncementResponseDto)
   @UseFilterFieldsInterceptor()
   getAnnouncementByIdAndTeacherId(
@@ -56,7 +56,7 @@ export class AnnouncementController {
   }
 
   @Post()
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(AnnouncementResponseDto)
   create(
     @Body() body: AnnouncementCreateDto,
@@ -73,7 +73,7 @@ export class AnnouncementController {
   }
 
   @Patch('/:id')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(AnnouncementResponseDto)
   update(
     @Param('id') id: number,
@@ -92,7 +92,7 @@ export class AnnouncementController {
   }
 
   @Delete('/:id')
-  @UseAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard(UserRole.Teacher)
   delete(@Param('id') id: number, @CurrentUser() user: User): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.announcementService.delete(id, teacherId);
@@ -101,7 +101,7 @@ export class AnnouncementController {
   // STUDENTS
 
   @Get(`${STUDENT_URL}/list`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentAnnouncementsResponseDto)
   @UseFilterFieldsInterceptor()
   getAnnouncementsByStudentId(@CurrentUser() user: User) {
@@ -110,7 +110,7 @@ export class AnnouncementController {
   }
 
   @Get(`/:id${STUDENT_URL}`)
-  @UseAuthGuard(UserRole.Student)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(AnnouncementResponseDto)
   @UseFilterFieldsInterceptor()
   getAnnouncementByIdAndStudentId(

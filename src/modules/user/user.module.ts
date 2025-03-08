@@ -1,10 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 
 import { CoreModule } from '../core/core.module';
 import { UserController } from './user.controller';
-import { CurrentUserMiddleware } from './middlewares/current-user.middleware';
 import { UserSubscriber } from './subscribers/user.subscriber';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
@@ -23,8 +22,4 @@ import { StudentUserAccount } from './entities/student-user-account.entity';
   providers: [UserSubscriber, UserService],
   exports: [UserService],
 })
-export class UserModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CurrentUserMiddleware).forRoutes('*');
-  }
-}
+export class UserModule {}
