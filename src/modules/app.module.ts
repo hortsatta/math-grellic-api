@@ -1,17 +1,19 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 
 import { DatabaseModule } from './database.module';
-import { CoreModule } from './core/core.module';
+import { MailerModule } from './mailer/mailer.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { CoreModule } from './core/core.module';
 import { LessonModule } from './lesson/lesson.module';
 import { ExamModule } from './exam/exam.module';
 import { ActivityModule } from './activity/activity.module';
 import { PerformanceModule } from './performance/performance.module';
 import { ScheduleModule } from './schedule/schedule.module';
-import { UploadModule } from './upload/upload.module';
 import { AnnouncementModule } from './announcement/announcement.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -19,7 +21,16 @@ import { AnnouncementModule } from './announcement/announcement.module';
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV}`,
     }),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      global: true,
+      useFactory: async (configService: ConfigService) => ({
+        global: true,
+        secret: configService.get<string>('JWT_SECRET'),
+      }),
+    }),
     DatabaseModule,
+    MailerModule,
     AuthModule,
     UserModule,
     CoreModule,

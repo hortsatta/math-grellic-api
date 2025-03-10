@@ -22,7 +22,7 @@ export class AuthService {
     const user = await this.userService.findOneByEmail(email);
 
     if (!user || user.approvalStatus !== UserApprovalStatus.Approved) {
-      throw new UnauthorizedException('Email does not exist');
+      throw new UnauthorizedException('Email not found');
     } else if (!(await validatePassword(password, user.password))) {
       throw new UnauthorizedException('Password is incorrect');
     }
@@ -36,7 +36,7 @@ export class AuthService {
     refreshToken: string;
   }> {
     // Generate access (for login) and refresh token
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     // Store refresh token in Redis for 7 days
     await this.redisService.set(

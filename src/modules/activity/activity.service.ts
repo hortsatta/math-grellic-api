@@ -525,7 +525,7 @@ export class ActivityService {
     const teacher = await this.userService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
-      throw new BadRequestException('Student does not exist');
+      throw new BadRequestException('Student not found');
     }
 
     const generateWhere = () => {
@@ -587,7 +587,7 @@ export class ActivityService {
     const teacher = await this.userService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
-      throw new BadRequestException('Student does not exist');
+      throw new BadRequestException('Student not found');
     }
 
     const activity = await this.activityRepo.findOne({
@@ -609,7 +609,7 @@ export class ActivityService {
     });
 
     if (!activity) {
-      throw new BadRequestException('Activity does not exist');
+      throw new BadRequestException('Activity not found');
     }
 
     const transformedActivity = await this.generateActivityWithCompletions(

@@ -21,7 +21,7 @@ const COMPRESSION_OPTIONS = {
 export class UploadService {
   constructor(
     private readonly supabaseService: SupabaseService,
-    private readonly configService: ConfigService,
+    private configService: ConfigService,
   ) {}
 
   async uploadExamImages(files: Express.Multer.File[], publicId: string) {

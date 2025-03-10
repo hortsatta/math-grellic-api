@@ -15,15 +15,14 @@ export class JwtRefreshStrategy extends PassportStrategy(
     private readonly authService: AuthService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
       secretOrKey: configService.get<string>('JWT_SECRET'),
       passReqToCallback: true,
     });
   }
 
   async validate(req: Request) {
-    // Extract the refresh token
-    const refreshToken = req.headers['authorization']?.split(' ')[1];
+    const { refreshToken } = req.body as any;
 
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token not found');

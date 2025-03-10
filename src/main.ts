@@ -9,7 +9,7 @@ import { contentParser } from 'fastify-multer';
 
 import { AppModule } from './modules/app.module';
 import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
-import { AuthSocketAdapter } from './common/adapters/auth-socket.adapter';
+import { WebSocketAdapter } from './common/adapters/websocket.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -55,7 +55,7 @@ async function bootstrap() {
   );
   // Catch database specific errors/exception
   app.useGlobalFilters(new DatabaseExceptionFilter());
-  app.useWebSocketAdapter(new AuthSocketAdapter(app));
+  app.useWebSocketAdapter(new WebSocketAdapter(app));
 
   await app.register(contentParser);
   await app.listen(configService.get<number>('API_PORT') || 3001, '0.0.0.0');

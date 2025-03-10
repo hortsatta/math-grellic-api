@@ -7,7 +7,7 @@ import { JwtPayload } from 'jsonwebtoken';
 
 import { UserService } from '#/modules/user/user.service';
 
-export class AuthSocketAdapter extends IoAdapter {
+export class WebSocketAdapter extends IoAdapter {
   private configService: ConfigService;
   private jwtService: JwtService;
   private userService: UserService;
@@ -31,12 +31,13 @@ export class AuthSocketAdapter extends IoAdapter {
       if (!token) {
         return next(new UnauthorizedException());
       }
+
       try {
-        const auth: any = this.jwtService.verify(token as string, {
-          secret: this.configService.get<string>('SUPABASE_JWT_SECRET'),
+        const payload: any = this.jwtService.verify(token as string, {
+          secret: this.configService.get<string>('JWT_SECRET'),
         }) as JwtPayload;
         // Get current user by email and add to request object
-        const user = await this.userService.getOneByEmail(auth.email);
+        const user = await this.userService.getOneByEmail(payload.email);
         (socket as any).currentUser = user;
         return next();
       } catch (error) {

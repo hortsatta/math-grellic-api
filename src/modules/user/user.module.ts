@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
 
+import { MailerModule } from '../mailer/mailer.module';
 import { CoreModule } from '../core/core.module';
 import { UserController } from './user.controller';
 import { UserSubscriber } from './subscribers/user.subscriber';
@@ -13,9 +13,7 @@ import { StudentUserAccount } from './entities/student-user-account.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, TeacherUserAccount, StudentUserAccount]),
-    JwtModule.register({
-      global: true,
-    }),
+    MailerModule,
     CoreModule,
   ],
   controllers: [UserController],

@@ -1,9 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   FindOptionsOrder,
@@ -20,6 +23,7 @@ import dayjs from '#/common/configs/dayjs.config';
 import { encryptPassword } from '#/common/helpers/password.helper';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generatePublicId } from '#/modules/user/helpers/user.helper';
+import { MailerService } from '../mailer/mailer.service';
 import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { User } from './entities/user.entity';
 import { TeacherUserAccount } from './entities/teacher-user-account.entity';
@@ -32,12 +36,40 @@ import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
 @Injectable()
 export class UserService {
   constructor(
+    private jwtService: JwtService,
+    private configService: ConfigService,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(TeacherUserAccount)
     private readonly teacherUserAccountRepo: Repository<TeacherUserAccount>,
     @InjectRepository(StudentUserAccount)
     private readonly studentUserAccountRepo: Repository<StudentUserAccount>,
+    @Inject(MailerService)
+    private readonly mailerService: MailerService,
   ) {}
+
+  async confirmUserRegisterEmail(token: string): Promise<boolean> {
+    const payload = this.jwtService.verify(token, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+    });
+
+    const user = await this.findOneByEmail(payload.email);
+
+    // TEMP
+    // if (!user || user.approvalStatus === UserApprovalStatus.Rejected) {
+    //   throw new BadRequestException('Cannot confirm email');
+    // }
+
+    // if (user.approvalStatus !== UserApprovalStatus.MailPending) {
+    //   throw new BadRequestException('Email already confirmed');
+    // }
+
+    await this.userRepo.save({
+      ...user,
+      approvalStatus: UserApprovalStatus.Pending,
+    });
+
+    return true;
+  }
 
   private async create(
     user: any,
@@ -364,6 +396,7 @@ export class UserService {
   }
 
   async createTeacherUser(userDto: TeacherUserCreateDto): Promise<User> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { email, password, profileImageUrl, approvalStatus, ...moreUserDto } =
       userDto;
     // Check if email is existing, if true then cancel creation
@@ -377,7 +410,7 @@ export class UserService {
         email,
         password: encryptedPassword,
         profileImageUrl,
-        approvalStatus,
+        approvalStatus: UserApprovalStatus.Approved,
       },
       UserRole.Teacher,
       true,
@@ -388,6 +421,11 @@ export class UserService {
       user: { id: user.id },
     });
     const newTeacherUser = await this.teacherUserAccountRepo.save(teacherUser);
+    // Send email confirmation to user
+    await this.mailerService.sendUserRegisterConfirmation(
+      user.email,
+      teacherUser.firstName,
+    );
 
     return { ...user, teacherUserAccount: newTeacherUser };
   }
@@ -442,6 +480,12 @@ export class UserService {
 
     const newStudentUser = await this.studentUserAccountRepo.save(studentUser);
     const teacherUser = { ...newStudentUser.teacherUser, publicId: teacherId };
+    // Send email confirmation to user
+    await this.mailerService.sendUserRegisterConfirmation(
+      user.email,
+      newStudentUser.firstName,
+    );
+
     return { ...user, studentUserAccount: { ...newStudentUser, teacherUser } };
   }
 

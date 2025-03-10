@@ -57,6 +57,11 @@ export class UserController {
     );
   }
 
+  @Get('/register/confirm')
+  confirmUserRegisterEmail(@Query('token') token: string): Promise<boolean> {
+    return this.userService.confirmUserRegisterEmail(token);
+  }
+
   // TEACHERS
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/list`)
@@ -162,7 +167,12 @@ export class UserController {
   @Post(`${TEACHER_URL}/register`)
   @UseSerializeInterceptor(UserResponseDto)
   registerTeacher(@Body() body: TeacherUserCreateDto): Promise<User> {
-    return this.userService.createTeacherUser(body);
+    return this.userService.createTeacherUser({
+      ...body,
+      // TEMP
+      // approvalStatus: UserApprovalStatus.MailPending,
+      approvalStatus: UserApprovalStatus.Approved,
+    });
   }
 
   // TODO
@@ -190,7 +200,12 @@ export class UserController {
   @Post(`${STUDENT_URL}/register`)
   @UseSerializeInterceptor(UserResponseDto)
   registerStudent(@Body() body: StudentUserCreateDto): Promise<User> {
-    return this.userService.createStudentUser(body);
+    return this.userService.createStudentUser({
+      ...body,
+      // TEMP
+      // approvalStatus: UserApprovalStatus.MailPending,
+      approvalStatus: UserApprovalStatus.Pending,
+    });
   }
 
   @Patch(`${STUDENT_URL}`)

@@ -1,4 +1,8 @@
-import { ExecutionContext, UseGuards } from '@nestjs/common';
+import {
+  ExecutionContext,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import { UserApprovalStatus, UserRole } from '../user/enums/user.enum';
@@ -45,6 +49,33 @@ class JwtAuthGuard extends AuthGuard('jwt') {
       const userRole = request.user.role;
       return transformedRoles.some((role) => role === userRole);
     }
+  }
+
+  handleRequest(err: any, user: any, info: any) {
+    if (info?.name === 'TokenExpiredError') {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'token_expired',
+      });
+    }
+
+    if (info?.name === 'JsonWebTokenError') {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'token_invalid',
+      });
+    }
+
+    if (err || !user) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Unauthorized',
+      });
+    }
+
+    return user;
   }
 }
 
