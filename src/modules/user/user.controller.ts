@@ -17,6 +17,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from './entities/user.entity';
 import { StudentUserAccount } from './entities/student-user-account.entity';
 import { UserResponseDto } from './dtos/user-response.dto';
+import { UserApprovalDto } from './dtos/user-approval.dto';
 import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
 import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
@@ -24,6 +25,7 @@ import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
 import { StudentUserResponseDto } from './dtos/student-user-response.dto';
 import { UserService } from './user.service';
 
+const ADMIN_URL = '/admins';
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 
@@ -36,25 +38,6 @@ export class UserController {
   @UseSerializeInterceptor(UserResponseDto)
   me(@CurrentUser() user: User): User {
     return user;
-  }
-
-  @Patch('/approve/:studentId')
-  @UseJwtAuthGuard([UserRole.Admin, UserRole.Teacher])
-  approveUser(
-    @CurrentUser() user: User,
-    @Param('studentId') studentId: number,
-    @Body() body: { approvalStatus: UserApprovalStatus },
-  ): Promise<{
-    approvalStatus: User['approvalStatus'];
-    approvalDate: User['approvalDate'];
-  }> {
-    const { id: teacherId } = user.teacherUserAccount || {};
-
-    return this.userService.setStudentApprovalStatus(
-      studentId,
-      body.approvalStatus,
-      teacherId,
-    );
   }
 
   @Get('/register/confirm')
@@ -153,6 +136,25 @@ export class UserController {
     return this.userService.updateStudentUser(studentId, body);
   }
 
+  @Patch(`${TEACHER_URL}${STUDENT_URL}/approve/:studentId`)
+  @UseJwtAuthGuard(UserRole.Teacher)
+  approveStudentByIdAndTeacherId(
+    @CurrentUser() user: User,
+    @Param('studentId') studentId: number,
+    @Body() body: UserApprovalDto,
+  ): Promise<{
+    approvalStatus: User['approvalStatus'];
+    approvalDate: User['approvalDate'];
+  }> {
+    const { id: teacherId } = user.teacherUserAccount || {};
+
+    return this.userService.setStudentApprovalStatus(
+      studentId,
+      body,
+      teacherId,
+    );
+  }
+
   @Delete(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
@@ -231,4 +233,19 @@ export class UserController {
   // }
 
   // TODO admin
+
+  @Patch(`${ADMIN_URL}${TEACHER_URL}/approve/:teacherId`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  approveTeacherById(
+    // @CurrentUser() user: User,
+    @Param('teacherId') teacherId: number,
+    @Body() body: UserApprovalDto,
+  ): Promise<{
+    approvalStatus: User['approvalStatus'];
+    approvalDate: User['approvalDate'];
+  }> {
+    // const { id: adminId } = user.adminUserAccount || {};
+
+    return this.userService.setTeacherApprovalStatus(teacherId, body);
+  }
 }

@@ -25,6 +25,9 @@ export class UserResponseDto extends BaseResponseDto {
   approvalDate: Date;
 
   @Expose()
+  approvalRejectedReason: string;
+
+  @Expose()
   @Transform(({ obj }) => {
     // const {teacherUserAccount, studentUserAccount, adminUserAccount} = obj
     const { teacherUserAccount, studentUserAccount } = obj;

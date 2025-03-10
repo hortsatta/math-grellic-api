@@ -32,6 +32,7 @@ import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
 import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
+import { UserApprovalDto } from './dtos/user-approval.dto';
 
 @Injectable()
 export class UserService {
@@ -614,19 +615,19 @@ export class UserService {
 
   async setStudentApprovalStatus(
     studentId: number,
-    approvalStatus: UserApprovalStatus,
-    teacherId?: number,
+    userApprovalDto: UserApprovalDto,
+    teacherId: number,
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
   }> {
-    const where: FindOptionsWhere<User> = teacherId
-      ? {
-          studentUserAccount: { id: studentId, teacherUser: { id: teacherId } },
-        }
-      : { studentUserAccount: { id: studentId } };
+    const { approvalStatus, approvalRejectReason } = userApprovalDto;
 
-    const user = await this.userRepo.findOne({ where });
+    const user = await this.userRepo.findOne({
+      where: {
+        studentUserAccount: { id: studentId, teacherUser: { id: teacherId } },
+      },
+    });
 
     if (!user) {
       throw new NotFoundException('Student not found');
@@ -635,7 +636,7 @@ export class UserService {
     let publicId = user.publicId;
     if (!publicId && approvalStatus === UserApprovalStatus.Approved) {
       const userCount = await this.userRepo.count({
-        where: { publicId: Not(IsNull()) },
+        where: { publicId: Not(IsNull()), role: UserRole.Student },
       });
 
       publicId = generatePublicId(userCount, user.role);
@@ -643,12 +644,73 @@ export class UserService {
 
     const updatedUser = await this.userRepo.save({
       ...user,
+      ...userApprovalDto,
       publicId,
-      approvalStatus,
     });
+
+    // Send a notification email to user
+    approvalStatus === UserApprovalStatus.Approved
+      ? this.mailerService.sendUserRegisterApproved(
+          user.email,
+          user.studentUserAccount.firstName,
+          publicId,
+        )
+      : this.mailerService.sendUserRegisterRejected(
+          approvalRejectReason || '',
+          user.email,
+          user.studentUserAccount.firstName,
+        );
 
     return { approvalStatus, approvalDate: updatedUser.approvalDate };
   }
 
   // TODO admin
+
+  async setTeacherApprovalStatus(
+    teacherId: number,
+    userApprovalDto: UserApprovalDto,
+  ): Promise<{
+    approvalStatus: User['approvalStatus'];
+    approvalDate: User['approvalDate'];
+  }> {
+    const { approvalStatus, approvalRejectReason } = userApprovalDto;
+
+    const user = await this.userRepo.findOne({
+      where: { teacherUserAccount: { id: teacherId } },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    let publicId = user.publicId;
+    if (!publicId && approvalStatus === UserApprovalStatus.Approved) {
+      const userCount = await this.userRepo.count({
+        where: { publicId: Not(IsNull()), role: UserRole.Teacher },
+      });
+
+      publicId = generatePublicId(userCount, user.role);
+    }
+
+    const updatedUser = await this.userRepo.save({
+      ...user,
+      ...userApprovalDto,
+      publicId,
+    });
+
+    // Send a notification email to user
+    approvalStatus === UserApprovalStatus.Approved
+      ? this.mailerService.sendUserRegisterApproved(
+          user.email,
+          user.teacherUserAccount.firstName,
+          publicId,
+        )
+      : this.mailerService.sendUserRegisterRejected(
+          approvalRejectReason || '',
+          user.email,
+          user.teacherUserAccount.firstName,
+        );
+
+    return { approvalStatus, approvalDate: updatedUser.approvalDate };
+  }
 }

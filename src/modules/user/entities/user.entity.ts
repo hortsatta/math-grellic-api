@@ -35,6 +35,9 @@ export class User extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   approvalDate: Date;
 
+  @Column({ type: 'text', nullable: true })
+  approvalRejectedReason: string;
+
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
 

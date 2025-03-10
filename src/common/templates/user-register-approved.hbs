@@ -19,32 +19,25 @@
     >
       <h2
         style='color:#3861a3; font-size:24px; line-height:1; margin-top:0'
-      >Hello {{name}},</h2>
+      >Congratulations {{name}}!</h2>
       <p
-        style='font-size:16px; line-height:1.5; margin-bottom:36px; margin-top:0'
+        style='line-height:1.5; font-size:16px; margin-bottom:36px; margin-top:0'
       >
-        You've received this message because your email address has been
-        registered with
-        {{appTitle}}. Verify yourself and confirm your email by tapping the link
-        below.
+        We're pleased to inform you that your account has been approved, you can
+        now access the
+        {{appTitle}}
+        app.<br /><br />Your id is
+        {{publicId}}. Welcome aboard!
       </p>
       <div style='box-sizing:border-box; margin-bottom:36px'>
         <a
-          href='{{confirmationLink}}'
-          style='font-size:16px; background:#4c81bd; border-color:#3861a3; border-radius:99px; border-style:solid; border-width:2px; box-sizing:border-box; color:#f5fbff; display:block; font-weight:600; height:50px; margin:0 auto; padding-top:11px; text-align:center; text-decoration:none; width:200px'
+          href='{{loginLink}}'
+          style='background:#4c81bd; border-color:#3861a3; border-radius:99px; border-style:solid; border-width:2px; box-sizing:border-box; color:#f5fbff; display:block; font-size:16px; font-weight:600; height:50px; margin:0 auto; padding-top:11px; text-align:center; text-decoration:none; width:200px'
           height='50'
           align='center'
           width='200'
-        >
-          Confirm Email
-        </a>
+        > Sign In Now </a>
       </div>
-      <p
-        style='line-height:1.5; font-size:14px; max-width:400px; opacity:0.8; margin-top:0'
-      >
-        If you did not register with us, simply ignore this email. You will not
-        receive any emails from us.
-      </p>
     </div>
     <footer
       style='background:#3c68aa; border-bottom-left-radius:20px; border-bottom-right-radius:20px; border-color:#3861a3; border-style:solid; border-width:1px; box-sizing:border-box; color:rgba(245, 251, 255, 0.8); font-size:14px; padding:20px 16px; text-align:center; width:100%'
