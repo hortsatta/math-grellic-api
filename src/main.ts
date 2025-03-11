@@ -34,8 +34,6 @@ async function bootstrap() {
     methods: ['GET', 'PUT', 'PATCH', 'OPTIONS', 'POST', 'DELETE'],
   });
 
-  // Append api prefix to your base url
-  app.setGlobalPrefix('api');
   // Enable versioning on this api
   app.enableVersioning({
     type: VersioningType.URI,
