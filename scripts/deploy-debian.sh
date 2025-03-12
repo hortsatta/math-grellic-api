@@ -7,10 +7,10 @@ cd ~/master/repo/math-grellic/math-grellic-api || exit
 git pull origin master
 
 # Stop and remove old containers
-docker compose down
+docker compose -f scripts/docker-compose.yml down
 
 # Pull latest images if needed
-docker compose pull
+docker compose -f scripts/docker-compose.yml pull
 
 # Rebuild and start the updated containers
 docker compose -f scripts/docker-compose.yml up -d
