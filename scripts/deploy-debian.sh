@@ -3,14 +3,8 @@
 # Navigate to the project directory
 cd ~/master/repo/math-grellic/math-grellic-api || exit
 
-# Reset any local changes and discard untracked files
-# Resets tracked files to match remote
-git reset --hard origin/master 
-# Removes untracked files and directories
-git clean -fd
-
 # Pull the latest changes from GitHub
-git pull origin master --rebase
+git pull origin master
 
 # Stop and remove old containers
 docker compose down
