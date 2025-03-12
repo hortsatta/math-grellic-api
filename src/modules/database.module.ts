@@ -51,9 +51,6 @@ import { Announcement } from './announcement/entities/announcement.entity';
           };
         }
 
-        console.log(configService.get<string>('DATABASE_HOST'));
-        console.log(configService.get<string>('WEB_APP_BASE_URL'));
-
         return {
           type: 'postgres',
           host: configService.get<string>('DATABASE_HOST'),
