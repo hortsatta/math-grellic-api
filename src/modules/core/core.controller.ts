@@ -13,6 +13,6 @@ export class CoreController {
 
   @Get('/temp')
   getTemp(): string {
-    return 'hello kitty';
+    return 'hello';
   }
 }
