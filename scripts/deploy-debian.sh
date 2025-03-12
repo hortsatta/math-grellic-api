@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Navigate to the project directory
-cd ~/master/repo/math-grellic/math-grellic-api
+cd ~/master/repo/math-grellic/math-grellic-api || exit
 
 # Pull the latest changes from GitHub
 git pull origin master 
@@ -14,3 +14,9 @@ docker compose pull
 
 # Rebuild and start the updated containers
 docker compose -f scripts/docker-compose.yml up -d
+
+# Remove old images
+docker image prune -af
+
+# Log deployment time
+echo "deployed at $(date)" >> /var/log/deploy.log
