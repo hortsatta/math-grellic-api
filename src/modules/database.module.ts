@@ -33,18 +33,7 @@ import { Announcement } from './announcement/entities/announcement.entity';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
         let ssl: object | boolean = false;
-        // FOR AWS POSTGRES DB
-        // Fetch pem file for aws rds db in prod
-        // if (process.env.NODE_ENV === 'production') {
-        //   const pemUrl = configService.get<string>('DATABASE_PEM_URL');
-        //   const response = await cfetch(pemUrl);
-        //   const ca = await response.text();
-        //   ssl = {
-        //     rejectUnauthorized: false,
-        //     ca,
-        //   };
-        // }
-        // FOR NEON POSTGRES DB
+
         if (process.env.NODE_ENV === 'production') {
           ssl = {
             rejectUnauthorized: false,

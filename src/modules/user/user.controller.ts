@@ -34,7 +34,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('/me')
-  @UseJwtAuthGuard(UserRole.Teacher)
+  @UseJwtAuthGuard()
   @UseSerializeInterceptor(UserResponseDto)
   me(@CurrentUser() user: User): User {
     return user;
@@ -191,6 +191,7 @@ export class UserController {
   // STUDENTS
 
   @Get(`${STUDENT_URL}/teacher`)
+  @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(UserResponseDto)
   getAssignedTeacherByStudentId(
     @CurrentUser() user: User,
