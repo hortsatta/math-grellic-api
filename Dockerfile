@@ -24,6 +24,7 @@ WORKDIR /usr/src/app
 
 # Copy only the necessary files from the builder stage
 COPY package*.json ./
+COPY .env.production ./
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
 

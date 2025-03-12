@@ -10,9 +10,4 @@ export class CoreController {
   getDateTimeNow(): Date {
     return this.coreService.getDateTimeNow();
   }
-
-  @Get('/temp')
-  getTemp(): string {
-    return 'hellox';
-  }
 }
