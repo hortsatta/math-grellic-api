@@ -6,6 +6,7 @@ import {
   IsString,
   IsUrl,
   MaxLength,
+  MinLength,
 } from 'class-validator';
 import { UserUpdateDto } from './user-update.dto';
 import { UserRole } from '../enums/user.enum';
@@ -42,8 +43,9 @@ export class TeacherUserUpdateDto extends UserUpdateDto {
   @IsOptional()
   socialMediaLinks: string[];
 
-  @IsUrl()
-  @MaxLength(255)
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
   @IsOptional()
   messengerLink: string;
 

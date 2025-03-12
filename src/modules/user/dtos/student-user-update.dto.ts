@@ -1,9 +1,9 @@
 import {
   IsOptional,
   IsString,
-  IsUrl,
   Length,
   MaxLength,
+  MinLength,
 } from 'class-validator';
 import { UserUpdateDto } from './user-update.dto';
 
@@ -17,8 +17,9 @@ export class StudentUserUpdateDto extends UserUpdateDto {
   @IsOptional()
   aboutMe: string;
 
-  @IsUrl()
-  @MaxLength(255)
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
   @IsOptional()
   messengerLink: string;
 }

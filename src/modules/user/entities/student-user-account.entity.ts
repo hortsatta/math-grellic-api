@@ -24,7 +24,7 @@ export class StudentUserAccount extends UserAccountEntity {
   @Column({ type: 'text', nullable: true })
   aboutMe: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   messengerLink: string;
 
   @OneToOne(() => User, (user) => user.studentUserAccount)

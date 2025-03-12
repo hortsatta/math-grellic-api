@@ -1,7 +1,6 @@
 import {
   IsOptional,
   IsString,
-  IsUrl,
   Length,
   MaxLength,
   MinLength,
@@ -23,8 +22,9 @@ export class StudentUserCreateDto extends UserCreateDto {
   @IsOptional()
   aboutMe: string;
 
-  @IsUrl()
-  @MaxLength(255)
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
   @IsOptional()
   messengerLink: string;
 }
