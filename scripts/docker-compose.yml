@@ -1,0 +1,12 @@
+name: math-grellic
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: scripts/Dockerfile
+    restart: always
+    ports:
+      - 3001:3001
+    container_name: math-grellic-api_c
+    env_file:
+      - ../.env.production
