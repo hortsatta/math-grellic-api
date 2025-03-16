@@ -18,6 +18,7 @@ import {
   Not,
   Repository,
 } from 'typeorm';
+import { stripHtml as stringStripHtml } from 'string-strip-html';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
@@ -36,6 +37,7 @@ import { ExamScheduleCreateDto } from './dtos/exam-schedule-create.dto';
 import { ExamScheduleUpdateDto } from './dtos/exam-schedule-update.dto';
 import { ExamCompletionCreateDto } from './dtos/exam-completion-create.dto';
 import { ExamScheduleService } from './exam-schedule.service';
+import { ExamQuestionCreateDto } from './dtos/exam-question-create.dto';
 
 @Injectable()
 export class ExamService {
@@ -54,6 +56,111 @@ export class ExamService {
     @Inject(UserService)
     private readonly userService: UserService,
   ) {}
+
+  stripHtml(
+    html: string,
+    onEmpty?: () => void,
+    onInvalidQuestion?: () => void,
+    onInvalidImage?: () => void,
+  ): string {
+    const { result } = stringStripHtml(html || '', {
+      cb: ({ tag, deleteFrom, deleteTo, insert, rangesArr }) => {
+        if (tag) {
+          switch (tag.name) {
+            case 'span': {
+              let value = insert;
+
+              const isInlineMath = tag.attributes.some(
+                (attr) =>
+                  attr.name === 'data-type' && attr.value === 'inline-math',
+              );
+
+              if (isInlineMath) {
+                value = tag.attributes.find(
+                  (attr) => attr.name === 'value',
+                )?.value;
+
+                if (!value?.trim().length) {
+                  onInvalidQuestion && onInvalidQuestion();
+                }
+              }
+
+              rangesArr.push(deleteFrom || 0, deleteTo || undefined, value);
+              break;
+            }
+            case 'img': {
+              const src = tag.attributes.find((attr) => attr.name === 'src');
+
+              if (!src?.value.trim().length) {
+                onInvalidImage && onInvalidImage();
+              }
+
+              rangesArr.push(deleteFrom || 0, deleteTo || undefined, 'img');
+              break;
+            }
+            default:
+              rangesArr.push(deleteFrom || 0, deleteTo || undefined, insert);
+              break;
+          }
+        } else {
+          // default action which does nothing different from normal, non-callback operation
+          rangesArr.push(deleteFrom || 0, deleteTo || undefined, insert);
+        }
+      },
+    });
+
+    if (!result.trim().length) {
+      onEmpty && onEmpty();
+    }
+
+    return result;
+  }
+
+  validateExamQuestion(
+    questions: ExamQuestionCreateDto[] | ExamQuestionUpdateDto[],
+  ) {
+    questions.forEach((question: any) => {
+      this.stripHtml(
+        question.text,
+        () => {
+          throw new BadRequestException('Question is invalid');
+        },
+        () => {
+          throw new BadRequestException('An equation from a question is empty');
+        },
+        () => {
+          throw new BadRequestException('An image from a question is invalid');
+        },
+      );
+
+      // Check if choice text field are not empty by trimming and stripping html
+      question.choices.forEach((choice: any) => {
+        this.stripHtml(
+          choice.text,
+          () => {
+            throw new BadRequestException('Choice is invalid');
+          },
+          () => {
+            throw new BadRequestException('An equation from a choice is empty');
+          },
+          () => {
+            throw new BadRequestException('An image from a choice is invalid');
+          },
+        );
+      });
+
+      // Check if all questions have atleast one isCorrect choice
+      const hasCorrectChoice = question.choices.some(
+        (choice: any) => choice.isCorrect,
+      );
+
+      if (!hasCorrectChoice) {
+        throw new BadRequestException(
+          'Question should have an answer from the choices',
+        );
+      }
+    });
+  }
 
   getPaginationTeacherExamsByTeacherId(
     teacherId: number,
@@ -239,9 +346,8 @@ export class ExamService {
       );
 
       const schedules = exam.schedules
-        .filter(
-          (schedule) =>
-            schedule.students?.some((student) => student.id === studentId),
+        .filter((schedule) =>
+          schedule.students?.some((student) => student.id === studentId),
         )
         .sort(
           (scheduleA, scheduleB) =>
@@ -994,17 +1100,7 @@ export class ExamService {
       throw new ConflictException('Exam number is already present');
     }
 
-    // Check if all questions have atleast one isCorrect choice
-    questions.forEach((question) => {
-      const isCorrectChoice = question.choices.find(
-        (choice) => choice.isCorrect,
-      );
-      if (!isCorrectChoice) {
-        throw new BadRequestException(
-          'Question should have at least 1 correct choice',
-        );
-      }
-    });
+    this.validateExamQuestion(questions);
 
     // Validate if lessons from coveredLessonIds is owned by current user teacher
     if (coveredLessonIds?.length) {
@@ -1099,18 +1195,7 @@ export class ExamService {
       throw new ConflictException('Exam number is already present');
     }
 
-    // Check if all questions have atleast one isCorrect choice
-    questions.forEach((question) => {
-      const hasCorrectChoice = question.choices.some(
-        (choice) => choice.isCorrect,
-      );
-
-      if (!hasCorrectChoice) {
-        throw new BadRequestException(
-          'Question should have at least 1 correct choice',
-        );
-      }
-    });
+    this.validateExamQuestion(questions);
 
     // Validate if lessons from coveredLessonIds is owned by current user teacher
     if (coveredLessonIds?.length) {

@@ -141,7 +141,7 @@ export class UploadService {
       const filename = path.parse(file.originalname).name;
       const splitNames = filename.split('-');
       return (
-        splitNames.length == 2 &&
+        splitNames.length == 3 &&
         splitNames[0].includes(baseChar) &&
         splitNames[1].includes('q')
       );
@@ -151,7 +151,7 @@ export class UploadService {
       const filename = path.parse(file.originalname).name;
       const splitNames = filename.split('-');
       return (
-        splitNames.length === 3 &&
+        splitNames.length === 4 &&
         splitNames[0].includes(baseChar) &&
         splitNames[1].includes('q') &&
         splitNames[2]?.includes('c')
