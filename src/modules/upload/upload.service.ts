@@ -24,7 +24,11 @@ export class UploadService {
     private configService: ConfigService,
   ) {}
 
-  async uploadExamImages(files: Express.Multer.File[], publicId: string) {
+  async uploadExamImages(
+    files: Express.Multer.File[],
+    publicId: string,
+    strict?: boolean,
+  ) {
     const baseName = files[0]?.originalname?.split('-')[0];
 
     if (!this.validateExamFiles(files, baseName)) {
@@ -36,6 +40,10 @@ export class UploadService {
     )}/${publicId.toLowerCase()}/exams/${baseName}`;
 
     try {
+      if (strict) {
+        await this.deleteFolderRecursively(basePath);
+      }
+
       const transformedFiles = await Promise.all(
         files.map(async ({ buffer, ...moreFile }) => ({
           ...moreFile,
@@ -127,7 +135,74 @@ export class UploadService {
     }
   }
 
+  // Function to delete a folder and all its contents
+  async deleteFolderRecursively(folderPath: string): Promise<boolean> {
+    try {
+      // List all files recursively
+      const filesDeletionList = await this.listAllFilesRecursively(folderPath);
+      // Add the folder itself to the list of files to delete
+      filesDeletionList.push(folderPath);
+      // Delete all files in batches (Supabase allows up to 1000 files per request)
+      const batchSize = 1000;
+      for (let i = 0; i < filesDeletionList.length; i += batchSize) {
+        const batch = filesDeletionList.slice(i, i + batchSize);
+        await this.supabaseService
+          .getClient()
+          .storage.from(this.configService.get<string>('SUPABASE_BUCKET_ID'))
+          .remove(batch);
+      }
+
+      return true;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'An error has occured. Action failed',
+      );
+    }
+  }
+
   // MISC
+
+  async listAllFilesRecursively(folderPath: string): Promise<string[]> {
+    let files = [];
+    let currentPage = 0;
+
+    while (true) {
+      // List files in the current folder (paginated)
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .storage.from(this.configService.get<string>('SUPABASE_BUCKET_ID'))
+        .list(folderPath, {
+          limit: 100, // Max files per page (Supabase allows up to 100)
+          offset: currentPage * 100,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.length === 0) {
+        break; // No more files to list
+      }
+
+      // Process each file or subfolder
+      for (const file of data) {
+        const filePath = `${folderPath}/${file.name}`;
+
+        if (file.id) {
+          // If it's a file, add it to the list
+          files.push(filePath);
+        } else {
+          // If it's a folder, recursively list its contents
+          const subFolderFiles = await this.listAllFilesRecursively(filePath);
+          files = files.concat(subFolderFiles);
+        }
+      }
+
+      currentPage++;
+    }
+
+    return files;
+  }
 
   validateExamFiles(files: Express.Multer.File[], baseName?: string) {
     if (!baseName || baseName[0] !== 'e') {

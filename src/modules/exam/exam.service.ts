@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Brackets,
@@ -26,6 +27,7 @@ import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
 import { UserService } from '../user/user.service';
 import { LessonService } from '../lesson/lesson.service';
+import { UploadService } from '../upload/upload.service';
 import { Exam } from './entities/exam.entity';
 import { ExamQuestion } from './entities/exam-question.entity';
 import { ExamQuestionChoice } from './entities/exam-question-choice.entity';
@@ -55,6 +57,9 @@ export class ExamService {
     private readonly lessonService: LessonService,
     @Inject(UserService)
     private readonly userService: UserService,
+    @Inject(UploadService)
+    private readonly uploadService: UploadService,
+    private configService: ConfigService,
   ) {}
 
   stripHtml(
@@ -484,6 +489,8 @@ export class ExamService {
     examDto: ExamUpdateDto,
     teacherId: number,
     scheduleId?: number,
+    strict?: boolean,
+    publicId?: string,
   ): Promise<Exam> {
     const {
       startDate,
@@ -501,6 +508,15 @@ export class ExamService {
     });
 
     await this.validateUpdateExam(examDto, slug, exam, teacherId, scheduleId);
+
+    if (strict && publicId.trim().length) {
+      // Define base path and delete exam images if exists
+      const basePath = `${this.configService.get<string>(
+        'SUPABASE_BASE_FOLDER_NAME',
+      )}/${publicId.toLowerCase()}/exams/e${exam.orderNumber}`;
+
+      await this.uploadService.deleteFolderRecursively(basePath);
+    }
 
     const coveredLessons = coveredLessonIds
       ? coveredLessonIds.map((lessonId) => ({ id: lessonId }))
@@ -548,7 +564,11 @@ export class ExamService {
     return updatedExam;
   }
 
-  async deleteBySlug(slug: string, teacherId: number): Promise<boolean> {
+  async deleteBySlug(
+    slug: string,
+    teacherId: number,
+    publicId: string,
+  ): Promise<boolean> {
     const exam = await this.getOneBySlugAndTeacherId(slug, teacherId);
 
     if (!exam) {
@@ -560,8 +580,15 @@ export class ExamService {
       where: { exam: { id: exam.id } },
     }));
     if (hasCompletion) {
-      throw new BadRequestException('Cannot delete lesson');
+      throw new BadRequestException('Cannot delete exam');
     }
+
+    // Define base path and delete exam images if exists
+    const basePath = `${this.configService.get<string>(
+      'SUPABASE_BASE_FOLDER_NAME',
+    )}/${publicId.toLowerCase()}/exams/e${exam.orderNumber}`;
+
+    await this.uploadService.deleteFolderRecursively(basePath);
 
     const result = await this.examRepo.delete({ slug });
     return !!result.affected;

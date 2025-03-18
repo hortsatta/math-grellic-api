@@ -1,4 +1,4 @@
-import { Controller, Post, UploadedFiles } from '@nestjs/common';
+import { Controller, Post, Query, UploadedFiles } from '@nestjs/common';
 import { FastifyFilesInterceptor } from 'nest-fastify-multer';
 
 import { UseJwtAuthGuard } from '../auth/auth.guard';
@@ -24,9 +24,10 @@ export class UploadController {
     @UploadedFiles(new FileValidationPipe(imageValidationOptions))
     files: Express.Multer.File[],
     @CurrentUser() user: User,
+    @Query('strict') strict?: number,
   ): Promise<string[]> {
     const { publicId } = user;
-    return this.uploadService.uploadExamImages(files, publicId);
+    return this.uploadService.uploadExamImages(files, publicId, strict == 1);
   }
 
   @Post('/activities/images')

@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { UploadModule } from '../upload/upload.module';
 import { UserModule } from '../user/user.module';
 import { ScheduleModule } from '../schedule/schedule.module';
 import { LessonModule } from '../lesson/lesson.module';
@@ -26,6 +27,7 @@ import { ExamScheduleService } from './exam-schedule.service';
       ExamCompletion,
       ExamCompletionQuestionAnswer,
     ]),
+    UploadModule,
     UserModule,
     LessonModule,
     forwardRef(() => ScheduleModule),

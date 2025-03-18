@@ -114,8 +114,12 @@ export class ExamController {
     @Body() body: ExamUpdateDto,
     @CurrentUser() user: User,
     @Query('schedule') scheduleId?: number,
+    @Query('strict') strict?: number,
   ): Promise<Exam> {
-    const { id: teacherId } = user.teacherUserAccount;
+    const {
+      publicId,
+      teacherUserAccount: { id: teacherId },
+    } = user;
     const { startDate, endDate, ...moreBody } = body;
 
     const transformedBody = {
@@ -129,6 +133,8 @@ export class ExamController {
       transformedBody,
       teacherId,
       scheduleId,
+      strict == 1,
+      publicId,
     );
   }
 
@@ -163,8 +169,11 @@ export class ExamController {
     @Param('slug') slug: string,
     @CurrentUser() user: User,
   ): Promise<boolean> {
-    const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.deleteBySlug(slug, teacherId);
+    const {
+      publicId,
+      teacherUserAccount: { id: teacherId },
+    } = user;
+    return this.examService.deleteBySlug(slug, teacherId, publicId);
   }
 
   // STUDENTS
@@ -254,7 +263,7 @@ export class ExamController {
 
   @Delete(`${SCHEDULE_URL}/:scheduleId`)
   @UseJwtAuthGuard(UserRole.Teacher)
-  deleteSchedule(
+  async deleteSchedule(
     @Param('scheduleId') scheduleId: number,
     @CurrentUser() user: User,
   ) {
