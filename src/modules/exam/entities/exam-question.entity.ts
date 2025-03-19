@@ -1,6 +1,5 @@
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
-import { ExActTextType } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { Exam } from './exam.entity';
 import { ExamQuestionChoice } from './exam-question-choice.entity';
@@ -13,13 +12,6 @@ export class ExamQuestion extends BaseEntity {
 
   @Column({ type: 'text' })
   text: string;
-
-  @Column({
-    type: 'enum',
-    enum: ExActTextType,
-    default: ExActTextType.Text,
-  })
-  textType: ExActTextType;
 
   @ManyToOne(() => Exam, (exam) => exam.questions, {
     onDelete: 'CASCADE',

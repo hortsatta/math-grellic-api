@@ -8,10 +8,8 @@ import {
   ArrayNotEmpty,
   ArrayMinSize,
   ValidateNested,
-  IsEnum,
 } from 'class-validator';
 
-import { ExActTextType } from '#/common/enums/content.enum';
 import { ExamQuestionChoiceCreateDto } from './exam-question-choice-create.dto';
 
 export class ExamQuestionCreateDto {
@@ -21,9 +19,6 @@ export class ExamQuestionCreateDto {
 
   @IsString()
   text: string;
-
-  @IsEnum(ExActTextType)
-  textType: ExActTextType;
 
   @IsInt()
   @IsPositive()

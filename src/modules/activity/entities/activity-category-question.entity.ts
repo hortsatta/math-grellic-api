@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
-import { ExActTextType } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
+import { ActivityTextType } from '../enums/activity.enum';
 import { ActivityCategory } from './activity-category.entity';
 import { ActivityCategoryQuestionChoice } from './activity-category-question-choice.entity';
 import { ActivityCategoryCompletionQuestionAnswer } from './activity-category-completion-question-answer.entity';
@@ -16,10 +16,10 @@ export class ActivityCategoryQuestion extends BaseEntity {
 
   @Column({
     type: 'enum',
-    enum: ExActTextType,
-    default: ExActTextType.Text,
+    enum: ActivityTextType,
+    default: ActivityTextType.Text,
   })
-  textType: ExActTextType;
+  textType: ActivityTextType;
 
   @Column({ type: 'int', nullable: true })
   stageNumber: number;

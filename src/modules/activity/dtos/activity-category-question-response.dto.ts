@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ExActTextType } from '#/common/enums/content.enum';
 import { BaseResponseDto } from '#/common/dtos/base-response.dto';
+import { ActivityTextType } from '../enums/activity.enum';
 import { ActivityCategoryResponseDto } from './activity-category-response.dto';
 import { ActivityCategoryQuestionChoiceResponseDto } from './activity-category-question-choice-response.dto';
 
@@ -13,7 +13,7 @@ export class ActivityCategoryQuestionResponseDto extends BaseResponseDto {
   text: string;
 
   @Expose()
-  textType: ExActTextType;
+  textType: ActivityTextType;
 
   @Expose()
   stageNumber: number;

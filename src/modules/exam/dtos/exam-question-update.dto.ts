@@ -7,10 +7,8 @@ import {
   IsArray,
   ArrayNotEmpty,
   ValidateNested,
-  IsEnum,
 } from 'class-validator';
 
-import { ExActTextType } from '#/common/enums/content.enum';
 import { ExamQuestionChoiceUpdateDto } from './exam-question-choice-update.dto';
 
 export class ExamQuestionUpdateDto {
@@ -27,10 +25,6 @@ export class ExamQuestionUpdateDto {
   @IsString()
   @IsOptional()
   text: string;
-
-  @IsEnum(ExActTextType)
-  @IsOptional()
-  textType: ExActTextType;
 
   @IsArray()
   @ArrayNotEmpty()

@@ -12,6 +12,12 @@ export enum ActivityCategoryType {
   Stage = 'stage',
 }
 
+export enum ActivityTextType {
+  Text = 'text',
+  Expression = 'expression',
+  Image = 'image',
+}
+
 export enum ActivityCategoryLevel {
   Easy = 1,
   Average,

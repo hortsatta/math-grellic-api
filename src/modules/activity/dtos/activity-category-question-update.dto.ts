@@ -11,7 +11,7 @@ import {
   IsEnum,
 } from 'class-validator';
 
-import { ExActTextType } from '#/common/enums/content.enum';
+import { ActivityTextType } from '../enums/activity.enum';
 import { ActivityCategoryQuestionChoiceUpdateDto } from './activity-category-question-choice-update.dto';
 
 export class ActivityCategoryQuestionUpdateDto {
@@ -29,9 +29,9 @@ export class ActivityCategoryQuestionUpdateDto {
   @IsOptional()
   text: string;
 
-  @IsEnum(ExActTextType)
+  @IsEnum(ActivityTextType)
   @IsOptional()
-  textType: ExActTextType;
+  textType: ActivityTextType;
 
   @IsInt()
   @IsPositive()

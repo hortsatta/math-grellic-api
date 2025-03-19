@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
-import { ExActTextType } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
+import { ActivityTextType } from '../enums/activity.enum';
 import { ActivityCategoryQuestion } from './activity-category-question.entity';
 import { ActivityCategoryCompletionQuestionAnswer } from './activity-category-completion-question-answer.entity';
 
@@ -15,10 +15,10 @@ export class ActivityCategoryQuestionChoice extends BaseEntity {
 
   @Column({
     type: 'enum',
-    enum: ExActTextType,
-    default: ExActTextType.Text,
+    enum: ActivityTextType,
+    default: ActivityTextType.Text,
   })
-  textType: ExActTextType;
+  textType: ActivityTextType;
 
   @Column({ type: 'boolean', default: false })
   isCorrect: boolean;
