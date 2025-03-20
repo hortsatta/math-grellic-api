@@ -8,6 +8,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+
 import { UserCreateDto } from './user-create.dto';
 import { UserRole } from '../enums/user.enum';
 

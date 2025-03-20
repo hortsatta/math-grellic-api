@@ -19,21 +19,6 @@ export abstract class UserUpdateDto {
   // @IsOptional()
   // email: string;
 
-  // @IsString()
-  // @MinLength(8)
-  // @MaxLength(100)
-  // @IsOptional()
-  // password: string;
-
-  // @IsString()
-  // @Length(11)
-  // @IsOptional()
-  // publicId: string;
-
-  // @IsEnum(UserRole)
-  // @IsOptional()
-  // role: UserRole;
-
   @IsUrl()
   @MaxLength(255)
   @IsOptional()

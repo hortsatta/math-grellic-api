@@ -11,8 +11,11 @@ export function UseLocalAuthGuard() {
   return UseGuards(new LocalAuthGuard());
 }
 
-export function UseJwtAuthGuard(roles?: UserRole | UserRole[]) {
-  return UseGuards(new JwtAuthGuard(roles));
+export function UseJwtAuthGuard(
+  roles?: UserRole | UserRole[],
+  checkUserOnly?: boolean,
+) {
+  return UseGuards(new JwtAuthGuard(roles, checkUserOnly));
 }
 
 export function UseJwtRefreshAuthGuard() {
@@ -22,7 +25,10 @@ export function UseJwtRefreshAuthGuard() {
 class LocalAuthGuard extends AuthGuard('local') {}
 
 class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private roles: UserRole | UserRole[]) {
+  constructor(
+    private roles: UserRole | UserRole[],
+    private checkUserOnly: boolean,
+  ) {
     super();
   }
 
@@ -30,6 +36,10 @@ class JwtAuthGuard extends AuthGuard('jwt') {
     const request = context.switchToHttp().getRequest();
     // Run the default JWT AuthGuard to extract user from JWT
     const canActivate = await super.canActivate(context);
+
+    if (this.checkUserOnly) {
+      return true;
+    }
 
     if (
       !canActivate ||

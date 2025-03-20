@@ -14,6 +14,7 @@ import { PerformanceModule } from './performance/performance.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { AnnouncementModule } from './announcement/announcement.module';
 import { UploadModule } from './upload/upload.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { UploadModule } from './upload/upload.module';
     ScheduleModule,
     AnnouncementModule,
     UploadModule,
+    AuditLogModule,
   ],
   controllers: [],
   providers: [],

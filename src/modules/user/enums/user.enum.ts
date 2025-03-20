@@ -6,6 +6,7 @@ export enum UserApprovalStatus {
 }
 
 export enum UserRole {
+  SuperAdmin = 'super-admin',
   Admin = 'admin',
   Teacher = 'teacher',
   Student = 'student',

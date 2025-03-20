@@ -21,10 +21,6 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
   }
 
   beforeInsert(event: InsertEvent<User>) {
-    // TEMP
-    // event.entity.approvalStatus = UserApprovalStatus.Approved;
-    // event.entity.approvalDate = dayjs().toDate();
-
     // Automatically set approval date if status is not pending,
     // else set date to null
     if (

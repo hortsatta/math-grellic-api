@@ -2,6 +2,7 @@ import { Expose, Transform, plainToInstance } from 'class-transformer';
 
 import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { UserRole, UserApprovalStatus } from '../enums/user.enum';
+import { AdminUserResponseDto } from './admin-user-response.dto';
 import { TeacherUserResponseDto } from './teacher-user-response.dto';
 import { StudentUserResponseDto } from './student-user-response.dto';
 
@@ -29,8 +30,7 @@ export class UserResponseDto extends BaseResponseDto {
 
   @Expose()
   @Transform(({ obj }) => {
-    // const {teacherUserAccount, studentUserAccount, adminUserAccount} = obj
-    const { teacherUserAccount, studentUserAccount } = obj;
+    const { adminUserAccount, teacherUserAccount, studentUserAccount } = obj;
 
     if (!!teacherUserAccount) {
       return plainToInstance(TeacherUserResponseDto, teacherUserAccount, {
@@ -40,7 +40,14 @@ export class UserResponseDto extends BaseResponseDto {
       return plainToInstance(StudentUserResponseDto, studentUserAccount, {
         excludeExtraneousValues: true,
       });
+    } else if (!!adminUserAccount) {
+      return plainToInstance(AdminUserResponseDto, adminUserAccount, {
+        excludeExtraneousValues: true,
+      });
     }
   })
-  userAccount: TeacherUserResponseDto | StudentUserResponseDto;
+  userAccount:
+    | AdminUserResponseDto
+    | TeacherUserResponseDto
+    | StudentUserResponseDto;
 }

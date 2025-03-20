@@ -1,7 +1,9 @@
-import { Column, Entity, OneToOne } from 'typeorm';
+import { Column, Entity, OneToMany, OneToOne } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { UserApprovalStatus, UserRole } from '#/modules/user/enums/user.enum';
+import { AuditLog } from '#/modules/audit-log/entities/audit-log.entity';
+import { AdminUserAccount } from './admin-user-account.entity';
 import { TeacherUserAccount } from './teacher-user-account.entity';
 import { StudentUserAccount } from './student-user-account.entity';
 
@@ -40,6 +42,16 @@ export class User extends BaseEntity {
 
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
+
+  @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
+  auditLogs: AuditLog[];
+
+  @OneToOne(
+    () => AdminUserAccount,
+    (adminUserAccount) => adminUserAccount.user,
+    { eager: true },
+  )
+  adminUserAccount: AdminUserAccount;
 
   @OneToOne(
     () => TeacherUserAccount,

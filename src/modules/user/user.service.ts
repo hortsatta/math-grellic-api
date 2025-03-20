@@ -23,13 +23,22 @@ import dayjs from '#/common/configs/dayjs.config';
 import { encryptPassword } from '#/common/helpers/password.helper';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generatePublicId } from '#/modules/user/helpers/user.helper';
+import {
+  AuditFeatureType,
+  AuditUserAction,
+} from '../audit-log/enums/audit-log.enum';
 import { MailerService } from '../mailer/mailer.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { User } from './entities/user.entity';
+import { AdminUserAccount } from './entities/admin-user-account.entity';
 import { TeacherUserAccount } from './entities/teacher-user-account.entity';
 import { StudentUserAccount } from './entities/student-user-account.entity';
+import { SuperAdminUserCreateDto } from './dtos/super-admin-user-create.dto';
+import { AdminUserCreateDto } from './dtos/admin-user-create.dto';
 import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
+import { AdminUserUpdateDto } from './dtos/admin-user-update.dto';
 import { TeacherUserUpdateDto } from './dtos/teacher-user-update.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
 import { UserApprovalDto } from './dtos/user-approval.dto';
@@ -40,12 +49,16 @@ export class UserService {
     private jwtService: JwtService,
     private configService: ConfigService,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(AdminUserAccount)
+    private readonly adminUserAccountRepo: Repository<AdminUserAccount>,
     @InjectRepository(TeacherUserAccount)
     private readonly teacherUserAccountRepo: Repository<TeacherUserAccount>,
     @InjectRepository(StudentUserAccount)
     private readonly studentUserAccountRepo: Repository<StudentUserAccount>,
     @Inject(MailerService)
     private readonly mailerService: MailerService,
+    @Inject(AuditLogService)
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async confirmUserRegisterEmail(token: string): Promise<boolean> {
@@ -81,7 +94,7 @@ export class UserService {
     let publicId = null;
     if (withPublicId) {
       const userCount = await this.userRepo.count({
-        where: { publicId: Not(IsNull()) },
+        where: { publicId: Not(IsNull()), role },
       });
 
       publicId = generatePublicId(userCount, role);
@@ -92,6 +105,7 @@ export class UserService {
       role,
       publicId,
     } as User);
+
     return this.userRepo.save(newUser);
   }
 
@@ -104,6 +118,150 @@ export class UserService {
       ...user,
       lastLoginAt: dayjs().toDate(),
     });
+  }
+
+  async getPaginationAdmins(
+    sort: string,
+    take: number = DEFAULT_TAKE,
+    skip: number = 0,
+    q?: string,
+    status?: UserApprovalStatus,
+  ): Promise<[AdminUserAccount[], number]> {
+    const generateWhere = () => {
+      let baseWhere:
+        | FindOptionsWhere<AdminUserAccount>
+        | FindOptionsWhere<AdminUserAccount>[] = {};
+
+      if (status?.trim()) {
+        baseWhere = {
+          ...baseWhere,
+          user: { approvalStatus: In(status.split(',')) },
+        };
+      }
+
+      if (q?.trim()) {
+        baseWhere = [
+          { ...baseWhere, firstName: ILike(`%${q}%`) },
+          { ...baseWhere, lastName: ILike(`%${q}%`) },
+          { ...baseWhere, middleName: ILike(`%${q}%`) },
+        ];
+      }
+
+      return baseWhere;
+    };
+
+    const generateOrder = (): FindOptionsOrder<AdminUserAccount> => {
+      const [sortBy, sortOrder] = sort?.split(',') || [undefined, 'ASC'];
+
+      if (!sortBy || sortBy === 'name') {
+        return {
+          lastName: sortOrder as FindOptionsOrderValue,
+          firstName: sortOrder as FindOptionsOrderValue,
+          middleName: sortOrder as FindOptionsOrderValue,
+        };
+      }
+
+      if (sortBy === 'publicId') {
+        return { user: { publicId: sortOrder as FindOptionsOrderValue } };
+      }
+
+      return { [sortBy]: sortOrder };
+    };
+
+    const results = await this.adminUserAccountRepo.findAndCount({
+      where: generateWhere(),
+      relations: { user: true },
+      order: generateOrder(),
+      skip,
+      take,
+    });
+
+    const admins = results[0].map((admin) => {
+      const { publicId, email, approvalStatus } = admin.user;
+
+      return {
+        ...admin,
+        user: { publicId, email, approvalStatus },
+      };
+    }) as AdminUserAccount[];
+
+    return [admins, results[1]];
+  }
+
+  async getPaginationTeachersByAdminId(
+    adminId: number,
+    sort: string,
+    take: number = DEFAULT_TAKE,
+    skip: number = 0,
+    q?: string,
+    status?: UserApprovalStatus,
+    own?: boolean,
+  ): Promise<[TeacherUserAccount[], number]> {
+    const generateWhere = () => {
+      let baseWhere:
+        | FindOptionsWhere<TeacherUserAccount>
+        | FindOptionsWhere<TeacherUserAccount>[] = {};
+
+      if (own) {
+        baseWhere = {
+          adminUser: { id: adminId },
+        };
+      }
+
+      if (status?.trim()) {
+        baseWhere = {
+          ...baseWhere,
+          user: { approvalStatus: In(status.split(',')) },
+        };
+      }
+
+      if (q?.trim()) {
+        baseWhere = [
+          { ...baseWhere, firstName: ILike(`%${q}%`) },
+          { ...baseWhere, lastName: ILike(`%${q}%`) },
+          { ...baseWhere, middleName: ILike(`%${q}%`) },
+        ];
+      }
+
+      return baseWhere;
+    };
+
+    const generateOrder = (): FindOptionsOrder<TeacherUserAccount> => {
+      const [sortBy, sortOrder] = sort?.split(',') || [undefined, 'ASC'];
+
+      if (!sortBy || sortBy === 'name') {
+        return {
+          lastName: sortOrder as FindOptionsOrderValue,
+          firstName: sortOrder as FindOptionsOrderValue,
+          middleName: sortOrder as FindOptionsOrderValue,
+        };
+      }
+
+      if (sortBy === 'publicId') {
+        return { user: { publicId: sortOrder as FindOptionsOrderValue } };
+      }
+
+      return { [sortBy]: sortOrder };
+    };
+
+    const results = await this.teacherUserAccountRepo.findAndCount({
+      where: generateWhere(),
+      relations: { user: true },
+      order: generateOrder(),
+      skip,
+      take,
+    });
+
+    const teachers = results[0].map((teacher) => {
+      const { publicId, email, approvalStatus } = teacher.user;
+
+      return {
+        ...teacher,
+        user: { publicId, email, approvalStatus },
+      };
+    }) as TeacherUserAccount[];
+
+    return [teachers, results[1]];
   }
 
   async getPaginationStudentsByTeacherId(
@@ -396,7 +554,31 @@ export class UserService {
     return this.studentUserAccountRepo.count({ where });
   }
 
-  async createTeacherUser(userDto: TeacherUserCreateDto): Promise<User> {
+  async createSuperAdminUser(userDto: SuperAdminUserCreateDto): Promise<User> {
+    // Abort if app has already a super admin user (only 1 is permitted)
+    const existingUser = await this.userRepo.findOne({
+      where: { role: UserRole.SuperAdmin },
+    });
+
+    if (!!existingUser)
+      throw new ConflictException('Super admin already registered');
+
+    const { password, ...moreUserDto } = userDto;
+    // Encrypt password; create and save user details
+    const encryptedPassword = await encryptPassword(password);
+
+    return this.create(
+      {
+        ...moreUserDto,
+        password: encryptedPassword,
+        approvalStatus: UserApprovalStatus.Approved,
+      },
+      UserRole.SuperAdmin,
+      true,
+    );
+  }
+
+  async createAdminUser(userDto: AdminUserCreateDto): Promise<User> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { email, password, profileImageUrl, approvalStatus, ...moreUserDto } =
       userDto;
@@ -411,10 +593,50 @@ export class UserService {
         email,
         password: encryptedPassword,
         profileImageUrl,
-        approvalStatus: UserApprovalStatus.Approved,
+        approvalStatus,
+      },
+      UserRole.Admin,
+      approvalStatus === UserApprovalStatus.Approved,
+    );
+    // Create and save admin user account
+    const adminUser = this.adminUserAccountRepo.create({
+      ...moreUserDto,
+      user: { id: user.id },
+    });
+    const newAdminUser = await this.adminUserAccountRepo.save(adminUser);
+    // Send email confirmation to user
+    await this.mailerService.sendUserRegisterConfirmation(
+      user.email,
+      adminUser.firstName,
+    );
+
+    // Dont audit log since app only has one super admin
+
+    return { ...user, adminUserAccount: newAdminUser };
+  }
+
+  async createTeacherUser(
+    userDto: TeacherUserCreateDto,
+    currentUserId?: number,
+  ): Promise<User> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { email, password, profileImageUrl, approvalStatus, ...moreUserDto } =
+      userDto;
+    // Check if email is existing, if true then cancel creation
+    const existingUser = await this.userRepo.findOne({ where: { email } });
+    if (!!existingUser) throw new ConflictException('Email is already taken');
+    // Encrypt password; create and save user details
+    const encryptedPassword = await encryptPassword(password);
+    // Create and save user base details
+    const user = await this.create(
+      {
+        email,
+        password: encryptedPassword,
+        profileImageUrl,
+        approvalStatus,
       },
       UserRole.Teacher,
-      true,
+      approvalStatus === UserApprovalStatus.Approved,
     );
     // Create and save teacher user account
     const teacherUser = this.teacherUserAccountRepo.create({
@@ -428,10 +650,25 @@ export class UserService {
       teacherUser.firstName,
     );
 
+    // Log creation
+    if (currentUserId) {
+      this.auditLogService.create(
+        {
+          actionName: AuditUserAction.registerUser,
+          featureId: user.id,
+          featureType: AuditFeatureType.user,
+        },
+        currentUserId,
+      );
+    }
+
     return { ...user, teacherUserAccount: newTeacherUser };
   }
 
-  async createStudentUser(userDto: StudentUserCreateDto): Promise<User> {
+  async createStudentUser(
+    userDto: StudentUserCreateDto,
+    currentUserId?: number,
+  ): Promise<User> {
     const {
       teacherId,
       email,
@@ -487,13 +724,80 @@ export class UserService {
       newStudentUser.firstName,
     );
 
+    // Log creation
+    if (currentUserId) {
+      this.auditLogService.create(
+        {
+          actionName: AuditUserAction.registerUser,
+          featureId: user.id,
+          featureType: AuditFeatureType.user,
+        },
+        currentUserId,
+      );
+    }
+
     return { ...user, studentUserAccount: { ...newStudentUser, teacherUser } };
+  }
+
+  async updateAdminUser(
+    id: number,
+    userDto: AdminUserUpdateDto,
+    currentUserId: number,
+  ): Promise<User> {
+    // TODO profile image
+    const { profileImageUrl, approvalStatus, ...moreUserDto } = userDto;
+    // Get existing user and corresponding admin user account
+    const user = await this.userRepo.findOne({
+      where: { adminUserAccount: { id } },
+    });
+    const adminUser = await this.adminUserAccountRepo.findOne({
+      where: { id },
+    });
+    // Return error if either the parent user or user user row does not exist
+    if (!user || !adminUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    let publicId = user.publicId;
+    if (approvalStatus !== user.approvalStatus) {
+      const userCount = await this.userRepo.count({
+        where: { publicId: Not(IsNull()) },
+      });
+
+      publicId = generatePublicId(userCount, user.role);
+    }
+
+    const updatedUser = await this.userRepo.save({
+      ...user,
+      publicId,
+      profileImageUrl,
+      approvalStatus,
+    });
+
+    const updatedAdminUser = await this.adminUserAccountRepo.save({
+      ...adminUser,
+      ...moreUserDto,
+    });
+
+    // Log update
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.updateUser,
+        featureId: user.id,
+        featureType: AuditFeatureType.user,
+      },
+      currentUserId,
+    );
+
+    return { ...updatedUser, adminUserAccount: updatedAdminUser };
   }
 
   async updateTeacherUser(
     id: number,
     userDto: TeacherUserUpdateDto,
+    currentUserId: number,
   ): Promise<User> {
+    // TODO profile image
     const { profileImageUrl, approvalStatus, ...moreUserDto } = userDto;
     // Get existing user and corresponding teacher user account
     const user = await this.userRepo.findOne({
@@ -522,10 +826,21 @@ export class UserService {
       profileImageUrl,
       approvalStatus,
     });
+
     const updatedTeacherUser = await this.teacherUserAccountRepo.save({
       ...teacherUser,
       ...moreUserDto,
     });
+
+    // Log update
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.updateUser,
+        featureId: user.id,
+        featureType: AuditFeatureType.user,
+      },
+      currentUserId,
+    );
 
     return { ...updatedUser, teacherUserAccount: updatedTeacherUser };
   }
@@ -533,6 +848,7 @@ export class UserService {
   async updateStudentUser(
     id: number,
     userDto: StudentUserUpdateDto,
+    currentUserId: number,
   ): Promise<User> {
     const { teacherId, profileImageUrl, approvalStatus, ...moreUserDto } =
       userDto;
@@ -574,10 +890,110 @@ export class UserService {
       publicId: teacherId,
     };
 
+    // Log update
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.updateUser,
+        featureId: user.id,
+        featureType: AuditFeatureType.user,
+      },
+      currentUserId,
+    );
+
     return {
       ...updatedUser,
       studentUserAccount: { ...updatedStudentUser, teacherUser },
     };
+  }
+
+  async deleteAdminByIdAndSuperAdminId(
+    adminId: number,
+    superAdminId: number,
+  ): Promise<boolean> {
+    const admin = await this.adminUserAccountRepo.findOne({
+      where: { id: adminId },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    await this.adminUserAccountRepo.delete({ id: admin.id });
+    const result = await this.userRepo.delete({ id: admin.user.id });
+
+    // Log student deletion
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.deleteUser,
+        featureId: admin.user.id,
+        featureType: AuditFeatureType.user,
+      },
+      superAdminId,
+    );
+
+    return !!result.affected;
+  }
+
+  async deleteTeacherByIdAndAdminId(
+    teacherId: number,
+    adminId: number,
+  ): Promise<boolean> {
+    const currentDateTime = dayjs();
+
+    const teacher = await this.teacherUserAccountRepo.findOne({
+      where: { id: teacherId },
+      relations: {
+        user: true,
+        lessons: { schedules: true },
+        exams: { schedules: true },
+      },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    const { lessons, exams } = teacher;
+    // Abort if teacher has upcoming lesson schedules
+    lessons.forEach((lesson) => {
+      const isUpcoming = lesson.schedules.some((s) =>
+        dayjs(s.startDate).isAfter(currentDateTime),
+      );
+
+      if (isUpcoming)
+        throw new NotFoundException(
+          'Teacher has an upcoming lesson. Cannot delete',
+        );
+    });
+    // Abort if teacher has upcoming exam schedules
+    exams.forEach((exam) => {
+      const isUpcoming = exam.schedules.some((s) =>
+        dayjs(s.startDate).isAfter(currentDateTime),
+      );
+
+      if (isUpcoming)
+        throw new NotFoundException(
+          'Teacher has an upcoming exam. Cannot delete',
+        );
+    });
+
+    await this.teacherUserAccountRepo.delete({ id: teacher.id });
+    const result = await this.userRepo.delete({ id: teacher.user.id });
+
+    // Log student deletion
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.deleteUser,
+        featureId: teacher.user.id,
+        featureType: AuditFeatureType.user,
+      },
+      adminId,
+    );
+
+    return !!result.affected;
   }
 
   async deleteStudentByIdAndTeacherId(
@@ -585,7 +1001,7 @@ export class UserService {
     teacherId: number,
   ): Promise<boolean> {
     const student = await this.studentUserAccountRepo.findOne({
-      where: { id: studentId, teacherUser: { id: teacherId } },
+      where: { id: studentId, teacherUser: { user: { id: teacherId } } },
       relations: {
         user: true,
         examCompletions: true,
@@ -610,65 +1026,24 @@ export class UserService {
 
     await this.studentUserAccountRepo.delete({ id: student.id });
     const result = await this.userRepo.delete({ id: student.user.id });
+
+    // Log student deletion
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.deleteUser,
+        featureId: student.user.id,
+        featureType: AuditFeatureType.user,
+      },
+      teacherId,
+    );
+
     return !!result.affected;
   }
-
-  async setStudentApprovalStatus(
-    studentId: number,
-    userApprovalDto: UserApprovalDto,
-    teacherId: number,
-  ): Promise<{
-    approvalStatus: User['approvalStatus'];
-    approvalDate: User['approvalDate'];
-  }> {
-    const { approvalStatus, approvalRejectReason } = userApprovalDto;
-
-    const user = await this.userRepo.findOne({
-      where: {
-        studentUserAccount: { id: studentId, teacherUser: { id: teacherId } },
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Student not found');
-    }
-
-    let publicId = user.publicId;
-    if (!publicId && approvalStatus === UserApprovalStatus.Approved) {
-      const userCount = await this.userRepo.count({
-        where: { publicId: Not(IsNull()), role: UserRole.Student },
-      });
-
-      publicId = generatePublicId(userCount, user.role);
-    }
-
-    const updatedUser = await this.userRepo.save({
-      ...user,
-      ...userApprovalDto,
-      publicId,
-    });
-
-    // Send a notification email to user
-    approvalStatus === UserApprovalStatus.Approved
-      ? this.mailerService.sendUserRegisterApproved(
-          user.email,
-          user.studentUserAccount.firstName,
-          publicId,
-        )
-      : this.mailerService.sendUserRegisterRejected(
-          approvalRejectReason || '',
-          user.email,
-          user.studentUserAccount.firstName,
-        );
-
-    return { approvalStatus, approvalDate: updatedUser.approvalDate };
-  }
-
-  // TODO admin
 
   async setTeacherApprovalStatus(
     teacherId: number,
     userApprovalDto: UserApprovalDto,
+    adminId: number,
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
@@ -710,6 +1085,82 @@ export class UserService {
           user.email,
           user.teacherUserAccount.firstName,
         );
+
+    // Log approval status
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.setApprovalStatus,
+        actionValue: approvalStatus,
+        featureId: user.id,
+        featureType: AuditFeatureType.user,
+      },
+      adminId,
+    );
+
+    return { approvalStatus, approvalDate: updatedUser.approvalDate };
+  }
+
+  async setStudentApprovalStatus(
+    studentId: number,
+    userApprovalDto: UserApprovalDto,
+    teacherId: number,
+  ): Promise<{
+    approvalStatus: User['approvalStatus'];
+    approvalDate: User['approvalDate'];
+  }> {
+    const { approvalStatus, approvalRejectReason } = userApprovalDto;
+
+    const user = await this.userRepo.findOne({
+      where: {
+        studentUserAccount: {
+          id: studentId,
+          teacherUser: { user: { id: teacherId } },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Student not found');
+    }
+
+    let publicId = user.publicId;
+    if (!publicId && approvalStatus === UserApprovalStatus.Approved) {
+      const userCount = await this.userRepo.count({
+        where: { publicId: Not(IsNull()), role: UserRole.Student },
+      });
+
+      publicId = generatePublicId(userCount, user.role);
+    }
+
+    const updatedUser = await this.userRepo.save({
+      ...user,
+      ...userApprovalDto,
+      publicId,
+    });
+
+    // Send a notification email to user
+    approvalStatus === UserApprovalStatus.Approved
+      ? this.mailerService.sendUserRegisterApproved(
+          user.email,
+          user.studentUserAccount.firstName,
+          publicId,
+        )
+      : this.mailerService.sendUserRegisterRejected(
+          approvalRejectReason || '',
+          user.email,
+          user.studentUserAccount.firstName,
+        );
+
+    // Log approval status
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.setApprovalStatus,
+        actionValue: approvalStatus,
+        featureId: user.id,
+        featureType: AuditFeatureType.user,
+      },
+      teacherId,
+    );
 
     return { approvalStatus, approvalDate: updatedUser.approvalDate };
   }

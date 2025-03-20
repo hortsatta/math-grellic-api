@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 import { User } from './user/entities/user.entity';
+import { AdminUserAccount } from './user/entities/admin-user-account.entity';
 import { TeacherUserAccount } from './user/entities/teacher-user-account.entity';
 import { StudentUserAccount } from './user/entities/student-user-account.entity';
 import { Lesson } from './lesson/entities/lesson.entity';
@@ -26,6 +27,7 @@ import { ActivityCategoryCompletion } from './activity/entities/activity-categor
 import { ActivityCategoryCompletionQuestionAnswer } from './activity/entities/activity-category-completion-question-answer.entity';
 import { MeetingSchedule } from './schedule/entities/meeting-schedule.entity';
 import { Announcement } from './announcement/entities/announcement.entity';
+import { AuditLog } from './audit-log/entities/audit-log.entity';
 
 @Module({
   imports: [
@@ -51,6 +53,7 @@ import { Announcement } from './announcement/entities/announcement.entity';
           namingStrategy: new SnakeNamingStrategy(),
           entities: [
             User,
+            AdminUserAccount,
             TeacherUserAccount,
             StudentUserAccount,
             Lesson,
@@ -73,6 +76,7 @@ import { Announcement } from './announcement/entities/announcement.entity';
             ActivityCategoryCompletionQuestionAnswer,
             MeetingSchedule,
             Announcement,
+            AuditLog,
           ],
           synchronize: process.env.NODE_ENV !== 'production',
           ssl,

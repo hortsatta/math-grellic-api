@@ -4,6 +4,7 @@ import dayjs from '#/common/configs/dayjs.config';
 import { UserRole } from '#/modules/user/enums/user.enum';
 
 const abbrvRoles = {
+  [UserRole.SuperAdmin]: 'SAD',
   [UserRole.Admin]: 'ADM',
   [UserRole.Teacher]: 'TEA',
   [UserRole.Student]: 'STU',

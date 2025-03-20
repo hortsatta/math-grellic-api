@@ -1,12 +1,21 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
+import { Activity } from '#/modules/activity/entities/activity.entity';
 import { MeetingSchedule } from '#/modules/schedule/entities/meeting-schedule.entity';
 import { Announcement } from '#/modules/announcement/entities/announcement.entity';
 import { User } from './user.entity';
 import { UserAccount as UserAccountEntity } from './user-account.entity';
 import { StudentUserAccount } from './student-user-account.entity';
+import { AdminUserAccount } from './admin-user-account.entity';
 
 @Entity()
 export class TeacherUserAccount extends UserAccountEntity {
@@ -38,6 +47,14 @@ export class TeacherUserAccount extends UserAccountEntity {
   @JoinColumn()
   user: User;
 
+  @ManyToOne(
+    () => AdminUserAccount,
+    (adminUserAccount) => adminUserAccount.teachers,
+    { nullable: true },
+  )
+  @JoinColumn()
+  adminUser: AdminUserAccount;
+
   @OneToMany(
     () => StudentUserAccount,
     (studentUserAccount) => studentUserAccount.teacherUser,
@@ -49,6 +66,9 @@ export class TeacherUserAccount extends UserAccountEntity {
 
   @OneToMany(() => Exam, (exam) => exam.teacher)
   exams: Exam[];
+
+  @OneToMany(() => Activity, (activity) => activity.teacher)
+  activity: Activity[];
 
   @OneToMany(
     () => MeetingSchedule,

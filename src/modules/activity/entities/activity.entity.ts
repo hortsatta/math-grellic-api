@@ -45,7 +45,7 @@ export class Activity extends BaseEntity {
 
   @ManyToOne(
     () => TeacherUserAccount,
-    (teacherUserAccount) => teacherUserAccount.exams,
+    (teacherUserAccount) => teacherUserAccount.activity,
   )
   @JoinColumn()
   teacher: TeacherUserAccount;

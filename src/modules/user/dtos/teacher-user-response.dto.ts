@@ -1,4 +1,5 @@
 import { Expose } from 'class-transformer';
+
 import { UserAccountResponseDto } from './user-account-response.dto';
 
 export class TeacherUserResponseDto extends UserAccountResponseDto {
