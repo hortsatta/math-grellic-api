@@ -285,9 +285,15 @@ export class UserController {
     );
   }
 
+  @Get(`${ADMIN_URL}${TEACHER_URL}/count`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  getTeacherCountByAdmin(@Query('status') status?: UserApprovalStatus) {
+    return this.userService.getTeacherCountByAdmin(status);
+  }
+
   @Patch(`${ADMIN_URL}${TEACHER_URL}/approve/:teacherId`)
   @UseJwtAuthGuard(UserRole.Admin)
-  approveTeacherById(
+  approveTeacherByAdminId(
     @CurrentUser() user: User,
     @Param('teacherId') teacherId: number,
     @Body() body: UserApprovalDto,
@@ -316,7 +322,7 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.SuperAdmin)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(AdminUserResponseDto)
-  getAdminsBySuperAdminId(
+  getAdminsBySuperAdmin(
     @Query('q') q?: string,
     @Query('status') status?: UserApprovalStatus,
     @Query('sort') sort?: string,
@@ -330,6 +336,25 @@ export class UserController {
       q,
       status,
     );
+  }
+
+  @Get(`${SUPER_ADMIN_URL}${ADMIN_URL}/list/all`)
+  @UseJwtAuthGuard(UserRole.SuperAdmin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(StudentUserResponseDto)
+  getAllAdminsBySuperAdmin(
+    @Query('ids') ids: string,
+    @Query('q') q: string,
+    @Query('status') status?: UserApprovalStatus,
+  ) {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.userService.getAdminsBySuperAdmin(transformedIds, q, status);
+  }
+
+  @Get(`${SUPER_ADMIN_URL}${ADMIN_URL}/count`)
+  @UseJwtAuthGuard(UserRole.SuperAdmin)
+  getAdminCountBySuperAdmin(@Query('status') status?: UserApprovalStatus) {
+    return this.userService.getAdminCountBySuperAdmin(status);
   }
 
   @Post(`${SUPER_ADMIN_URL}/register`)
@@ -347,6 +372,19 @@ export class UserController {
     @CurrentUser() user: User,
   ) {
     return this.userService.updateAdminUser(adminId, body, user.id);
+  }
+
+  @Patch(`${SUPER_ADMIN_URL}${ADMIN_URL}/approve/:adminId`)
+  @UseJwtAuthGuard(UserRole.SuperAdmin)
+  approveAdminBySuperAdmin(
+    @CurrentUser() user: User,
+    @Param('adminId') adminId: number,
+    @Body() body: UserApprovalDto,
+  ): Promise<{
+    approvalStatus: User['approvalStatus'];
+    approvalDate: User['approvalDate'];
+  }> {
+    return this.userService.setAdminApprovalStatus(adminId, body, user.id);
   }
 
   @Delete(`${SUPER_ADMIN_URL}${ADMIN_URL}/:adminId`)

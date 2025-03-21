@@ -67,7 +67,3 @@ export class User extends BaseEntity {
   )
   studentUserAccount: StudentUserAccount;
 }
-
-// @OneToOne(type => AdminProfile, profile => profile.user, { eager: true, cascade: true })
-// @JoinColumn()
-// adminProfile: AdminProfile;

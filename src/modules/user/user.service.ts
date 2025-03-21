@@ -346,6 +346,43 @@ export class UserService {
     return this.studentUserAccountRepo.find({ where });
   }
 
+  getAdminsBySuperAdmin(
+    adminIds?: number[],
+    q?: string,
+    status?: UserApprovalStatus,
+  ): Promise<AdminUserAccount[]> {
+    const generateWhere = () => {
+      const baseWhere: FindOptionsWhere<AdminUserAccount> = {
+        user: { approvalStatus: status || UserApprovalStatus.Approved },
+      };
+
+      if (adminIds?.length) {
+        return { ...baseWhere, id: In(adminIds) };
+      } else if (!!q?.trim()) {
+        return [
+          { firstName: ILike(`%${q}%`), ...baseWhere },
+          { lastName: ILike(`%${q}%`), ...baseWhere },
+          { middleName: ILike(`%${q}%`), ...baseWhere },
+        ];
+      }
+
+      return baseWhere;
+    };
+
+    return this.adminUserAccountRepo.find({
+      where: generateWhere(),
+      loadEagerRelations: false,
+      relations: { user: true },
+      select: {
+        user: {
+          publicId: true,
+          email: true,
+          approvalStatus: true,
+        },
+      },
+    });
+  }
+
   getStudentsByTeacherId(
     teacherId: number,
     studentIds?: number[],
@@ -538,6 +575,22 @@ export class UserService {
     return this.userRepo.findOne({
       where: { email },
     });
+  }
+
+  getAdminCountBySuperAdmin(status?: UserApprovalStatus): Promise<number> {
+    const where: FindOptionsWhere<AdminUserAccount> = {
+      user: { approvalStatus: status || UserApprovalStatus.Approved },
+    };
+
+    return this.adminUserAccountRepo.count({ where });
+  }
+
+  getTeacherCountByAdmin(status?: UserApprovalStatus): Promise<number> {
+    const where: FindOptionsWhere<TeacherUserAccount> = {
+      user: { approvalStatus: status || UserApprovalStatus.Approved },
+    };
+
+    return this.teacherUserAccountRepo.count({ where });
   }
 
   getStudentCountByTeacherId(
@@ -1038,6 +1091,66 @@ export class UserService {
     );
 
     return !!result.affected;
+  }
+
+  async setAdminApprovalStatus(
+    adminId: number,
+    userApprovalDto: UserApprovalDto,
+    superAdminId: number,
+  ): Promise<{
+    approvalStatus: User['approvalStatus'];
+    approvalDate: User['approvalDate'];
+  }> {
+    const { approvalStatus, approvalRejectReason } = userApprovalDto;
+
+    const user = await this.userRepo.findOne({
+      where: { adminUserAccount: { id: adminId } },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    let publicId = user.publicId;
+    if (!publicId && approvalStatus === UserApprovalStatus.Approved) {
+      const userCount = await this.userRepo.count({
+        where: { publicId: Not(IsNull()), role: UserRole.Admin },
+      });
+
+      publicId = generatePublicId(userCount, user.role);
+    }
+
+    const updatedUser = await this.userRepo.save({
+      ...user,
+      ...userApprovalDto,
+      publicId,
+    });
+
+    // Send a notification email to user
+    approvalStatus === UserApprovalStatus.Approved
+      ? this.mailerService.sendUserRegisterApproved(
+          user.email,
+          user.adminUserAccount.firstName,
+          publicId,
+        )
+      : this.mailerService.sendUserRegisterRejected(
+          approvalRejectReason || '',
+          user.email,
+          user.adminUserAccount.firstName,
+        );
+
+    // Log approval status
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.setApprovalStatus,
+        actionValue: approvalStatus,
+        featureId: user.id,
+        featureType: AuditFeatureType.user,
+      },
+      superAdminId,
+    );
+
+    return { approvalStatus, approvalDate: updatedUser.approvalDate };
   }
 
   async setTeacherApprovalStatus(
