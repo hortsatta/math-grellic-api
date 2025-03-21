@@ -880,13 +880,16 @@ export class ExamService {
       ],
       relations: {
         schedules: { students: true },
+        completions: { student: true },
       },
       order: { schedules: { startDate: 'ASC' } },
     });
 
     const transformedExams = exams.map((exam) => {
       const schedules = exam.schedules.filter((schedule) =>
-        schedule.students.some((s) => s.id === studentId),
+        schedule.students.some((s) => {
+          return s.id === studentId;
+        }),
       );
 
       return {
@@ -921,6 +924,7 @@ export class ExamService {
         schedules: { students: true },
         completions: {
           questionAnswers: { question: true, selectedQuestionChoice: true },
+          student: true,
         },
       },
       order: { schedules: { startDate: 'ASC' } },
@@ -928,6 +932,13 @@ export class ExamService {
 
     if (!exam || !teacher) {
       throw new NotFoundException('Exam not found');
+    }
+
+    // Filter completions that belong to current student
+    if (exam.completions.length) {
+      exam.completions = exam.completions.filter(
+        (com) => com.student.id === studentId,
+      );
     }
 
     if (noSchedules) {

@@ -134,12 +134,17 @@ export class ExamGateway {
         coveredLessons: true,
         questions: { choices: true },
         schedules: { students: true },
-        completions: { questionAnswers: true },
+        completions: { questionAnswers: true, student: true },
       },
     });
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }
+
+    // Filter exam completions that belong to current student only
+    exam.completions = exam.completions.filter(
+      (com) => com.student.id === studentId,
+    );
 
     // Check if exam is ongoing, if false then return null
     // Student should only take ongoing exams

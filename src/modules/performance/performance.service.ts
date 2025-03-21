@@ -302,10 +302,11 @@ export class PerformanceService {
     student: StudentUserAccount,
     otherStudents: StudentUserAccount[],
   ) {
+    const currentDateTime = dayjs().toDate();
+
     const allExams = await this.examService.getAllByStudentId(student.id);
 
     const availableExams = allExams.filter((exam) => {
-      const currentDateTime = dayjs().toDate();
       const isAvailable = exam.schedules.some(
         (schedule) =>
           dayjs(schedule.startDate).isBefore(currentDateTime) ||
@@ -328,12 +329,33 @@ export class PerformanceService {
       (ec) => ec.score < ec.exam.passingPoints,
     ).length;
 
-    const examsExpiredCount = availableExams.filter(
-      (exam) => !examCompletions.find((ec) => ec.exam.id === exam.id),
-    ).length;
+    const examsExpiredCount = availableExams.filter((exam) => {
+      const isDone = exam.schedules.every((schedule) =>
+        dayjs(schedule.endDate).isSameOrBefore(currentDateTime),
+      );
+
+      const hasCompletion = !!examCompletions.find(
+        (ec) => ec.exam.id === exam.id,
+      );
+
+      return isDone && !hasCompletion;
+    }).length;
 
     const overallExamCompletionPercent = (() => {
-      const value = (availableExams.length / allExams.length) * 100;
+      const ongoingExamsCount = availableExams.filter((exam) => {
+        const isOngoing = exam.schedules.some((schedule) =>
+          dayjs(schedule.endDate).isAfter(currentDateTime),
+        );
+
+        const hasCompletion = !!examCompletions.find(
+          (ec) => ec.exam.id === exam.id,
+        );
+
+        return isOngoing && !hasCompletion;
+      }).length;
+
+      const value =
+        ((availableExams.length - ongoingExamsCount) / allExams.length) * 100;
       return +value.toFixed(2);
     })();
 
@@ -1090,7 +1112,7 @@ export class PerformanceService {
         user: true,
         teacherUser: true,
         lessonCompletions: { lesson: true },
-        activityCompletions: { activityCategory: true },
+        activityCompletions: { activityCategory: { activity: true } },
         examCompletions: { exam: true },
       },
       select: {
@@ -1117,7 +1139,7 @@ export class PerformanceService {
       relations: {
         lessonCompletions: { lesson: true },
         activityCompletions: { activityCategory: { activity: true } },
-        examCompletions: true,
+        examCompletions: { exam: true },
       },
     });
 
@@ -1265,11 +1287,33 @@ export class PerformanceService {
       throw new NotFoundException('Student not found');
     }
 
-    return this.examService.getOneBySlugAndStudentId(
+    const exam = await this.examService.getOneBySlugAndStudentId(
       slug,
       student.id,
-      true,
-    ) as Promise<Exam>;
+    );
+
+    // Remove questions and answers from completion if current exam is ongoing
+    if (exam.schedules.length) {
+      const isNotDone = exam.schedules.some((schedule) => {
+        const currentDate = dayjs();
+        const startDate = dayjs(schedule.startDate);
+        const endDate = dayjs(schedule.endDate);
+
+        return (
+          startDate.isAfter(currentDate) ||
+          currentDate.isBetween(startDate, endDate, null, '[]')
+        );
+      });
+
+      if (isNotDone) {
+        exam.completions = exam.completions.map((com) => ({
+          ...com,
+          questionAnswers: [],
+        }));
+      }
+    }
+
+    return exam as Exam;
   }
 
   async getStudentActivityWithCompletionsBySlugAndStudentId(
