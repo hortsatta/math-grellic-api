@@ -65,7 +65,6 @@ export class ExamService {
   stripHtml(
     html: string,
     onEmpty?: () => void,
-    onInvalidQuestion?: () => void,
     onInvalidImage?: () => void,
   ): string {
     const { result } = stringStripHtml(html || '', {
@@ -84,10 +83,6 @@ export class ExamService {
                 value = tag.attributes.find(
                   (attr) => attr.name === 'value',
                 )?.value;
-
-                if (!value?.trim().length) {
-                  onInvalidQuestion && onInvalidQuestion();
-                }
               }
 
               rangesArr.push(deleteFrom || 0, deleteTo || undefined, value);
@@ -131,9 +126,6 @@ export class ExamService {
           throw new BadRequestException('Question is invalid');
         },
         () => {
-          throw new BadRequestException('An equation from a question is empty');
-        },
-        () => {
           throw new BadRequestException('An image from a question is invalid');
         },
       );
@@ -144,9 +136,6 @@ export class ExamService {
           choice.text,
           () => {
             throw new BadRequestException('Choice is invalid');
-          },
-          () => {
-            throw new BadRequestException('An equation from a choice is empty');
           },
           () => {
             throw new BadRequestException('An image from a choice is invalid');
