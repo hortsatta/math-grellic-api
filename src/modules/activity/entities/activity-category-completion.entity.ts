@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
 } from 'typeorm';
@@ -29,6 +30,7 @@ export class ActivityCategoryCompletion extends BaseEntity {
       onDelete: 'CASCADE',
     },
   )
+  @JoinColumn()
   activityCategory: ActivityCategory;
 
   @OneToMany(
@@ -43,5 +45,6 @@ export class ActivityCategoryCompletion extends BaseEntity {
     () => StudentUserAccount,
     (studentUserAccount) => studentUserAccount.activityCompletions,
   )
+  @JoinColumn()
   student: StudentUserAccount;
 }

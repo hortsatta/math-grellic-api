@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, OneToMany, OneToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { ActivityCategoryLevel } from '../enums/activity.enum';
@@ -26,6 +33,7 @@ export class ActivityCategory extends BaseEntity {
   @ManyToOne(() => Activity, (activity) => activity.categories, {
     onDelete: 'CASCADE',
   })
+  @JoinColumn()
   activity: Activity;
 
   @OneToMany(

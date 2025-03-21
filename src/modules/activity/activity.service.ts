@@ -248,7 +248,7 @@ export class ActivityService {
         teacher: { id: teacherId },
       },
       relations: {
-        categories: { completions: true },
+        categories: { completions: { student: true } },
       },
     });
 
@@ -1061,7 +1061,7 @@ export class ActivityService {
 
         return {
           ...cat,
-          completions: !!completions.length ? completions[0] : [],
+          completions: !!completions.length ? [completions[0]] : [],
         } as ActivityCategory;
       });
 
@@ -1088,7 +1088,7 @@ export class ActivityService {
 
         return {
           ...cat,
-          completions: !!completions.length ? completions[0] : [],
+          completions: !!completions.length ? [completions[0]] : [],
         } as ActivityCategory;
       });
 
@@ -1121,7 +1121,7 @@ export class ActivityService {
         ? [
             {
               ...targetCategory,
-              completions: !!completions.length ? completions[0] : [],
+              completions: !!completions.length ? [completions[0]] : [],
             } as ActivityCategory,
           ]
         : [];
