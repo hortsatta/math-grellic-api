@@ -304,18 +304,6 @@ export class UserController {
     return this.userService.setTeacherApprovalStatus(teacherId, body, user.id);
   }
 
-  @Post(`${ADMIN_URL}/register`)
-  @UseJwtAuthGuard(UserRole.SuperAdmin)
-  @UseSerializeInterceptor(UserResponseDto)
-  registerAdmin(@Body() body: AdminUserCreateDto): Promise<User> {
-    return this.userService.createAdminUser({
-      ...body,
-      // TEMP
-      // approvalStatus: UserApprovalStatus.MailPending,
-      approvalStatus: UserApprovalStatus.Approved,
-    });
-  }
-
   // SUPER ADMIN
 
   @Get(`${SUPER_ADMIN_URL}${ADMIN_URL}/list`)
@@ -357,10 +345,28 @@ export class UserController {
     return this.userService.getAdminCountBySuperAdmin(status);
   }
 
+  @Get(`${SUPER_ADMIN_URL}${ADMIN_URL}/:adminId`)
+  @UseJwtAuthGuard(UserRole.SuperAdmin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(AdminUserResponseDto)
+  getAdminByPublicIdAndSuperAdmin(@Param('adminId') adminId: number) {
+    return this.userService.getAdminByIdAndSuperAdmin(adminId);
+  }
+
   @Post(`${SUPER_ADMIN_URL}/register`)
   @UseSerializeInterceptor(UserResponseDto)
   registerSuperAdmin(@Body() body: SuperAdminUserCreateDto): Promise<User> {
     return this.userService.createSuperAdminUser(body);
+  }
+
+  @Post(`${SUPER_ADMIN_URL}${ADMIN_URL}/register`)
+  @UseJwtAuthGuard(UserRole.SuperAdmin)
+  @UseSerializeInterceptor(UserResponseDto)
+  registerAdminBySuperAdmin(@Body() body: AdminUserCreateDto): Promise<User> {
+    return this.userService.createAdminUser({
+      ...body,
+      approvalStatus: UserApprovalStatus.MailPending,
+    });
   }
 
   @Patch(`${SUPER_ADMIN_URL}${ADMIN_URL}/:adminId`)

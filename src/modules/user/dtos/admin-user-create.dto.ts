@@ -12,11 +12,6 @@ import { UserRole } from '../enums/user.enum';
 import { UserCreateDto } from './user-create.dto';
 
 export class AdminUserCreateDto extends UserCreateDto {
-  @IsString()
-  @MinLength(8)
-  @MaxLength(100)
-  password: string;
-
   @IsEnum(UserRole)
   @Equals(UserRole.Admin)
   @IsOptional()

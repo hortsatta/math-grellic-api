@@ -427,6 +427,31 @@ export class UserService {
     });
   }
 
+  async getAdminByIdAndSuperAdmin(adminId: number) {
+    const admin = await this.adminUserAccountRepo.findOne({
+      where: {
+        id: adminId,
+      },
+      loadEagerRelations: false,
+      relations: {
+        user: true,
+      },
+      select: {
+        user: {
+          publicId: true,
+          email: true,
+          approvalStatus: true,
+        },
+      },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    return admin;
+  }
+
   async getStudentByIdAndTeacherId(studentId: number, teacherId: number) {
     const student = await this.studentUserAccountRepo.findOne({
       where: {
@@ -633,18 +658,14 @@ export class UserService {
 
   async createAdminUser(userDto: AdminUserCreateDto): Promise<User> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { email, password, profileImageUrl, approvalStatus, ...moreUserDto } =
-      userDto;
+    const { email, profileImageUrl, approvalStatus, ...moreUserDto } = userDto;
     // Check if email is existing, if true then cancel creation
     const existingUser = await this.userRepo.findOne({ where: { email } });
     if (!!existingUser) throw new ConflictException('Email is already taken');
-    // Encrypt password; create and save user details
-    const encryptedPassword = await encryptPassword(password);
     // Create and save user base details
     const user = await this.create(
       {
         email,
-        password: encryptedPassword,
         profileImageUrl,
         approvalStatus,
       },
@@ -661,6 +682,7 @@ export class UserService {
     await this.mailerService.sendUserRegisterConfirmation(
       user.email,
       adminUser.firstName,
+      true,
     );
 
     // Dont audit log since app only has one super admin

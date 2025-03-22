@@ -14,12 +14,19 @@ export class MailerService {
     private readonly mailerService: NestMailerService,
   ) {}
 
-  async sendUserRegisterConfirmation(email: string, firstName?: string) {
+  async sendUserRegisterConfirmation(
+    email: string,
+    firstName?: string,
+    isRegisteredBySuperior?: boolean,
+  ) {
     const token = this.jwtService.sign({ email }, { expiresIn: '1d' });
+    const endpoint = isRegisteredBySuperior
+      ? '/user/register/confirm/last-step?token='
+      : '/user/register/confirm?token=';
 
     const confirmationLink = `${this.configService.get<string>(
       'WEB_APP_BASE_URL',
-    )}/user/register/confirm?token=${token}`;
+    )}${endpoint}${token}`;
 
     try {
       await this.mailerService.sendMail({
