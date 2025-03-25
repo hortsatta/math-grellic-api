@@ -12,7 +12,7 @@ import {
 import { Type } from 'class-transformer';
 
 import dayjs from '#/common/configs/dayjs.config';
-import { UserApprovalStatus, UserGender } from '../enums/user.enum';
+import { UserGender } from '../enums/user.enum';
 
 export abstract class UserCreateDto {
   @IsEmail()
@@ -23,10 +23,6 @@ export abstract class UserCreateDto {
   @MaxLength(255)
   @IsOptional()
   profileImageUrl: string;
-
-  @IsEnum(UserApprovalStatus)
-  @IsOptional()
-  approvalStatus: UserApprovalStatus;
 
   @IsString()
   @MaxLength(50)

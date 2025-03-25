@@ -197,12 +197,8 @@ export class UserController {
     @CurrentUser() user: User,
   ): Promise<User> {
     return this.userService.createTeacherUser(
-      {
-        ...body,
-        // TEMP
-        // approvalStatus: UserApprovalStatus.MailPending,
-        approvalStatus: UserApprovalStatus.Approved,
-      },
+      body,
+      UserApprovalStatus.MailPending,
       user?.id,
     );
   }
@@ -227,12 +223,8 @@ export class UserController {
     @CurrentUser() user: User,
   ): Promise<User> {
     return this.userService.createStudentUser(
-      {
-        ...body,
-        // TEMP
-        // approvalStatus: UserApprovalStatus.MailPending,
-        approvalStatus: UserApprovalStatus.Pending,
-      },
+      body,
+      UserApprovalStatus.MailPending,
       user?.id,
     );
   }
@@ -385,10 +377,10 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.SuperAdmin)
   @UseSerializeInterceptor(UserResponseDto)
   registerAdminBySuperAdmin(@Body() body: AdminUserCreateDto): Promise<User> {
-    return this.userService.createAdminUser({
-      ...body,
-      approvalStatus: UserApprovalStatus.MailPending,
-    });
+    return this.userService.createAdminUser(
+      body,
+      UserApprovalStatus.MailPending,
+    );
   }
 
   @Patch(`${SUPER_ADMIN_URL}${ADMIN_URL}/:adminId`)

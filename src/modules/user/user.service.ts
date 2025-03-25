@@ -62,6 +62,28 @@ export class UserService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
+  async sendUserRegisterEmailConfirmation(
+    email: string,
+    firstName?: string,
+    isRegisteredBySuperior?: boolean,
+  ): Promise<void> {
+    try {
+      // Send email confirmation to user
+      await this.mailerService.sendUserRegisterConfirmation(
+        email,
+        firstName,
+        isRegisteredBySuperior,
+      );
+    } catch (error) {
+      // If Request time like error, then send again
+      await this.mailerService.sendUserRegisterConfirmation(
+        email,
+        firstName,
+        isRegisteredBySuperior,
+      );
+    }
+  }
+
   async validateUserRegistrationToken(token: string): Promise<boolean> {
     try {
       const payload = this.jwtService.verify(token, {
@@ -84,14 +106,17 @@ export class UserService {
 
     const user = await this.findOneByEmail(payload.email);
 
-    // TEMP
-    // if (!user || payload.isFinal || user.approvalStatus === UserApprovalStatus.Rejected) {
-    //   throw new BadRequestException('Cannot confirm email');
-    // }
+    if (
+      !user ||
+      payload.isFinal ||
+      user.approvalStatus === UserApprovalStatus.Rejected
+    ) {
+      throw new BadRequestException('Cannot confirm email');
+    }
 
-    // if (user.approvalStatus !== UserApprovalStatus.MailPending) {
-    //   throw new BadRequestException('Email already confirmed');
-    // }
+    if (user.approvalStatus !== UserApprovalStatus.MailPending) {
+      throw new BadRequestException('Email already confirmed');
+    }
 
     await this.userRepo.save({
       ...user,
@@ -153,8 +178,8 @@ export class UserService {
           approvalStatusResult = await this.setStudentApprovalStatus(
             user.studentUserAccount?.id,
             userApprovalDto,
-            user.id,
             user.studentUserAccount?.teacherUser?.user?.id,
+            user.id,
             password,
           );
           break;
@@ -760,9 +785,11 @@ export class UserService {
     );
   }
 
-  async createAdminUser(userDto: AdminUserCreateDto): Promise<User> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { email, profileImageUrl, approvalStatus, ...moreUserDto } = userDto;
+  async createAdminUser(
+    userDto: AdminUserCreateDto,
+    approvalStatus: UserApprovalStatus,
+  ): Promise<User> {
+    const { email, profileImageUrl, ...moreUserDto } = userDto;
     // Check if email is existing, if true then cancel creation
     const existingUser = await this.userRepo.findOne({ where: { email } });
     if (!!existingUser) throw new ConflictException('Email is already taken');
@@ -786,7 +813,7 @@ export class UserService {
     });
     const newAdminUser = await this.adminUserAccountRepo.save(adminUser);
     // Send email confirmation to user
-    await this.mailerService.sendUserRegisterConfirmation(
+    await this.sendUserRegisterEmailConfirmation(
       user.email,
       adminUser.firstName,
       true,
@@ -799,16 +826,17 @@ export class UserService {
 
   async createTeacherUser(
     userDto: TeacherUserCreateDto,
+    approvalStatus: UserApprovalStatus,
     currentUserId?: number,
   ): Promise<User> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { email, password, profileImageUrl, approvalStatus, ...moreUserDto } =
-      userDto;
+    const { email, password, profileImageUrl, ...moreUserDto } = userDto;
     // Check if email is existing, if true then cancel creation
     const existingUser = await this.userRepo.findOne({ where: { email } });
     if (!!existingUser) throw new ConflictException('Email is already taken');
-    // Encrypt password; create and save user details
-    const encryptedPassword = await encryptPassword(password);
+    // Encrypt password, use temp password if is registered by admin -- check using currentUserId
+    const encryptedPassword = await encryptPassword(
+      currentUserId != null ? 't3mp0r4ry_p4ssw0rd' : password,
+    );
     // Create and save user base details
     const user = await this.create(
       {
@@ -827,9 +855,10 @@ export class UserService {
     });
     const newTeacherUser = await this.teacherUserAccountRepo.save(teacherUser);
     // Send email confirmation to user
-    await this.mailerService.sendUserRegisterConfirmation(
+    await this.sendUserRegisterEmailConfirmation(
       user.email,
       teacherUser.firstName,
+      currentUserId != null,
     );
 
     // Log creation
@@ -849,16 +878,11 @@ export class UserService {
 
   async createStudentUser(
     userDto: StudentUserCreateDto,
+    approvalStatus: UserApprovalStatus,
     currentUserId?: number,
   ): Promise<User> {
-    const {
-      teacherId,
-      email,
-      password,
-      profileImageUrl,
-      approvalStatus,
-      ...moreUserDto
-    } = userDto;
+    const { teacherId, email, password, profileImageUrl, ...moreUserDto } =
+      userDto;
 
     const assignedTeacherUser = await this.userRepo.findOne({
       where: { publicId: teacherId },
@@ -878,8 +902,10 @@ export class UserService {
     // Check if email is existing, if true then cancel creation
     const existingUser = await this.userRepo.findOne({ where: { email } });
     if (!!existingUser) throw new ConflictException('Email is already taken');
-    // Encrypt password; create and save user details
-    const encryptedPassword = await encryptPassword(password);
+    // Encrypt password, use temp password if is registered by teacher -- check using currentUserId
+    const encryptedPassword = await encryptPassword(
+      currentUserId != null ? 't3mp0r4ry_p4ssw0rd' : password,
+    );
     // Create and save user base details
     const user = await this.create(
       {
@@ -900,10 +926,11 @@ export class UserService {
 
     const newStudentUser = await this.studentUserAccountRepo.save(studentUser);
     const teacherUser = { ...newStudentUser.teacherUser, publicId: teacherId };
-    // Send email confirmation to user
-    await this.mailerService.sendUserRegisterConfirmation(
+
+    await this.sendUserRegisterEmailConfirmation(
       user.email,
       newStudentUser.firstName,
+      currentUserId != null,
     );
 
     // Log creation
@@ -927,7 +954,7 @@ export class UserService {
     currentUserId: number,
   ): Promise<User> {
     // TODO profile image
-    const { profileImageUrl, approvalStatus, ...moreUserDto } = userDto;
+    const { profileImageUrl, ...moreUserDto } = userDto;
     // Get existing user and corresponding admin user account
     const user = await this.userRepo.findOne({
       where: { adminUserAccount: { id } },
@@ -940,20 +967,9 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    let publicId = user.publicId;
-    if (approvalStatus !== user.approvalStatus) {
-      const userCount = await this.userRepo.count({
-        where: { publicId: Not(IsNull()) },
-      });
-
-      publicId = generatePublicId(userCount, user.role);
-    }
-
     const updatedUser = await this.userRepo.save({
       ...user,
-      publicId,
       profileImageUrl,
-      approvalStatus,
     });
 
     const updatedAdminUser = await this.adminUserAccountRepo.save({
@@ -980,7 +996,7 @@ export class UserService {
     currentUserId: number,
   ): Promise<User> {
     // TODO profile image
-    const { profileImageUrl, approvalStatus, ...moreUserDto } = userDto;
+    const { profileImageUrl, ...moreUserDto } = userDto;
     // Get existing user and corresponding teacher user account
     const user = await this.userRepo.findOne({
       where: { teacherUserAccount: { id } },
@@ -993,20 +1009,9 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    let publicId = user.publicId;
-    if (approvalStatus !== user.approvalStatus) {
-      const userCount = await this.userRepo.count({
-        where: { publicId: Not(IsNull()) },
-      });
-
-      publicId = generatePublicId(userCount, user.role);
-    }
-
     const updatedUser = await this.userRepo.save({
       ...user,
-      publicId,
       profileImageUrl,
-      approvalStatus,
     });
 
     const updatedTeacherUser = await this.teacherUserAccountRepo.save({
@@ -1032,8 +1037,7 @@ export class UserService {
     userDto: StudentUserUpdateDto,
     currentUserId: number,
   ): Promise<User> {
-    const { teacherId, profileImageUrl, approvalStatus, ...moreUserDto } =
-      userDto;
+    const { teacherId, profileImageUrl, ...moreUserDto } = userDto;
     // Get existing user and corresponding student user account
     const user = await this.userRepo.findOne({
       where: { studentUserAccount: { id } },
@@ -1046,20 +1050,9 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    let publicId = user.publicId;
-    if (!publicId && approvalStatus !== user.approvalStatus) {
-      const userCount = await this.userRepo.count({
-        where: { publicId: Not(IsNull()) },
-      });
-
-      publicId = generatePublicId(userCount, user.role);
-    }
-
     const updatedUser = await this.userRepo.save({
       ...user,
-      publicId,
       profileImageUrl,
-      approvalStatus,
     });
 
     const updatedStudentUser = await this.studentUserAccountRepo.save({
@@ -1249,15 +1242,20 @@ export class UserService {
 
       publicId = generatePublicId(userCount, user.role);
     }
-    // If password, then encrypt and save it
-    const encryptedPassword = await encryptPassword(password);
 
-    const updatedUser = await this.userRepo.save({
+    const updatedUserData = {
       ...user,
       ...userApprovalDto,
       publicId,
-      password: encryptedPassword,
-    });
+    };
+
+    // If password, then encrypt and save it
+    if (password != null) {
+      const encryptedPassword = await encryptPassword(password);
+      updatedUserData.password = encryptedPassword;
+    }
+
+    const updatedUser = await this.userRepo.save(updatedUserData);
 
     // Send a notification email to user
     approvalStatus === UserApprovalStatus.Approved
@@ -1313,15 +1311,20 @@ export class UserService {
 
       publicId = generatePublicId(userCount, user.role);
     }
-    // If password, then encrypt and save it
-    const encryptedPassword = await encryptPassword(password);
 
-    const updatedUser = await this.userRepo.save({
+    const updatedUserData = {
       ...user,
       ...userApprovalDto,
       publicId,
-      password: encryptedPassword,
-    });
+    };
+
+    // If password, then encrypt and save it
+    if (password != null) {
+      const encryptedPassword = await encryptPassword(password);
+      updatedUserData.password = encryptedPassword;
+    }
+
+    const updatedUser = await this.userRepo.save(updatedUserData);
 
     // Send a notification email to user
     approvalStatus === UserApprovalStatus.Approved
@@ -1383,15 +1386,20 @@ export class UserService {
 
       publicId = generatePublicId(userCount, user.role);
     }
-    // If password, then encrypt and save it
-    const encryptedPassword = await encryptPassword(password);
 
-    const updatedUser = await this.userRepo.save({
+    const updatedUserData = {
       ...user,
       ...userApprovalDto,
       publicId,
-      password: encryptedPassword,
-    });
+    };
+
+    // If password, then encrypt and save it
+    if (password != null) {
+      const encryptedPassword = await encryptPassword(password);
+      updatedUserData.password = encryptedPassword;
+    }
+
+    const updatedUser = await this.userRepo.save(updatedUserData);
 
     // Send a notification email to user
     approvalStatus === UserApprovalStatus.Approved
