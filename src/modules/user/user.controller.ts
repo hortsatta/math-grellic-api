@@ -18,6 +18,7 @@ import { User } from './entities/user.entity';
 import { AdminUserAccount } from './entities/admin-user-account.entity';
 import { TeacherUserAccount } from './entities/teacher-user-account.entity';
 import { StudentUserAccount } from './entities/student-user-account.entity';
+import { UserLastStepRegisterDto } from './dtos/user-last-step-register.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
 import { UserApprovalDto } from './dtos/user-approval.dto';
 import { SuperAdminUserCreateDto } from './dtos/super-admin-user-create.dto';
@@ -48,9 +49,25 @@ export class UserController {
     return user;
   }
 
+  @Get('/register/confirm/validate')
+  validateUserRegistrationToken(
+    @Query('token') token: string,
+  ): Promise<boolean> {
+    return this.userService.validateUserRegistrationToken(token);
+  }
+
   @Get('/register/confirm')
-  confirmUserRegisterEmail(@Query('token') token: string): Promise<boolean> {
-    return this.userService.confirmUserRegisterEmail(token);
+  confirmUserRegistrationEmail(
+    @Query('token') token: string,
+  ): Promise<boolean> {
+    return this.userService.confirmUserRegistrationEmail(token);
+  }
+
+  @Post('/register/confirm/last-step')
+  confirmUserRegistrationLastStep(
+    @Body() body: UserLastStepRegisterDto,
+  ): Promise<{ publicId: string }> {
+    return this.userService.confirmUserRegistrationLastStep(body);
   }
 
   // TEACHERS
@@ -87,7 +104,7 @@ export class UserController {
     @CurrentUser() user: User,
     @Query('ids') ids: string,
     @Query('q') q: string,
-    @Query('status') status?: UserApprovalStatus,
+    @Query('status') status?: string | UserApprovalStatus,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -154,7 +171,12 @@ export class UserController {
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
   }> {
-    return this.userService.setStudentApprovalStatus(studentId, body, user.id);
+    return this.userService.setStudentApprovalStatus(
+      studentId,
+      body,
+      user.id,
+      user.id,
+    );
   }
 
   @Delete(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
@@ -333,7 +355,7 @@ export class UserController {
   getAllAdminsBySuperAdmin(
     @Query('ids') ids: string,
     @Query('q') q: string,
-    @Query('status') status?: UserApprovalStatus,
+    @Query('status') status?: string | UserApprovalStatus,
   ) {
     const transformedIds = ids?.split(',').map((id) => +id);
     return this.userService.getAdminsBySuperAdmin(transformedIds, q, status);

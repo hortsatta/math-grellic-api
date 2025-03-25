@@ -34,6 +34,7 @@ import { User } from './entities/user.entity';
 import { AdminUserAccount } from './entities/admin-user-account.entity';
 import { TeacherUserAccount } from './entities/teacher-user-account.entity';
 import { StudentUserAccount } from './entities/student-user-account.entity';
+import { UserLastStepRegisterDto } from './dtos/user-last-step-register.dto';
 import { SuperAdminUserCreateDto } from './dtos/super-admin-user-create.dto';
 import { AdminUserCreateDto } from './dtos/admin-user-create.dto';
 import { TeacherUserCreateDto } from './dtos/teacher-user-create.dto';
@@ -61,7 +62,22 @@ export class UserService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  async confirmUserRegisterEmail(token: string): Promise<boolean> {
+  async validateUserRegistrationToken(token: string): Promise<boolean> {
+    try {
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+      // Check if user is exist
+      const user = await this.findOneByEmail(payload.email);
+      if (!user) return false;
+
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async confirmUserRegistrationEmail(token: string): Promise<boolean> {
     const payload = this.jwtService.verify(token, {
       secret: this.configService.get<string>('JWT_SECRET'),
     });
@@ -69,7 +85,7 @@ export class UserService {
     const user = await this.findOneByEmail(payload.email);
 
     // TEMP
-    // if (!user || user.approvalStatus === UserApprovalStatus.Rejected) {
+    // if (!user || payload.isFinal || user.approvalStatus === UserApprovalStatus.Rejected) {
     //   throw new BadRequestException('Cannot confirm email');
     // }
 
@@ -83,6 +99,79 @@ export class UserService {
     });
 
     return true;
+  }
+
+  async confirmUserRegistrationLastStep(
+    userLastStepDto: UserLastStepRegisterDto,
+  ): Promise<{ publicId: string }> {
+    const { token, password } = userLastStepDto;
+
+    const payload = this.jwtService.verify(token, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+    });
+
+    const user = await this.findOneByEmail(payload.email, true);
+
+    if (
+      !user ||
+      !payload.isFinal ||
+      user.approvalStatus === UserApprovalStatus.Rejected
+    ) {
+      throw new BadRequestException('Cannot confirm email');
+    }
+
+    if (user.approvalStatus !== UserApprovalStatus.MailPending) {
+      throw new BadRequestException('Email already confirmed');
+    }
+
+    try {
+      let approvalStatusResult = null;
+      const userApprovalDto = {
+        approvalStatus: UserApprovalStatus.Approved,
+      } as UserApprovalDto;
+
+      switch (user.role) {
+        case UserRole.Admin: {
+          approvalStatusResult = await this.setAdminApprovalStatus(
+            user.adminUserAccount?.id,
+            userApprovalDto,
+            user.id,
+            password,
+          );
+          break;
+        }
+        case UserRole.Teacher: {
+          approvalStatusResult = await this.setTeacherApprovalStatus(
+            user.teacherUserAccount?.id,
+            userApprovalDto,
+            user.id,
+            password,
+          );
+          break;
+        }
+        case UserRole.Student: {
+          approvalStatusResult = await this.setStudentApprovalStatus(
+            user.studentUserAccount?.id,
+            userApprovalDto,
+            user.id,
+            user.studentUserAccount?.teacherUser?.user?.id,
+            password,
+          );
+          break;
+        }
+      }
+
+      if (
+        approvalStatusResult?.approvalStatus !== UserApprovalStatus.Approved
+      ) {
+        throw new BadRequestException('Cannot approve user');
+      }
+
+      const updatedUser = await this.findOneByEmail(payload.email);
+      return { publicId: updatedUser.publicId };
+    } catch (error) {
+      throw new BadRequestException('Cannot proceed. An error occured');
+    }
   }
 
   private async create(
@@ -109,8 +198,21 @@ export class UserService {
     return this.userRepo.save(newUser);
   }
 
-  findOneByEmail(email: string): Promise<User> {
-    return this.userRepo.findOne({ where: { email } });
+  findOneByEmail(email: string, withUserAccount?: boolean): Promise<User> {
+    const generateOptions = () => {
+      const where = { email };
+      const relations = withUserAccount
+        ? {
+            adminUserAccount: true,
+            teacherUserAccount: true,
+            studentUserAccount: { teacherUser: { user: true } },
+          }
+        : undefined;
+
+      return { where, relations };
+    };
+
+    return this.userRepo.findOne(generateOptions());
   }
 
   updateLastLoginDate(user: User) {
@@ -270,7 +372,7 @@ export class UserService {
     take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
-    status?: UserApprovalStatus,
+    status?: string,
   ): Promise<[StudentUserAccount[], number]> {
     const generateWhere = () => {
       let baseWhere:
@@ -349,12 +451,14 @@ export class UserService {
   getAdminsBySuperAdmin(
     adminIds?: number[],
     q?: string,
-    status?: UserApprovalStatus,
+    status?: string | UserApprovalStatus,
   ): Promise<AdminUserAccount[]> {
     const generateWhere = () => {
-      const baseWhere: FindOptionsWhere<AdminUserAccount> = {
-        user: { approvalStatus: status || UserApprovalStatus.Approved },
-      };
+      const baseWhere: FindOptionsWhere<AdminUserAccount> = status
+        ? {
+            user: { approvalStatus: In(status.split(',')) },
+          }
+        : { user: { approvalStatus: UserApprovalStatus.Approved } };
 
       if (adminIds?.length) {
         return { ...baseWhere, id: In(adminIds) };
@@ -387,13 +491,13 @@ export class UserService {
     teacherId: number,
     studentIds?: number[],
     q?: string,
-    status?: UserApprovalStatus,
+    status?: string | UserApprovalStatus.Approved,
   ): Promise<StudentUserAccount[]> {
     const generateWhere = () => {
       const baseWhere: FindOptionsWhere<StudentUserAccount> = status
         ? {
             teacherUser: { id: teacherId },
-            user: { approvalStatus: status },
+            user: { approvalStatus: In(status.split(',')) },
           }
         : {
             teacherUser: { id: teacherId },
@@ -662,12 +766,15 @@ export class UserService {
     // Check if email is existing, if true then cancel creation
     const existingUser = await this.userRepo.findOne({ where: { email } });
     if (!!existingUser) throw new ConflictException('Email is already taken');
+    // Encrypt password; create and save user details
+    const encryptedPassword = await encryptPassword('t3mp0r4ry_p4ssw0rd');
     // Create and save user base details
     const user = await this.create(
       {
         email,
         profileImageUrl,
         approvalStatus,
+        password: encryptedPassword,
       },
       UserRole.Admin,
       approvalStatus === UserApprovalStatus.Approved,
@@ -1118,7 +1225,8 @@ export class UserService {
   async setAdminApprovalStatus(
     adminId: number,
     userApprovalDto: UserApprovalDto,
-    superAdminId: number,
+    logUserId: number,
+    password?: string,
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
@@ -1141,11 +1249,14 @@ export class UserService {
 
       publicId = generatePublicId(userCount, user.role);
     }
+    // If password, then encrypt and save it
+    const encryptedPassword = await encryptPassword(password);
 
     const updatedUser = await this.userRepo.save({
       ...user,
       ...userApprovalDto,
       publicId,
+      password: encryptedPassword,
     });
 
     // Send a notification email to user
@@ -1169,7 +1280,7 @@ export class UserService {
         featureId: user.id,
         featureType: AuditFeatureType.user,
       },
-      superAdminId,
+      logUserId,
     );
 
     return { approvalStatus, approvalDate: updatedUser.approvalDate };
@@ -1178,7 +1289,8 @@ export class UserService {
   async setTeacherApprovalStatus(
     teacherId: number,
     userApprovalDto: UserApprovalDto,
-    adminId: number,
+    logUserId: number,
+    password?: string,
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
@@ -1201,11 +1313,14 @@ export class UserService {
 
       publicId = generatePublicId(userCount, user.role);
     }
+    // If password, then encrypt and save it
+    const encryptedPassword = await encryptPassword(password);
 
     const updatedUser = await this.userRepo.save({
       ...user,
       ...userApprovalDto,
       publicId,
+      password: encryptedPassword,
     });
 
     // Send a notification email to user
@@ -1229,7 +1344,7 @@ export class UserService {
         featureId: user.id,
         featureType: AuditFeatureType.user,
       },
-      adminId,
+      logUserId,
     );
 
     return { approvalStatus, approvalDate: updatedUser.approvalDate };
@@ -1239,6 +1354,8 @@ export class UserService {
     studentId: number,
     userApprovalDto: UserApprovalDto,
     teacherId: number,
+    logUserId: number,
+    password?: string,
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
@@ -1266,11 +1383,14 @@ export class UserService {
 
       publicId = generatePublicId(userCount, user.role);
     }
+    // If password, then encrypt and save it
+    const encryptedPassword = await encryptPassword(password);
 
     const updatedUser = await this.userRepo.save({
       ...user,
       ...userApprovalDto,
       publicId,
+      password: encryptedPassword,
     });
 
     // Send a notification email to user
@@ -1294,7 +1414,7 @@ export class UserService {
         featureId: user.id,
         featureType: AuditFeatureType.user,
       },
-      teacherId,
+      logUserId,
     );
 
     return { approvalStatus, approvalDate: updatedUser.approvalDate };

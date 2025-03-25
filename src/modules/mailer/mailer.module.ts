@@ -12,19 +12,17 @@ import { MailerService } from './mailer.service';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         transport: {
-          service: 'gmail',
+          host: configService.get<string>('MAILER_MAIL_HOST'),
+          port: configService.get<number>('MAILER_MAIL_PORT'),
+          secure: true,
           auth: {
-            type: 'OAuth2',
             user: configService.get<string>('MAILER_MAIL_USER'),
-            clientId: configService.get<string>('MAILER_CLIENT_ID'),
-            clientSecret: configService.get<string>('MAILER_CLIENT_SECRET'),
-            refreshToken: configService.get<string>('MAILER_REFRESH_TOKEN'),
+            pass: configService.get<string>('MAILER_MAIL_PASSWORD'),
           },
+          connectionTimeout: 30000,
         },
         defaults: {
-          from: `"Math Grellic" <${configService.get<string>(
-            'MAILER_MAIL_USER',
-          )}>`,
+          from: `"No Reply" ${configService.get<string>('MAILER_MAIL_USER')}`,
         },
         template: {
           dir: join(__dirname, '..', '..', 'common/templates'),
