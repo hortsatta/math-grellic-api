@@ -29,9 +29,18 @@ import { AuthService } from './services/auth.service';
       provide: 'REDIS_CLIENT',
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
-        const client = createClient({
-          url: configService.get<string>('REDIS_URL'),
-        });
+        const options =
+          process.env.NODE_ENV === 'production'
+            ? {
+                url: configService.get<string>('REDIS_URL'),
+                password: configService.get<string>('REDIS_PASSWORD'),
+              }
+            : {
+                url: configService.get<string>('REDIS_URL'),
+              };
+
+        const client = createClient(options);
+
         await client.connect();
         return client;
       },
