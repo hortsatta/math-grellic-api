@@ -6,9 +6,18 @@ import {
   ArrayMinSize,
   IsInt,
   IsPositive,
+  IsString,
+  MaxLength,
+  MinLength,
 } from 'class-validator';
 
 export class ExamScheduleUpdateDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  @IsOptional()
+  title: string;
+
   @IsDateString()
   @IsOptional()
   startDate: Date;

@@ -6,6 +6,9 @@ import { Exam } from './exam.entity';
 
 @Entity()
 export class ExamSchedule extends BaseEntity {
+  @Column({ type: 'varchar', length: 255 })
+  title: string;
+
   @Column({ type: 'timestamp' })
   startDate: Date;
 

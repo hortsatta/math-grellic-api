@@ -6,6 +6,9 @@ import { ExamResponseDto } from './exam-response.dto';
 
 export class ExamScheduleResponseDto extends BaseResponseDto {
   @Expose()
+  title: string;
+
+  @Expose()
   startDate: string;
 
   @Expose()
