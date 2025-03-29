@@ -14,8 +14,10 @@ import { ExamCompletionQuestionAnswer } from './entities/exam-completion-questio
 import { ExamController } from './exam.controller';
 import { ExamSubscriber } from './subscribers/exam.subscriber';
 import { ExamGateway } from './exam.gateway';
-import { ExamService } from './exam.service';
-import { ExamScheduleService } from './exam-schedule.service';
+import { TeacherExamService } from './services/teacher-exam.service';
+import { StudentExamService } from './services/student-exam.service';
+import { StudentExamScheduleService } from './services/student-exam-schedule.service';
+import { TeacherExamScheduleService } from './services/teacher-exam-schedule.service';
 
 @Module({
   imports: [
@@ -33,7 +35,19 @@ import { ExamScheduleService } from './exam-schedule.service';
     forwardRef(() => ScheduleModule),
   ],
   controllers: [ExamController],
-  providers: [ExamGateway, ExamSubscriber, ExamService, ExamScheduleService],
-  exports: [ExamService, ExamScheduleService],
+  providers: [
+    ExamGateway,
+    ExamSubscriber,
+    TeacherExamService,
+    StudentExamService,
+    TeacherExamScheduleService,
+    StudentExamScheduleService,
+  ],
+  exports: [
+    TeacherExamService,
+    StudentExamService,
+    TeacherExamScheduleService,
+    StudentExamScheduleService,
+  ],
 })
 export class ExamModule {}

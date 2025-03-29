@@ -21,4 +21,7 @@ export class ExamScheduleResponseDto extends BaseResponseDto {
   @Expose()
   @Type(() => StudentUserResponseDto)
   students: StudentUserResponseDto[];
+
+  @Expose()
+  studentCount: string;
 }

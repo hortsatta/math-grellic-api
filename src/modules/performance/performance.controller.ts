@@ -19,14 +19,18 @@ import { TeacherClassPerformanceResponseDto } from './dtos/teacher-class-perform
 import { TeacherLessonPerformanceResponseDto } from './dtos/teacher-lesson-performance-response.dto';
 import { TeacherExamPerformanceResponseDto } from './dtos/teacher-exam-performance-response.dto';
 import { TeacherActivityPerformanceResponseDto } from './dtos/teacher-activity-performance-response.dto';
-import { PerformanceService } from './performance.service';
+import { TeacherPerformanceService } from './services/teacher-performance.service';
+import { StudentPerformanceService } from './services/student.performance.service';
 
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 
 @Controller('performances')
 export class PerformanceController {
-  constructor(private readonly performanceService: PerformanceService) {}
+  constructor(
+    private readonly teacherPerformanceService: TeacherPerformanceService,
+    private readonly studentPerformanceService: StudentPerformanceService,
+  ) {}
 
   // TEACHERS
 
@@ -35,7 +39,9 @@ export class PerformanceController {
   @UseSerializeInterceptor(TeacherClassPerformanceResponseDto)
   getClassPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getClassPerformanceByTeacherId(teacherId);
+    return this.teacherPerformanceService.getClassPerformanceByTeacherId(
+      teacherId,
+    );
   }
 
   @Get(`${TEACHER_URL}/lessons`)
@@ -43,7 +49,9 @@ export class PerformanceController {
   @UseSerializeInterceptor(TeacherLessonPerformanceResponseDto)
   getLessonPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getLessonPerformanceByTeacherId(teacherId);
+    return this.teacherPerformanceService.getLessonPerformanceByTeacherId(
+      teacherId,
+    );
   }
 
   @Get(`${TEACHER_URL}/exams`)
@@ -51,7 +59,9 @@ export class PerformanceController {
   @UseSerializeInterceptor(TeacherExamPerformanceResponseDto)
   getExamPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getExamPerformanceByTeacherId(teacherId);
+    return this.teacherPerformanceService.getExamPerformanceByTeacherId(
+      teacherId,
+    );
   }
 
   @Get(`${TEACHER_URL}/activities`)
@@ -59,7 +69,9 @@ export class PerformanceController {
   @UseSerializeInterceptor(TeacherActivityPerformanceResponseDto)
   getActivityPerformanceByTeacherId(@CurrentUser() user: User) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getActivityPerformanceByTeacherId(teacherId);
+    return this.teacherPerformanceService.getActivityPerformanceByTeacherId(
+      teacherId,
+    );
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/list`)
@@ -76,7 +88,7 @@ export class PerformanceController {
   ): Promise<[Partial<StudentPerformance>[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.performanceService.getPaginationStudentPerformancesByTeacherId(
+    return this.teacherPerformanceService.getPaginationStudentPerformancesByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -95,7 +107,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<StudentPerformance> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getStudentPerformanceByPublicIdAndTeacherId(
+    return this.teacherPerformanceService.getStudentPerformanceByPublicIdAndTeacherId(
       publicId,
       teacherId,
     );
@@ -110,7 +122,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Lesson[]> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getStudentLessonsByPublicIdAndTeacherId(
+    return this.teacherPerformanceService.getStudentLessonsByPublicIdAndTeacherId(
       publicId,
       teacherId,
     );
@@ -125,7 +137,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Exam[]> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getStudentExamsByPublicIdAndTeacherId(
+    return this.teacherPerformanceService.getStudentExamsByPublicIdAndTeacherId(
       publicId,
       teacherId,
     );
@@ -141,7 +153,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getStudentExamWithCompletionsByPublicIdAndSlug(
+    return this.teacherPerformanceService.getStudentExamWithCompletionsByPublicIdAndSlug(
       publicId,
       slug,
       teacherId,
@@ -157,7 +169,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Activity[]> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getStudentActivitiesByPublicIdAndTeacherId(
+    return this.teacherPerformanceService.getStudentActivitiesByPublicIdAndTeacherId(
       publicId,
       teacherId,
     );
@@ -173,7 +185,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Activity> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.performanceService.getStudentActivityWithCompletionsByPublicIdAndSlug(
+    return this.teacherPerformanceService.getStudentActivityWithCompletionsByPublicIdAndSlug(
       publicId,
       slug,
       teacherId,
@@ -190,7 +202,9 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Partial<StudentPerformance>> {
     const { id: studentId } = user.studentUserAccount;
-    return this.performanceService.getStudentPerformanceByStudentId(studentId);
+    return this.studentPerformanceService.getStudentPerformanceByStudentId(
+      studentId,
+    );
   }
 
   @Get(`${STUDENT_URL}/lessons`)
@@ -199,7 +213,9 @@ export class PerformanceController {
   @UseSerializeInterceptor(LessonResponseDto)
   getStudentLessonsByStudentId(@CurrentUser() user: User): Promise<Lesson[]> {
     const { id: studentId } = user.studentUserAccount;
-    return this.performanceService.getStudentLessonsByStudentId(studentId);
+    return this.studentPerformanceService.getStudentLessonsByStudentId(
+      studentId,
+    );
   }
 
   @Get(`${STUDENT_URL}/exams`)
@@ -208,7 +224,7 @@ export class PerformanceController {
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamsByStudentId(@CurrentUser() user: User): Promise<Exam[]> {
     const { id: studentId } = user.studentUserAccount;
-    return this.performanceService.getStudentExamsByStudentId(studentId);
+    return this.studentPerformanceService.getStudentExamsByStudentId(studentId);
   }
 
   @Get(`${STUDENT_URL}/exams/:slug`)
@@ -220,7 +236,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Exam> {
     const { id: studentId } = user.studentUserAccount;
-    return this.performanceService.getStudentExamWithCompletionsBySlugAndStudentId(
+    return this.studentPerformanceService.getStudentExamWithCompletionsBySlugAndStudentId(
       slug,
       studentId,
     );
@@ -234,7 +250,9 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Activity[]> {
     const { id: studentId } = user.studentUserAccount;
-    return this.performanceService.getStudentActivitiesByStudentId(studentId);
+    return this.studentPerformanceService.getStudentActivitiesByStudentId(
+      studentId,
+    );
   }
 
   @Get(`${STUDENT_URL}/activities/:slug`)
@@ -246,7 +264,7 @@ export class PerformanceController {
     @CurrentUser() user: User,
   ): Promise<Activity> {
     const { id: studentId } = user.studentUserAccount;
-    return this.performanceService.getStudentActivityWithCompletionsBySlugAndStudentId(
+    return this.studentPerformanceService.getStudentActivityWithCompletionsBySlugAndStudentId(
       slug,
       studentId,
     );

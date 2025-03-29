@@ -72,7 +72,12 @@ export class ExamCreateDto {
   @Type(() => ExamQuestionCreateDto)
   questions: ExamQuestionCreateDto[];
 
-  // TODO separate scheduling or retain step like lesson?
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  @IsOptional()
+  scheduleTitle: string;
+
   @IsDateString()
   @IsOptional()
   startDate: Date;

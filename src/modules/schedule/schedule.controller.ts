@@ -22,14 +22,20 @@ import { MeetingScheduleCreateDto } from './dtos/meeting-schedule-create.dto';
 import { MeetingScheduleUpdateDto } from './dtos/meeting-schedule-update.dto';
 import { TimelineSchedulesResponseDto } from './dtos/timeline-schedules-response.dto';
 import { StudentMeetingScheduleListResponseDto } from './dtos/student-meeting-schedule-list-response.dto';
-import { ScheduleService } from './schedule.service';
+import { ScheduleService } from './schedules/schedule.service';
+import { StudentScheduleService } from './schedules/student-schedule.service';
+import { TeacherScheduleService } from './schedules/teacher-schedule.service';
 
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 
 @Controller('schedules')
 export class ScheduleController {
-  constructor(private readonly scheduleService: ScheduleService) {}
+  constructor(
+    private readonly scheduleService: ScheduleService,
+    private readonly teacherScheduleService: TeacherScheduleService,
+    private readonly studentScheduleService: StudentScheduleService,
+  ) {}
 
   // TEACHERS
 
@@ -45,7 +51,7 @@ export class ScheduleController {
     const fromDate = dayjs(from).toDate();
     const toDate = dayjs(to).toDate();
 
-    return this.scheduleService.getTimelineSchedulesByDateRangeAndTeacherId(
+    return this.teacherScheduleService.getTimelineSchedulesByDateRangeAndTeacherId(
       fromDate,
       toDate,
       teacherId,
@@ -64,7 +70,7 @@ export class ScheduleController {
   ): Promise<[MeetingSchedule[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.scheduleService.getPaginationTeacherMeetingSchedulesByTeacherId(
+    return this.teacherScheduleService.getPaginationTeacherMeetingSchedulesByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -100,7 +106,7 @@ export class ScheduleController {
       endDate: dayjs(body.endDate).toDate(),
     };
 
-    return this.scheduleService.create(transformedBody, teacherId);
+    return this.teacherScheduleService.create(transformedBody, teacherId);
   }
 
   @Patch('/:id')
@@ -120,14 +126,14 @@ export class ScheduleController {
       ...(endDate && { endDate: dayjs(endDate).toDate() }),
     };
 
-    return this.scheduleService.update(id, transformedBody, teacherId);
+    return this.teacherScheduleService.update(id, transformedBody, teacherId);
   }
 
   @Delete('/:id')
   @UseJwtAuthGuard(UserRole.Teacher)
   delete(@Param('id') id: number, @CurrentUser() user: User): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.scheduleService.delete(id, teacherId);
+    return this.teacherScheduleService.delete(id, teacherId);
   }
 
   // STUDENTS
@@ -144,7 +150,7 @@ export class ScheduleController {
     const fromDate = dayjs(from).toDate();
     const toDate = dayjs(to).toDate();
 
-    return this.scheduleService.getTimelineSchedulesByDateRangeAndStudentId(
+    return this.studentScheduleService.getTimelineSchedulesByDateRangeAndStudentId(
       fromDate,
       toDate,
       studentId,
@@ -156,7 +162,7 @@ export class ScheduleController {
   @UseSerializeInterceptor(StudentMeetingScheduleListResponseDto)
   getStudentMeetingSchedulesByStudentId(@CurrentUser() user: User) {
     const { id: studentId } = user.studentUserAccount;
-    return this.scheduleService.getStudentMeetingSchedulesByStudentId(
+    return this.studentScheduleService.getStudentMeetingSchedulesByStudentId(
       studentId,
     );
   }

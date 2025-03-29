@@ -26,7 +26,8 @@ import { ExamScheduleUpdateDto } from './dtos/exam-schedule-update.dto';
 import { ExamCompletionResponseDto } from './dtos/exam-completion-response.dto';
 import { StudentExamListResponseDto } from './dtos/student-exam-list-response.dto';
 import { ExamCompletionCreateDto } from './dtos/exam-completion-create.dto';
-import { ExamService } from './exam.service';
+import { StudentExamService } from './services/student-exam.service';
+import { TeacherExamService } from './services/teacher-exam.service';
 
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
@@ -34,7 +35,10 @@ const SCHEDULE_URL = '/schedules';
 
 @Controller('exams')
 export class ExamController {
-  constructor(private readonly examService: ExamService) {}
+  constructor(
+    private readonly teacherExamService: TeacherExamService,
+    private readonly studentExamService: StudentExamService,
+  ) {}
 
   // TEACHERS
 
@@ -52,7 +56,7 @@ export class ExamController {
   ): Promise<[Exam[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.examService.getPaginationTeacherExamsByTeacherId(
+    return this.teacherExamService.getPaginationTeacherExamsByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -71,7 +75,10 @@ export class ExamController {
     @Query('take') take?: number,
   ): Promise<Exam[]> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.getExamSnippetsByTeacherId(teacherId, take || 3);
+    return this.teacherExamService.getExamSnippetsByTeacherId(
+      teacherId,
+      take || 3,
+    );
   }
 
   @Get(`/:slug${TEACHER_URL}`)
@@ -84,7 +91,11 @@ export class ExamController {
     @Query('status') status?: string,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.getOneBySlugAndTeacherId(slug, teacherId, status);
+    return this.teacherExamService.getOneBySlugAndTeacherId(
+      slug,
+      teacherId,
+      status,
+    );
   }
 
   @Post()
@@ -103,7 +114,7 @@ export class ExamController {
       ...(endDate && { endDate: dayjs(endDate).toDate() }),
     };
 
-    return this.examService.create(transformedBody, teacherId);
+    return this.teacherExamService.create(transformedBody, teacherId);
   }
 
   @Patch('/:slug')
@@ -113,26 +124,17 @@ export class ExamController {
     @Param('slug') slug: string,
     @Body() body: ExamUpdateDto,
     @CurrentUser() user: User,
-    @Query('schedule') scheduleId?: number,
     @Query('strict') strict?: number,
   ): Promise<Exam> {
     const {
       publicId,
       teacherUserAccount: { id: teacherId },
     } = user;
-    const { startDate, endDate, ...moreBody } = body;
 
-    const transformedBody = {
-      ...moreBody,
-      ...(startDate && { startDate: dayjs(startDate).toDate() }),
-      ...(endDate && { endDate: dayjs(endDate).toDate() }),
-    };
-
-    return this.examService.update(
+    return this.teacherExamService.update(
       slug,
-      transformedBody,
+      body,
       teacherId,
-      scheduleId,
       strict == 1,
       publicId,
     );
@@ -144,7 +146,6 @@ export class ExamController {
     @Body() body: ExamCreateDto | ExamUpdateDto,
     @CurrentUser() user: User,
     @Query('slug') slug?: string,
-    @Query('schedule') scheduleId?: number,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
     const { startDate, endDate, ...moreBody } = body;
@@ -155,11 +156,10 @@ export class ExamController {
       ...(endDate && { endDate: dayjs(endDate).toDate() }),
     };
 
-    return this.examService.validateUpsert(
+    return this.teacherExamService.validateUpsert(
       transformedBody,
       teacherId,
       slug,
-      scheduleId,
     );
   }
 
@@ -173,7 +173,7 @@ export class ExamController {
       publicId,
       teacherUserAccount: { id: teacherId },
     } = user;
-    return this.examService.deleteBySlug(slug, teacherId, publicId);
+    return this.teacherExamService.deleteBySlug(slug, teacherId, publicId);
   }
 
   // STUDENTS
@@ -186,7 +186,7 @@ export class ExamController {
     @Query('q') q?: string,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.examService.getStudentExamsByStudentId(studentId, q);
+    return this.studentExamService.getStudentExamsByStudentId(studentId, q);
   }
 
   @Get(`/:slug${STUDENT_URL}`)
@@ -198,7 +198,7 @@ export class ExamController {
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.examService.getOneBySlugAndStudentId(slug, studentId);
+    return this.studentExamService.getOneBySlugAndStudentId(slug, studentId);
   }
 
   @Post(`/:slug${STUDENT_URL}/completion`)
@@ -210,7 +210,7 @@ export class ExamController {
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.examService.createExamCompletionBySlugAndStudentId(
+    return this.studentExamService.createExamCompletionBySlugAndStudentId(
       body,
       slug,
       studentId,
@@ -234,7 +234,7 @@ export class ExamController {
       endDate: dayjs(body.endDate).toDate(),
     };
 
-    return this.examService.createSchedule(transformedBody, teacherId);
+    return this.teacherExamService.createSchedule(transformedBody, teacherId);
   }
 
   @Patch(`${SCHEDULE_URL}/:scheduleId`)
@@ -254,7 +254,7 @@ export class ExamController {
       ...(endDate && { endDate: dayjs(endDate).toDate() }),
     };
 
-    return this.examService.updateSchedule(
+    return this.teacherExamService.updateSchedule(
       scheduleId,
       transformedBody,
       teacherId,
@@ -268,6 +268,6 @@ export class ExamController {
     @CurrentUser() user: User,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.examService.deleteSchedule(scheduleId, teacherId);
+    return this.teacherExamService.deleteSchedule(scheduleId, teacherId);
   }
 }
