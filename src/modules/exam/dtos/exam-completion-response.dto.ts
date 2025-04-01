@@ -4,6 +4,7 @@ import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { StudentUserResponseDto } from '#/modules/user/dtos/student-user-response.dto';
 import { ExamCompletionQuestionAnswerResponseDto } from './exam-completion-question-answer-response.dto';
 import { ExamResponseDto } from './exam-response.dto';
+import { ExamScheduleResponseDto } from './exam-schedule-response.dto';
 
 export class ExamCompletionResponseDto extends BaseResponseDto {
   @Expose()
@@ -17,10 +18,20 @@ export class ExamCompletionResponseDto extends BaseResponseDto {
   exam: ExamResponseDto;
 
   @Expose()
+  @Type(() => ExamScheduleResponseDto)
+  schedule: ExamScheduleResponseDto;
+
+  @Expose()
   @Type(() => ExamCompletionQuestionAnswerResponseDto)
   questionAnswers: ExamCompletionQuestionAnswerResponseDto[];
 
   @Expose()
   @Type(() => StudentUserResponseDto)
   student: StudentUserResponseDto;
+
+  @Expose()
+  isHighest: boolean | null;
+
+  @Expose()
+  isRecent: boolean | null;
 }

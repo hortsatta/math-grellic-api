@@ -15,6 +15,7 @@ import { Exam } from '../entities/exam.entity';
 import { ExamQuestion } from '../entities/exam-question.entity';
 import { ExamCompletion } from '../entities/exam-completion.entity';
 import { ExamCompletionCreateDto } from '../dtos/exam-completion-create.dto';
+import { ExamResponse } from '../models/exam.model';
 
 @Injectable()
 export class StudentExamService {
@@ -49,6 +50,7 @@ export class StudentExamService {
         'completions.student.id = :studentId',
         { studentId },
       )
+      .leftJoinAndSelect('completions.schedule', 'completionSchedule')
       .where('exam.status = :status', { status: RecordStatus.Published })
       .andWhere('students.id = :studentId', { studentId })
       .andWhere(
@@ -97,7 +99,12 @@ export class StudentExamService {
         'exam.pointsPerQuestion',
         'exam.passingPoints',
         'schedules',
-        'completions',
+        'completions.id',
+        'completions.updatedAt',
+        'completions.createdAt',
+        'completions.score',
+        'completions.schedule',
+        'completionSchedule.id',
       ])
       .orderBy('schedules.startDate', 'ASC')
       .getMany();
@@ -116,6 +123,7 @@ export class StudentExamService {
         'completions.student.id = :studentId',
         { studentId },
       )
+      .leftJoinAndSelect('completions.schedule', 'completionSchedule')
       .where('exam.status = :status', { status: RecordStatus.Published })
       .andWhere('students.id = :studentId', { studentId })
       .andWhere('schedules.endDate < :currentDateTime', { currentDateTime });
@@ -146,21 +154,72 @@ export class StudentExamService {
         'exam.pointsPerQuestion',
         'exam.passingPoints',
         'schedules',
-        'completions',
+        'completions.id',
+        'completions.updatedAt',
+        'completions.createdAt',
+        'completions.score',
+        'completions.schedule',
+        'completionSchedule.id',
       ])
       .orderBy('exam.orderNumber', 'DESC')
       .getMany();
 
+    const transformedOtherExams = otherExams.map(
+      (exam: Partial<ExamResponse>) => {
+        if (!exam.completions?.length) {
+          return exam;
+        }
+
+        if (exam.completions.length > 1) {
+          exam.completions = exam.completions.sort(
+            (comA, comB) =>
+              dayjs(comB.schedule.startDate).valueOf() -
+              dayjs(comA.schedule.startDate).valueOf(),
+          );
+
+          const highestCompletion = exam.completions.reduce(
+            (acc, com) => (com.score > (acc?.score || 0) ? com : acc),
+            null,
+          );
+
+          exam.completions = exam.completions.map((com) => {
+            if (com.id === highestCompletion.id) {
+              return { ...com, isHighest: true };
+            }
+
+            return com;
+          });
+        } else {
+          exam.completions[0].isHighest = true;
+        }
+
+        exam.completions[0].isRecent = true;
+
+        return exam;
+      },
+    );
+
     if (ongoingExams?.length) {
+      // Filter completion to show only from ongoing schedule
+      const transformedOngoingExams = ongoingExams.map((exam, index) => ({
+        ...exam,
+        completions: exam.completions.filter(
+          (com) => com.schedule.id === ongoingExams[index].schedules[0].id,
+        ),
+      }));
+
       return {
         upcomingExam,
         latestExam: null,
-        previousExams: otherExams,
-        ongoingExams,
+        previousExams: transformedOtherExams,
+        ongoingExams: transformedOngoingExams,
       };
     } else {
-      const latestExam = otherExams.length ? otherExams[0] : null;
-      const previousExams = otherExams.length > 1 ? otherExams.slice(1) : [];
+      const latestExam = transformedOtherExams.length
+        ? transformedOtherExams[0]
+        : null;
+      const previousExams =
+        transformedOtherExams.length > 1 ? transformedOtherExams.slice(1) : [];
 
       return {
         upcomingExam,
@@ -211,7 +270,7 @@ export class StudentExamService {
 
     const teacher = await this.userService.getTeacherByStudentId(studentId);
 
-    const exam = await this.examRepo.findOne({
+    const exam: Partial<ExamResponse> = await this.examRepo.findOne({
       where: [
         {
           slug,
@@ -225,6 +284,7 @@ export class StudentExamService {
         schedules: { students: true },
         completions: {
           questionAnswers: { question: true, selectedQuestionChoice: true },
+          schedule: true,
           student: true,
         },
       },
@@ -235,20 +295,76 @@ export class StudentExamService {
       throw new NotFoundException('Exam not found');
     }
 
-    // Filter completions that belong to current student
-    if (exam.completions.length) {
-      exam.completions = exam.completions.filter(
-        (com) => com.student.id === studentId,
-      );
+    const examResponse = { ...exam, highestScore: null, recentScore: null };
+
+    const filteredSchedules = examResponse.schedules.filter((schedule) =>
+      schedule.students.find((s) => s.id === studentId),
+    );
+    // Get recent schedule
+    const recentSchedule =
+      filteredSchedules
+        .sort(
+          (schedA, schedB) =>
+            dayjs(schedB.startDate).valueOf() -
+            dayjs(schedA.startDate).valueOf(),
+        )
+        .filter((sched) =>
+          dayjs(sched.startDate).isSameOrBefore(currentDateTime),
+        )[0] || null;
+
+    // If recent schedule exist then add isRecent property of main schedule list
+    if (recentSchedule) {
+      filteredSchedules.forEach((schedule) => {
+        if (schedule.id === recentSchedule.id) {
+          schedule.isRecent = true;
+        }
+      });
+    }
+
+    if (examResponse.completions.length) {
+      // Filter completions and that belong to current student and remove all questionAnswers
+      // TODO unless explicitly specified by teacher to show
+      examResponse.completions = examResponse.completions
+        .filter((com) => com.student.id === studentId)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        .map(({ questionAnswers, ...moreCom }) => moreCom);
+
+      // If completions is more than 1 then sort by recent
+      // and set completion with highest and recent scores
+      if (examResponse.completions.length > 1) {
+        examResponse.completions = examResponse.completions.sort(
+          (comA, comB) =>
+            dayjs(comB.schedule.startDate).valueOf() -
+            dayjs(comA.schedule.startDate).valueOf(),
+        );
+
+        const highestCompletion = examResponse.completions.reduce(
+          (acc, com) => (com.score > (acc?.score || 0) ? com : acc),
+          null,
+        );
+
+        examResponse.completions.forEach((com) => {
+          if (com.id === highestCompletion.id) {
+            com.isHighest = true;
+          }
+        });
+      } else {
+        examResponse.completions[0].isHighest = true;
+      }
+
+      // Get recent schedule and match, if completion schedule is same as recent schedule
+      // then set completion as recent else student's recent schedule is either
+      // ongoing or expired
+      if (recentSchedule?.id === examResponse.completions[0].schedule.id) {
+        examResponse.completions[0].isRecent = true;
+      }
     }
 
     if (noSchedules) {
-      return exam;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { schedules, ...moreExam } = examResponse;
+      return moreExam as Partial<ExamResponse>;
     }
-
-    const filteredSchedules = exam.schedules.filter((schedule) =>
-      schedule.students.find((s) => s.id === studentId),
-    );
 
     const ongoingDate = filteredSchedules.find((schedule) => {
       const startDate = dayjs(schedule.startDate);
@@ -256,14 +372,9 @@ export class StudentExamService {
       return currentDateTime.isBetween(startDate, endDate, null, '[]');
     });
 
-    const transformedExam = {
-      ...exam,
-      completions: exam.completions.length ? [exam.completions[0]] : [],
-    };
-
     // If exam is ongoing for current student then remove answers from completion
     if (ongoingDate) {
-      const { questions, completions, ...moreExam } = transformedExam;
+      const { questions, ...moreExam } = examResponse;
       const targetQuestions = moreExam.randomizeQuestions
         ? shuffleArray(questions)
         : questions;
@@ -271,10 +382,6 @@ export class StudentExamService {
       return {
         ...moreExam,
         questions: targetQuestions,
-        completions: completions.map(
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          ({ questionAnswers, ...moreCompletion }) => moreCompletion,
-        ),
         schedules: [ongoingDate],
         scheduleStatus: ExamScheduleStatus.Ongoing,
       };
@@ -283,35 +390,36 @@ export class StudentExamService {
     const currentAvailableExams =
       await this.getStudentExamsByStudentId(studentId);
 
-    const upcomingDate = filteredSchedules.find((schedule) => {
-      const startDate = dayjs(schedule.startDate);
-      return startDate.isAfter(currentDateTime);
-    });
+    const upcomingDate = filteredSchedules.find((schedule) =>
+      dayjs(schedule.startDate).isAfter(currentDateTime),
+    );
 
     // If exam is upcoming for current student then remove questions and answers from completion
-    if (upcomingDate && currentAvailableExams.upcomingExam.id === exam.id) {
+    if (
+      upcomingDate &&
+      currentAvailableExams.upcomingExam.id === examResponse.id
+    ) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { questions, completions, ...moreExam } = transformedExam;
+      const { questions, completions, ...moreExam } = examResponse;
       return {
         ...moreExam,
-        completions: completions.map(
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          ({ questionAnswers, ...moreCompletion }) => moreCompletion,
-        ),
         schedules: [upcomingDate],
         scheduleStatus: ExamScheduleStatus.Upcoming,
       };
     }
 
     // Get current student rank if exam is not ongoing or upcoming
-    const studentRankings = await this.generateExamRankings(exam, teacher.id);
+    const studentRankings = await this.generateExamRankings(
+      exam as Exam,
+      teacher.id,
+    );
 
     const { rank } = studentRankings.find(
       (data) => data.studentId === studentId,
     );
 
     return {
-      ...transformedExam,
+      ...examResponse,
       scheduleStatus: ExamScheduleStatus.Past,
       rank,
     };
@@ -322,31 +430,44 @@ export class StudentExamService {
     slug: string,
     studentId: number,
   ) {
-    const { questionAnswers } = body;
+    const { questionAnswers, scheduleId } = body;
     const currentDateTime = dayjs();
 
     const exam = await this.examRepo.findOne({
       where: {
         slug,
         status: RecordStatus.Published,
-        schedules: { students: { id: studentId } },
+        schedules: { id: scheduleId, students: { id: studentId } },
       },
-      relations: { schedules: true, completions: true },
+      relations: {
+        schedules: {
+          students: true,
+          completions: { student: true, schedule: true },
+        },
+      },
     });
 
+    if (!exam) throw new NotFoundException('Exam not available');
+
+    // Get and check target schedule if present and has completions
+    const targetSchedule = exam.schedules.find(
+      (schedule) =>
+        schedule.id === scheduleId &&
+        schedule.students.some((stu) => stu.id === studentId),
+    );
+
+    const hasCompletion = targetSchedule?.completions.some(
+      (com) => com.student.id === studentId,
+    );
+
+    // If no schedule, schedule date is future,
+    // or exam already taken with this schedule then throw error
     if (
-      !exam ||
-      (exam.schedules?.length &&
-        dayjs(exam.schedules[0].startDate).isAfter(currentDateTime))
+      !targetSchedule ||
+      dayjs(targetSchedule.startDate).isAfter(currentDateTime)
     ) {
       throw new NotFoundException('Exam not available');
-    }
-
-    const completions = await this.examCompletionRepo.find({
-      where: { exam: { id: exam.id }, student: { id: studentId } },
-    });
-
-    if (completions.length) {
+    } else if (hasCompletion) {
       throw new BadRequestException('Exam already taken');
     }
 
@@ -390,6 +511,7 @@ export class StudentExamService {
       submittedAt: currentDateTime.toDate(),
       exam,
       questionAnswers: newQuestionAnswers,
+      schedule: { id: scheduleId },
       student: { id: studentId },
     });
 

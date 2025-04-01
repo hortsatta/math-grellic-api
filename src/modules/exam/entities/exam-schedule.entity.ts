@@ -1,8 +1,16 @@
-import { Column, Entity, JoinTable, ManyToMany, ManyToOne } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { Exam } from './exam.entity';
+import { ExamCompletion } from './exam-completion.entity';
 
 @Entity()
 export class ExamSchedule extends BaseEntity {
@@ -19,6 +27,9 @@ export class ExamSchedule extends BaseEntity {
     onDelete: 'CASCADE',
   })
   exam: Exam;
+
+  @OneToMany(() => ExamCompletion, (examCompletion) => examCompletion.schedule)
+  completions: ExamCompletion[];
 
   // TODO exam schedule should specify student and not null
   @ManyToMany(

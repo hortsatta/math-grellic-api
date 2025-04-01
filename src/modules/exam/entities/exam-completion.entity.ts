@@ -9,6 +9,7 @@ import {
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { Exam } from './exam.entity';
+import { ExamSchedule } from './exam-schedule.entity';
 import { ExamCompletionQuestionAnswer } from './exam-completion-question-answer.entity';
 
 @Entity()
@@ -23,6 +24,9 @@ export class ExamCompletion extends BaseEntity {
     onDelete: 'CASCADE',
   })
   exam: Exam;
+
+  @ManyToOne(() => ExamSchedule, (examSchedule) => examSchedule.completions)
+  schedule: ExamSchedule;
 
   @OneToMany(
     () => ExamCompletionQuestionAnswer,

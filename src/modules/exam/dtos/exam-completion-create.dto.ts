@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsPositive, ValidateNested } from 'class-validator';
 
 import { ExamCompletionQuestionAnswerUpsertDto } from './exam-completion-question-answer-update.dto';
 
@@ -8,4 +8,8 @@ export class ExamCompletionCreateDto {
   @ValidateNested({ each: true })
   @Type(() => ExamCompletionQuestionAnswerUpsertDto)
   questionAnswers: ExamCompletionQuestionAnswerUpsertDto[];
+
+  @IsInt()
+  @IsPositive()
+  scheduleId: number;
 }

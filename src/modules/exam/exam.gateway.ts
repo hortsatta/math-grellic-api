@@ -31,7 +31,7 @@ export class ExamGateway {
   ) {}
 
   private async saveStudentsCompletion(room: ExamRoom) {
-    const { examId, students } = room;
+    const { examId, scheduleId, students } = room;
     const currentDateTime = dayjs();
 
     const exam = await this.examRepo.findOne({
@@ -77,6 +77,7 @@ export class ExamGateway {
           submittedAt: currentDateTime,
           exam,
           questionAnswers: newQuestionAnswers,
+          schedule: { id: scheduleId },
           student: { id: studentId },
         });
 
@@ -134,32 +135,32 @@ export class ExamGateway {
         coveredLessons: true,
         questions: { choices: true },
         schedules: { students: true },
-        completions: { questionAnswers: true, student: true },
+        completions: { questionAnswers: true, student: true, schedule: true },
       },
     });
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }
 
-    // Filter exam completions that belong to current student only
-    exam.completions = exam.completions.filter(
-      (com) => com.student.id === studentId,
-    );
-
-    // Check if exam is ongoing, if false then return null
-    // Student should only take ongoing exams
-    const isOngoing = exam.schedules.some((schedule) => {
+    // Check and get the ongoing exam schedule, if none then return null
+    // Or if schedule has completion then return null
+    const ongoingSchedule = exam.schedules.find((schedule) => {
       const startDate = dayjs(schedule.startDate);
       const endDate = dayjs(schedule.endDate);
       return dayjs().isBetween(startDate, endDate, null, '[]');
     });
 
-    if (!isOngoing || exam.completions.length) {
+    const hasCompletion = exam.completions.some(
+      (com) =>
+        com.student.id === studentId && com.schedule.id === ongoingSchedule.id,
+    );
+
+    if (!ongoingSchedule || hasCompletion) {
       return null;
     }
 
     // Create room name base on exam id and schedule id
-    const roomName = `exam-${exam.id}-${exam.schedules[0].id}`;
+    const roomName = `exam-${exam.id}-${ongoingSchedule.id}`;
     // Let student join socket room, automatically creates room if nonexistent
     client.join(roomName);
 
@@ -167,10 +168,8 @@ export class ExamGateway {
     // And with questions with no selected choice (in order) as answers
     const roomIndex = this.rooms.findIndex((r) => r.name === roomName);
     if (roomIndex < 0) {
-      const endDate = exam.schedules[0].endDate;
-
       const countdownSeconds = () => {
-        const targetDayJs = dayjs(endDate);
+        const targetDayJs = dayjs(ongoingSchedule.endDate);
         const sourceDayJs = dayjs();
         const duration = dayjs.duration(
           Math.max(0, targetDayJs.diff(sourceDayJs) || 0),
@@ -196,7 +195,8 @@ export class ExamGateway {
       this.rooms.push({
         name: roomName,
         examId: exam.id,
-        endDate: exam.schedules[0].endDate,
+        scheduleId: ongoingSchedule.id,
+        endDate: ongoingSchedule.endDate,
         interval: setInterval(countdownSeconds, 1000),
         students,
       });

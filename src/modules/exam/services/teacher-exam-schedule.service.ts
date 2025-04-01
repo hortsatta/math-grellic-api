@@ -52,6 +52,47 @@ export class TeacherExamScheduleService {
   ) {
     const currentDateTime = dayjs().toDate();
 
+    if (
+      // Check if dates are valid
+      !dayjs(startDate).isValid() ||
+      !dayjs(endDate).isValid() ||
+      // Start date should be before end date
+      dayjs(endDate).isSameOrBefore(startDate)
+    ) {
+      return { error: new BadRequestException('Schedule is invalid') };
+    } else if (
+      // Dates should not be before (past) current date (today)
+      dayjs(endDate).isSameOrBefore(currentDateTime)
+    ) {
+      return {
+        error: new BadRequestException(
+          'Cannot set schedule before current date and time',
+        ),
+      };
+    }
+
+    if (dayjs(endDate).diff(currentDateTime, 'minute') < 10) {
+      // If new end date has less that 10 minute difference from present date and time, prevent upsert
+      return {
+        error: new BadRequestException(
+          'Cannot set end time too close to current time',
+        ),
+      };
+    }
+
+    // Exam schedule can only be upsert if exam is published
+    if (examId) {
+      const exam = await this.examRepo.findOne({ where: { id: examId } });
+
+      if (exam.status !== RecordStatus.Published) {
+        return {
+          error: new BadRequestException(
+            'Cannot set schedule if exam is not published',
+          ),
+        };
+      }
+    }
+
     // FOR UPDATE
     if (scheduleId != null) {
       const schedule = await this.repo.findOne({ where: { id: scheduleId } });
@@ -77,46 +118,6 @@ export class TeacherExamScheduleService {
               'Cannot update an ongoing schedule that is close to ending',
             ),
           };
-        } else if (dayjs(endDate).diff(currentDateTime, 'minute') < 10) {
-          // If schedule end date has more than or equal to 10 minutes left'
-          // but new end date has less that 10 minute difference from present date and time, prevent updating
-          return {
-            error: new BadRequestException(
-              'Cannot update an ongoing schedule with new end date so close to current date and time',
-            ),
-          };
-        }
-      }
-
-      if (
-        // Check if dates are valid
-        !dayjs(startDate).isValid() ||
-        !dayjs(endDate).isValid() ||
-        // Start date should be before end date
-        dayjs(endDate).isSameOrBefore(startDate)
-      ) {
-        return { error: new BadRequestException('Schedule is invalid') };
-      } else if (
-        // Dates should not be before (past) current date (today)
-        dayjs(endDate).isSameOrBefore(currentDateTime)
-      ) {
-        return {
-          error: new BadRequestException(
-            'Cannot set schedule before current date and time',
-          ),
-        };
-      }
-
-      // Exam schedule can only be upsert if exam is published
-      if (examId) {
-        const exam = await this.examRepo.findOne({ where: { id: examId } });
-
-        if (exam.status !== RecordStatus.Published) {
-          return {
-            error: new BadRequestException(
-              'Cannot set schedule if exam is not published',
-            ),
-          };
         }
       }
 
@@ -130,7 +131,7 @@ export class TeacherExamScheduleService {
       ) {
         return {
           error: new BadRequestException(
-            'Cannot set schedule to ongoing with new end date so close to current date and time',
+            'Cannot set schedule to ongoing with new end time so close to current time',
           ),
         };
       }

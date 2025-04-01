@@ -24,4 +24,7 @@ export class ExamScheduleResponseDto extends BaseResponseDto {
 
   @Expose()
   studentCount: string;
+
+  @Expose()
+  isRecent: boolean;
 }
