@@ -135,7 +135,7 @@ export class PerformanceController {
   getStudentExamsByPublicIdAndTeacherId(
     @Param('publicId') publicId: string,
     @CurrentUser() user: User,
-  ): Promise<Exam[]> {
+  ) {
     const { id: teacherId } = user.teacherUserAccount;
     return this.teacherPerformanceService.getStudentExamsByPublicIdAndTeacherId(
       publicId,
@@ -222,7 +222,7 @@ export class PerformanceController {
   @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
-  getStudentExamsByStudentId(@CurrentUser() user: User): Promise<Exam[]> {
+  getStudentExamsByStudentId(@CurrentUser() user: User) {
     const { id: studentId } = user.studentUserAccount;
     return this.studentPerformanceService.getStudentExamsByStudentId(studentId);
   }

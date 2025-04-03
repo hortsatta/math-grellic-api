@@ -11,6 +11,7 @@ import { Lesson } from '#/modules/lesson/entities/lesson.entity';
 import { LessonService } from '#/modules/lesson/lesson.service';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
+import { ExamResponse } from '#/modules/exam/models/exam.model';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 import { TeacherExamService } from '#/modules/exam/services/teacher-exam.service';
 import { PerformanceService } from './performance.service';
@@ -132,7 +133,9 @@ export class StudentPerformanceService {
     );
   }
 
-  async getStudentExamsByStudentId(studentId: number): Promise<Exam[]> {
+  async getStudentExamsByStudentId(
+    studentId: number,
+  ): Promise<Partial<ExamResponse>[]> {
     const student = await this.studentUserAccountRepo.findOne({
       where: {
         id: studentId,
@@ -155,15 +158,13 @@ export class StudentPerformanceService {
     const transformedExams = Promise.all(
       exams.map(async (exam) => {
         const rankings = await this.studentExamService.generateExamRankings(
-          exam,
+          exam as Exam,
           student.teacherUser.id,
         );
 
-        const { rank, completions } = rankings.find(
-          (rank) => rank.studentId === student.id,
-        );
+        const { rank } = rankings.find((rank) => rank.studentId === student.id);
 
-        return { ...exam, rank, completions };
+        return { ...exam, rank, completions: exam.completions };
       }),
     );
 

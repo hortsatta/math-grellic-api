@@ -27,4 +27,10 @@ export class ExamScheduleResponseDto extends BaseResponseDto {
 
   @Expose()
   isRecent: boolean;
+
+  @Expose()
+  isUpcoming: boolean;
+
+  @Expose()
+  isOngoing: boolean;
 }

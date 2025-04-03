@@ -26,6 +26,7 @@ import { UploadService } from '#/modules/upload/upload.service';
 import { LessonService } from '#/modules/lesson/lesson.service';
 import { UserService } from '#/modules/user/user.service';
 import { stripHtml } from '../helpers/exam.helper';
+import { ExamResponse } from '../models/exam.model';
 import { Exam } from '../entities/exam.entity';
 import { ExamQuestion } from '../entities/exam-question.entity';
 import { ExamQuestionChoice } from '../entities/exam-question-choice.entity';
@@ -447,7 +448,9 @@ export class TeacherExamService {
     studentId: number,
     teacherId: number,
     isStudent?: boolean,
-  ): Promise<Exam[]> {
+  ): Promise<Partial<ExamResponse>[]> {
+    const currentDateTime = dayjs();
+
     const generateWhere = () => {
       const baseWhere: FindOptionsWhere<Exam> = {
         status: RecordStatus.Published,
@@ -473,10 +476,10 @@ export class TeacherExamService {
       };
     };
 
-    const exams = await this.examRepo.find({
+    const exams: Partial<ExamResponse>[] = await this.examRepo.find({
       where: generateWhere(),
       relations: {
-        completions: { student: true },
+        completions: { student: true, schedule: true },
         schedules: { students: true },
       },
       order: { orderNumber: 'ASC' },
@@ -495,6 +498,51 @@ export class TeacherExamService {
           (scheduleA, scheduleB) =>
             scheduleB.startDate.valueOf() - scheduleA.startDate.valueOf(),
         );
+
+      const highestCompletion = completions.reduce((acc, com) => {
+        if (acc == null) return com;
+        return com.score > acc.score ? com : acc;
+      }, null);
+
+      const recentSchedule =
+        schedules.filter((schedule) =>
+          dayjs(schedule.startDate).isSameOrBefore(currentDateTime),
+        )[0] || null;
+
+      const upcomingSchedules = schedules.filter((schedule) =>
+        dayjs(schedule.startDate).isAfter(currentDateTime),
+      );
+
+      const ongoingSchedules = schedules.filter(
+        (schedule) =>
+          dayjs(schedule.startDate).isSameOrBefore(currentDateTime) &&
+          dayjs(schedule.endDate).isAfter(currentDateTime),
+      );
+
+      // Apply isRecent, isUpcoming, and isOngoing on schedules
+      schedules.forEach((schedule) => {
+        if (schedule.id === recentSchedule.id) schedule.isRecent = true;
+
+        if (
+          upcomingSchedules.some(
+            (upcomingSched) => upcomingSched.id === schedule.id,
+          )
+        ) {
+          schedule.isUpcoming = true;
+        } else if (
+          ongoingSchedules.some(
+            (ongoingSched) => ongoingSched.id === schedule.id,
+          )
+        ) {
+          schedule.isOngoing = true;
+        }
+      });
+
+      // Apply isHighest and isRecent on completions
+      completions.forEach((com) => {
+        if (com.id === highestCompletion.id) com.isHighest = true;
+        if (com.schedule.id === recentSchedule.id) com.isRecent = true;
+      });
 
       return {
         ...exam,

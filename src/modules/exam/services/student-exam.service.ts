@@ -537,15 +537,19 @@ export class StudentExamService {
 
     const completions = await this.examCompletionRepo.find({
       where: { exam: { id: exam.id }, student: { id: In(studentIds) } },
-      relations: { student: true },
+      relations: { student: true, schedule: true },
       order: { submittedAt: 'DESC' },
     });
 
     // Assign completions
     const studentData = studentIds.map((studentId) => {
-      const completion = completions.find(
-        (com) => com.student.id === studentId,
-      );
+      const completion = completions
+        .filter((com) => com.student.id === studentId)
+        .reduce(
+          (acc, com) => (com.score > (acc?.score || 0) ? com : acc),
+          null,
+        );
+
       return {
         studentId,
         completions: completion ? [completion] : [],

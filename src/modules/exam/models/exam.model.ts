@@ -24,6 +24,8 @@ export type ExamRoom = {
 
 export type ExamScheduleResponse = ExamSchedule & {
   isRecent: boolean | null;
+  isUpcoming: boolean | null;
+  isOngoing: boolean | null;
 };
 
 export type ExamCompletionResponse = ExamCompletion & {
