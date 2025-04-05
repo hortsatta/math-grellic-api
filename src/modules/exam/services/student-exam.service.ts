@@ -265,6 +265,7 @@ export class StudentExamService {
     slug: string,
     studentId: number,
     noSchedules?: boolean,
+    withAnswerKey?: boolean,
   ) {
     const currentDateTime = dayjs();
 
@@ -323,11 +324,13 @@ export class StudentExamService {
 
     if (examResponse.completions.length) {
       // Filter completions and that belong to current student and remove all questionAnswers
-      // TODO unless explicitly specified by teacher to show
+      // unless explicitly specified by teacher to show
       examResponse.completions = examResponse.completions
         .filter((com) => com.student.id === studentId)
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        .map(({ questionAnswers, ...moreCom }) => moreCom);
+        .map(({ questionAnswers, ...moreCom }) =>
+          withAnswerKey ? { ...moreCom, questionAnswers } : moreCom,
+        );
 
       // If completions is more than 1 then sort by recent
       // and set completion with highest and recent scores

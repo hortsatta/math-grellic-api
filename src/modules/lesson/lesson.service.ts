@@ -219,6 +219,8 @@ export class LessonService {
     teacherId: number,
     isStudent?: boolean,
   ): Promise<Lesson[]> {
+    const currentDateTime = dayjs().toDate();
+
     const generateWhere = () => {
       const baseWhere: FindOptionsWhere<Lesson> = {
         status: RecordStatus.Published,
@@ -230,14 +232,14 @@ export class LessonService {
           {
             ...baseWhere,
             schedules: {
-              startDate: LessThanOrEqual(dayjs().toDate()),
+              startDate: LessThanOrEqual(currentDateTime),
               students: { id: studentId },
             },
           },
           {
             ...baseWhere,
             schedules: {
-              startDate: LessThanOrEqual(dayjs().toDate()),
+              startDate: LessThanOrEqual(currentDateTime),
               students: { id: IsNull() },
             },
           },
@@ -282,10 +284,13 @@ export class LessonService {
             schedule.students?.length <= 0 ||
             schedule.students?.some((student) => student.id === studentId),
         )
-        .sort(
-          (scheduleA, scheduleB) =>
-            scheduleB.startDate.valueOf() - scheduleA.startDate.valueOf(),
-        );
+        .map((schedule) => {
+          if (dayjs(schedule.startDate).isAfter(currentDateTime)) {
+            return { ...schedule, isUpcoming: true };
+          }
+
+          return schedule;
+        });
 
       return {
         ...lesson,

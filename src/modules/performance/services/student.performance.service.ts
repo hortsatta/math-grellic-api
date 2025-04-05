@@ -95,9 +95,6 @@ export class StudentPerformanceService {
         student,
       );
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { totalLessonCount, ...moreLessonPerformance } = lessonPerformance;
-
     const transformedStudent = {
       ...student,
       lessonCompletions: undefined,
@@ -109,7 +106,7 @@ export class StudentPerformanceService {
       ...transformedStudent,
       ...examPerformance,
       ...activityPerformance,
-      ...moreLessonPerformance,
+      ...lessonPerformance,
     };
   }
 

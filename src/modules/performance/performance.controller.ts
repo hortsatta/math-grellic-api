@@ -150,6 +150,7 @@ export class PerformanceController {
   getStudentExamWithCompletionsByPublicIdAndSlug(
     @Param('publicId') publicId: string,
     @Param('slug') slug: string,
+    @Query('scheduleId') scheduleId: number,
     @CurrentUser() user: User,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
@@ -157,6 +158,7 @@ export class PerformanceController {
       publicId,
       slug,
       teacherId,
+      scheduleId,
     );
   }
 

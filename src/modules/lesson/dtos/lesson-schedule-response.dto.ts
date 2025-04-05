@@ -15,4 +15,7 @@ export class LessonScheduleResponseDto extends BaseResponseDto {
   @Expose()
   @Type(() => StudentUserResponseDto)
   students: StudentUserResponseDto[];
+
+  @Expose()
+  isUpcoming: boolean;
 }

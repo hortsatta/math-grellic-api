@@ -639,6 +639,7 @@ export class TeacherPerformanceService {
     publicId: string,
     slug: string,
     teacherId: number,
+    scheduleId?: number,
   ): Promise<Exam> {
     const student = await this.studentUserAccountRepo.findOne({
       where: {
@@ -654,11 +655,23 @@ export class TeacherPerformanceService {
       throw new NotFoundException('Student not found');
     }
 
-    return this.studentExamService.getOneBySlugAndStudentId(
+    const exam = (await this.studentExamService.getOneBySlugAndStudentId(
       slug,
       student.id,
+      false,
       true,
-    ) as Promise<Exam>;
+    )) as Exam;
+
+    if (!scheduleId) return exam;
+
+    return {
+      ...exam,
+      schedules:
+        exam.schedules?.filter((schedule) => schedule.id === scheduleId) || [],
+      completions: exam.completions?.filter(
+        (com) => com.schedule.id === scheduleId,
+      ),
+    };
   }
 
   async getStudentActivityWithCompletionsByPublicIdAndSlug(

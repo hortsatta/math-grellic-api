@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { generateFullName } from '#/common/helpers/string.helper';
+import { ExamCompletion } from '#/modules/exam/entities/exam-completion.entity';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { ActivityCategoryType } from '#/modules/activity/enums/activity.enum';
 import { LessonService } from '#/modules/lesson/lesson.service';
@@ -72,16 +73,18 @@ export class PerformanceService {
     let currentRank = null;
 
     const transformedStudents = students.map((student) => {
-      // Remove duplicate exam completion
-      const filteredExamCompletions = student.examCompletions
-        .sort(
-          (comA, comB) =>
-            comB.submittedAt.valueOf() - comA.submittedAt.valueOf(),
-        )
-        .filter(
-          (com, index, array) =>
-            array.findIndex((item) => item.exam.id === com.exam.id) === index,
-        );
+      // Remove duplicate exam completion and take the highest score per exam
+      const filteredExamCompletions: ExamCompletion[] = Object.values(
+        student.examCompletions.reduce((acc, com) => {
+          const examId = com.exam.id;
+
+          if (!acc[examId] || com.score > acc[examId].score) {
+            acc[examId] = com;
+          }
+
+          return acc;
+        }, {}),
+      );
 
       if (!filteredExamCompletions.length) {
         return { ...student, overallExamScore: null };
