@@ -307,7 +307,7 @@ export class TeacherExamService {
     });
   }
 
-  getPaginationTeacherExamsByTeacherId(
+  async getPaginationTeacherExamsByTeacherId(
     teacherId: number,
     sort: string,
     take: number = DEFAULT_TAKE,
@@ -315,6 +315,8 @@ export class TeacherExamService {
     q?: string,
     status?: string,
   ): Promise<[Exam[], number]> {
+    const currentDateTime = dayjs().toDate();
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Exam> = {
         teacher: { id: teacherId },
@@ -345,13 +347,43 @@ export class TeacherExamService {
       return { [sortBy]: sortOrder };
     };
 
-    return this.examRepo.findAndCount({
+    const [exams, examCount] = await this.examRepo.findAndCount({
       where: generateWhere(),
       relations: { schedules: true },
       order: generateOrder(),
       skip,
       take,
     });
+
+    const transformedExams = exams.map((exam) => {
+      const schedules = exam.schedules
+        .sort(
+          (schedA, schedB) =>
+            dayjs(schedB.startDate).valueOf() -
+            dayjs(schedA.startDate).valueOf(),
+        )
+        .map((schedule) => {
+          const scheduleStatus = {
+            isUpcoming: undefined,
+            isOngoing: undefined,
+          };
+
+          if (
+            dayjs(schedule.startDate).isSameOrBefore(currentDateTime) &&
+            dayjs(schedule.endDate).isAfter(currentDateTime)
+          ) {
+            scheduleStatus.isOngoing = true;
+          } else if (dayjs(schedule.startDate).isAfter(currentDateTime)) {
+            scheduleStatus.isUpcoming = true;
+          }
+
+          return { ...schedule, ...scheduleStatus };
+        });
+
+      return { ...exam, schedules };
+    });
+
+    return [transformedExams, examCount];
   }
 
   getTeacherExamsByTeacherId(
