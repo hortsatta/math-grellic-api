@@ -16,15 +16,16 @@ import { ActivityCategory } from '#/modules/activity/entities/activity-category.
 import { Activity } from '#/modules/activity/entities/activity.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
-import { LessonService } from '#/modules/lesson/lesson.service';
+import { LessonService } from '#/modules/lesson/services/lesson.service';
+import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
 import { ExamResponse } from '#/modules/exam/models/exam.model';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 import { TeacherExamService } from '#/modules/exam/services/teacher-exam.service';
-import { PerformanceService } from './performance.service';
 import { StudentPerformanceType } from '../enums/performance.enum';
 import { StudentPerformance } from '../models/performance.model';
+import { PerformanceService } from './performance.service';
 
 @Injectable()
 export class TeacherPerformanceService {
@@ -35,6 +36,8 @@ export class TeacherPerformanceService {
     private readonly studentUserAccountRepo: Repository<StudentUserAccount>,
     @Inject(LessonService)
     private readonly lessonService: LessonService,
+    @Inject(TeacherLessonService)
+    private readonly teacherLessonService: TeacherLessonService,
     @Inject(TeacherExamService)
     private readonly teacherExamService: TeacherExamService,
     @Inject(StudentExamService)
@@ -44,124 +47,23 @@ export class TeacherPerformanceService {
   ) {}
 
   async getClassPerformanceByTeacherId(teacherId: number) {
-    // Get all students (with completions) of teacher
-    const students = await this.studentUserAccountRepo.find({
-      where: {
-        teacherUser: { id: teacherId },
-        user: { approvalStatus: UserApprovalStatus.Approved },
-        lessonCompletions: { lesson: true },
-        examCompletions: { exam: true },
-        activityCompletions: { activityCategory: true },
-      },
-    });
-
     // LESSONS
     // Get all lessons and calculate overall class lesson completion
 
-    const allLessons = await this.lessonService.getTeacherLessonsByTeacherId(
-      teacherId,
-      undefined,
-      undefined,
-      undefined,
-      RecordStatus.Published,
-      true,
-    );
-
-    const availableLessons = allLessons.filter(
-      (lesson) => lesson.schedules?.length,
-    );
-
-    const totalLessonPoints = students.length * availableLessons.length;
-    let currentLessonPoints = 0;
-
-    availableLessons.forEach((lesson) => {
-      students.forEach((student) => {
-        const hasCompletion =
-          student.lessonCompletions?.some(
-            (com) => com.lesson.id === lesson.id,
-          ) || false;
-
-        if (hasCompletion) {
-          currentLessonPoints += 1;
-        }
-      });
-    });
-
-    const overallLessonCompletionPercent = +(
-      (currentLessonPoints / totalLessonPoints) *
-      100
-    ).toFixed(2);
+    const { overallLessonCompletionPercent } =
+      await this.getLessonPerformanceByTeacherId(teacherId);
 
     // EXAMS
     // Get all exams and calculate overall class exam completion
 
-    const allExams = await this.teacherExamService.getTeacherExamsByTeacherId(
-      teacherId,
-      undefined,
-      undefined,
-      undefined,
-      RecordStatus.Published,
-      true,
-    );
-
-    const availableExams = allExams.filter((exam) => exam.schedules?.length);
-
-    const totalExamPoints = students.length * availableExams.length;
-    let currentExamPoints = 0;
-
-    availableExams.forEach((exam) => {
-      students.forEach((student) => {
-        const hasCompletion =
-          student.examCompletions?.some((com) => com.exam.id === exam.id) ||
-          false;
-
-        if (hasCompletion) {
-          currentExamPoints += 1;
-        }
-      });
-    });
-
-    const overallExamCompletionPercent = +(
-      (currentExamPoints / totalExamPoints) *
-      100
-    ).toFixed(2);
+    const { overallExamCompletionPercent } =
+      await this.getExamPerformanceByTeacherId(teacherId);
 
     // ACTIVITIES
     // Get all activities and calculate overall class activity completion
 
-    const allActivities =
-      await this.activityService.getTeacherActivitiesByTeacherId(
-        teacherId,
-        undefined,
-        undefined,
-        RecordStatus.Published,
-      );
-
-    const allActivityCategories = allActivities.reduce(
-      (total, activity) => [...total, ...activity.categories],
-      [],
-    );
-
-    const totalActivityPoints = students.length * allActivityCategories.length;
-    let currentActivityPoints = 0;
-
-    allActivityCategories.forEach((category: ActivityCategory) => {
-      students.forEach((student) => {
-        const hasCompletion =
-          student.activityCompletions?.some(
-            (com) => com.activityCategory.id === category.id,
-          ) || false;
-
-        if (hasCompletion) {
-          currentActivityPoints += 1;
-        }
-      });
-    });
-
-    const overallActivityCompletionPercent = +(
-      (currentActivityPoints / totalActivityPoints) *
-      100
-    ).toFixed(2);
+    const { overallActivityCompletionPercent } =
+      await this.getActivityPerformanceByTeacherId(teacherId);
 
     return {
       overallLessonCompletionPercent,
@@ -171,36 +73,37 @@ export class TeacherPerformanceService {
   }
 
   async getLessonPerformanceByTeacherId(teacherId: number) {
-    // Get all students (with completions) of teacher
-    const students = await this.studentUserAccountRepo.find({
+    // Get all teacher's students (with completions)
+    const allStudents = await this.studentUserAccountRepo.find({
       where: {
         teacherUser: { id: teacherId },
         user: { approvalStatus: UserApprovalStatus.Approved },
-        lessonCompletions: { lesson: true },
       },
+      relations: { lessonCompletions: { lesson: true } },
     });
 
     // LESSONS
     // Get all lessons and calculate overall class lesson completion
 
-    const allLessons = await this.lessonService.getTeacherLessonsByTeacherId(
-      teacherId,
-      undefined,
-      undefined,
-      undefined,
-      RecordStatus.Published,
-      true,
-    );
+    const allPublishedLessons =
+      await this.teacherLessonService.getTeacherLessonsByTeacherId(
+        teacherId,
+        undefined,
+        undefined,
+        undefined,
+        RecordStatus.Published,
+        true,
+      );
 
-    const availableLessons = allLessons.filter(
+    const allLessons = allPublishedLessons.filter(
       (lesson) => lesson.schedules?.length,
     );
 
-    const totalLessonPoints = students.length * availableLessons.length;
+    const totalLessonPoints = allStudents.length * allLessons.length;
     let currentLessonPoints = 0;
 
-    availableLessons.forEach((lesson) => {
-      students.forEach((student) => {
+    allLessons.forEach((lesson) => {
+      allStudents.forEach((student) => {
         const hasCompletion =
           student.lessonCompletions?.some(
             (com) => com.lesson.id === lesson.id,
@@ -212,10 +115,8 @@ export class TeacherPerformanceService {
       });
     });
 
-    const overallLessonCompletionPercent = +(
-      (currentLessonPoints / totalLessonPoints) *
-      100
-    ).toFixed(2);
+    const overallLessonCompletionPercent =
+      (currentLessonPoints / totalLessonPoints) * 100;
 
     const totalLessonDurationSeconds = allLessons.reduce(
       (total, lesson) => total + lesson.durationSeconds,
@@ -231,44 +132,52 @@ export class TeacherPerformanceService {
 
   async getExamPerformanceByTeacherId(teacherId: number) {
     // Get all students (with completions) of teacher
-    const students = await this.studentUserAccountRepo.find({
+    const allStudents = await this.studentUserAccountRepo.find({
       where: {
         teacherUser: { id: teacherId },
         user: { approvalStatus: UserApprovalStatus.Approved },
+      },
+      relations: {
         examCompletions: { exam: true },
+        examSchedules: { exam: true },
       },
     });
 
-    const allExams = await this.teacherExamService.getTeacherExamsByTeacherId(
-      teacherId,
-      undefined,
-      undefined,
-      undefined,
-      RecordStatus.Published,
-      true,
-    );
+    const allPublishedExams =
+      await this.teacherExamService.getTeacherExamsByTeacherId(
+        teacherId,
+        undefined,
+        undefined,
+        undefined,
+        RecordStatus.Published,
+        true,
+      );
 
-    const availableExams = allExams.filter((exam) => exam.schedules?.length);
+    const allExams = allPublishedExams.filter((exam) => exam.schedules?.length);
 
-    const totalExamCompletionPoints = students.length * availableExams.length;
+    let totalExamCompletionPoints = 0;
     let currentExamCompletionPoints = 0;
 
-    availableExams.forEach((exam) => {
-      students.forEach((student) => {
-        const hasCompletion =
-          student.examCompletions?.some((com) => com.exam.id === exam.id) ||
-          false;
+    // Get total completions points and current completion points
+    allExams.forEach((exam) => {
+      allStudents.forEach((student) => {
+        if (
+          student.examSchedules.some((schedule) => schedule.exam.id === exam.id)
+        ) {
+          totalExamCompletionPoints += 1;
+        }
 
-        if (hasCompletion) {
+        if (
+          student.examCompletions?.some((com) => com.exam.id === exam.id) ||
+          false
+        ) {
           currentExamCompletionPoints += 1;
         }
       });
     });
 
-    const overallExamCompletionPercent = +(
-      (currentExamCompletionPoints / totalExamCompletionPoints) *
-      100
-    ).toFixed(2);
+    const overallExamCompletionPercent =
+      (currentExamCompletionPoints / totalExamCompletionPoints) * 100;
 
     const totalExamPoints = allExams.reduce(
       (total, exam) =>

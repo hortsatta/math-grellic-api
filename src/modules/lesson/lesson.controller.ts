@@ -26,7 +26,9 @@ import { LessonUpdateDto } from './dtos/lesson-update.dto';
 import { StudentLessonListResponseDto } from './dtos/student-lesson-list-response.dto';
 import { LessonCompletionUpsertDto } from './dtos/lesson-completion-upsert.dto';
 import { LessonCompletionResponseDto } from './dtos/lesson-completion-response.dto';
-import { LessonService } from './lesson.service';
+import { TeacherLessonService } from './services/teacher-lesson.service';
+import { StudentLessonService } from './services/student-lesson.service';
+import { LessonScheduleService } from './lesson-schedule.service';
 
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
@@ -34,7 +36,11 @@ const SCHEDULE_URL = '/schedules';
 
 @Controller('lessons')
 export class LessonController {
-  constructor(private readonly lessonService: LessonService) {}
+  constructor(
+    private readonly teacherLessonService: TeacherLessonService,
+    private readonly studentLessonService: StudentLessonService,
+    private readonly lessonScheduleService: LessonScheduleService,
+  ) {}
 
   // TEACHERS
 
@@ -52,7 +58,7 @@ export class LessonController {
     @Query('skip') skip?: number,
   ): Promise<[Lesson[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.getPaginatedTeacherLessonsByTeacherId(
+    return this.teacherLessonService.getPaginatedTeacherLessonsByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -75,7 +81,7 @@ export class LessonController {
   ): Promise<Lesson[]> {
     const { id: teacherId } = user.teacherUserAccount;
     const transformedIds = ids?.split(',').map((id) => +id);
-    return this.lessonService.getTeacherLessonsByTeacherId(
+    return this.teacherLessonService.getTeacherLessonsByTeacherId(
       teacherId,
       sort,
       transformedIds,
@@ -93,7 +99,7 @@ export class LessonController {
     @Query('take') take?: number,
   ): Promise<Lesson[]> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.getLessonSnippetsByTeacherId(
+    return this.teacherLessonService.getLessonSnippetsByTeacherId(
       teacherId,
       take || 3,
     );
@@ -109,7 +115,11 @@ export class LessonController {
     @Query('status') status?: string,
   ): Promise<Lesson> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.getOneBySlugAndTeacherId(slug, teacherId, status);
+    return this.teacherLessonService.getOneBySlugAndTeacherId(
+      slug,
+      teacherId,
+      status,
+    );
   }
 
   @Post()
@@ -127,7 +137,7 @@ export class LessonController {
       ...(startDate && { startDate: dayjs(startDate).toDate() }),
     };
 
-    return this.lessonService.create(transformedBody, teacherId);
+    return this.teacherLessonService.create(transformedBody, teacherId);
   }
 
   @Patch('/:slug')
@@ -135,24 +145,11 @@ export class LessonController {
   @UseSerializeInterceptor(LessonResponseDto)
   update(
     @Param('slug') slug: string,
-    @Query('schedule') scheduleId: number,
     @Body() body: LessonUpdateDto,
     @CurrentUser() user: User,
   ): Promise<Lesson> {
     const { id: teacherId } = user.teacherUserAccount;
-    const { startDate, ...moreBody } = body;
-
-    const transformedBody = {
-      ...moreBody,
-      ...(startDate && { startDate: dayjs(startDate).toDate() }),
-    };
-
-    return this.lessonService.update(
-      slug,
-      transformedBody,
-      teacherId,
-      scheduleId,
-    );
+    return this.teacherLessonService.update(slug, body, teacherId);
   }
 
   @Delete('/:slug')
@@ -162,7 +159,7 @@ export class LessonController {
     @CurrentUser() user: User,
   ): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.deleteBySlug(slug, teacherId);
+    return this.teacherLessonService.deleteBySlug(slug, teacherId);
   }
 
   // STUDENTS
@@ -175,7 +172,7 @@ export class LessonController {
     @Query('q') q?: string,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.lessonService.getStudentLessonsByStudentId(studentId, q);
+    return this.studentLessonService.getStudentLessonsByStudentId(studentId, q);
   }
 
   @Get(`/:slug${STUDENT_URL}`)
@@ -187,7 +184,7 @@ export class LessonController {
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.lessonService.getOneBySlugAndStudentId(slug, studentId);
+    return this.studentLessonService.getOneBySlugAndStudentId(slug, studentId);
   }
 
   @Post(`/:slug${STUDENT_URL}/completion`)
@@ -199,7 +196,7 @@ export class LessonController {
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.lessonService.setLessonCompletionBySlugAndStudentId(
+    return this.studentLessonService.setLessonCompletionBySlugAndStudentId(
       body,
       slug,
       studentId,
@@ -222,7 +219,7 @@ export class LessonController {
       startDate: dayjs(body.startDate).toDate(),
     };
 
-    return this.lessonService.createSchedule(transformedBody, teacherId);
+    return this.lessonScheduleService.create(transformedBody, teacherId);
   }
 
   @Patch(`${SCHEDULE_URL}/:scheduleId`)
@@ -241,7 +238,7 @@ export class LessonController {
       ...(startDate && { startDate: dayjs(startDate).toDate() }),
     };
 
-    return this.lessonService.updateSchedule(
+    return this.lessonScheduleService.update(
       scheduleId,
       transformedBody,
       teacherId,
@@ -255,6 +252,6 @@ export class LessonController {
     @CurrentUser() user: User,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.lessonService.deleteSchedule(scheduleId, teacherId);
+    return this.lessonScheduleService.delete(scheduleId, teacherId);
   }
 }

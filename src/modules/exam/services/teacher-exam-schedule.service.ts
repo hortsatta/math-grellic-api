@@ -320,13 +320,17 @@ export class TeacherExamScheduleService {
       students = allStudents.map(({ id }) => ({ id }));
     }
 
-    this.validateScheduleUpsert(
+    const { error: scheduleError } = await this.validateScheduleUpsert(
       startDate,
       endDate,
       teacherId,
       studentIds,
       examId,
     );
+
+    if (scheduleError) {
+      throw scheduleError;
+    }
 
     const examSchedule = this.repo.create({
       ...moreExamScheduleDto,
@@ -363,13 +367,17 @@ export class TeacherExamScheduleService {
       students = allStudents.map(({ id }) => ({ id }));
     }
 
-    this.validateScheduleUpsert(
+    const { error: scheduleError } = await this.validateScheduleUpsert(
       startDate,
       endDate,
       teacherId,
       studentIds,
       examSchedule.exam.id,
     );
+
+    if (scheduleError) {
+      throw scheduleError;
+    }
 
     return this.repo.save({
       ...examSchedule,

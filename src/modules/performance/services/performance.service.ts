@@ -3,9 +3,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import dayjs from '#/common/configs/dayjs.config';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { ExamCompletion } from '#/modules/exam/entities/exam-completion.entity';
+import { LessonCompletion } from '#/modules/lesson/entities/lesson-completion.entity';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { ActivityCategoryType } from '#/modules/activity/enums/activity.enum';
-import { LessonService } from '#/modules/lesson/lesson.service';
+import { LessonService } from '#/modules/lesson/services/lesson.service';
 import { ActivityService } from '#/modules/activity/activity.service';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 
@@ -251,28 +252,30 @@ export class PerformanceService {
   }
 
   async generateOverallLessonDetailedPerformance(student: StudentUserAccount) {
+    const currentDateTime = dayjs().toDate();
+
     const allLessons = await this.lessonService.getAllByStudentId(student.id);
 
-    const availableLessons = allLessons.filter((lesson) => {
-      const currentDateTime = dayjs().toDate();
-      const isAvailable = lesson.schedules.some(
-        (schedule) =>
-          dayjs(schedule.startDate).isBefore(currentDateTime) ||
-          dayjs(schedule.startDate).isSame(currentDateTime),
-      );
-
-      return isAvailable;
-    });
-
-    const lessonCompletions = student.lessonCompletions.filter(
-      (ec, index, self) =>
-        index === self.findIndex((t) => t.lesson.id === ec.lesson.id),
+    const availableLessons = allLessons.filter((lesson) =>
+      lesson.schedules.some((schedule) =>
+        dayjs(schedule.startDate).isSameOrBefore(currentDateTime),
+      ),
     );
 
-    const overallLessonCompletionPercent = (() => {
-      const value = (lessonCompletions.length / allLessons.length) * 100;
-      return +value.toFixed(2);
-    })();
+    const lessonCompletions: LessonCompletion[] = Object.values(
+      student.lessonCompletions.reduce((acc, com) => {
+        const lessonId = com.lesson.id;
+
+        if (!acc[lessonId]) {
+          acc[lessonId] = com;
+        }
+
+        return acc;
+      }, {}),
+    );
+
+    const overallLessonCompletionPercent =
+      (lessonCompletions.length / allLessons.length) * 100;
 
     return {
       totalLessonCount: allLessons.length,
@@ -292,19 +295,22 @@ export class PerformanceService {
       student.id,
     );
 
-    const availableExams = allExams.filter((exam) => {
-      const isAvailable = exam.schedules.some(
-        (schedule) =>
-          dayjs(schedule.startDate).isBefore(currentDateTime) ||
-          dayjs(schedule.startDate).isSame(currentDateTime),
-      );
+    const pastExams = allExams.filter((exam) =>
+      exam.schedules.every((schedule) =>
+        dayjs(schedule.endDate).isSameOrBefore(currentDateTime),
+      ),
+    );
 
-      return isAvailable;
-    });
+    const examCompletions: ExamCompletion[] = Object.values(
+      student.examCompletions.reduce((acc, com) => {
+        const examId = com.exam.id;
 
-    const examCompletions = student.examCompletions.filter(
-      (ec, index, self) =>
-        index === self.findIndex((t) => t.exam.id === ec.exam.id),
+        if (!acc[examId] || com.score > acc[examId].score) {
+          acc[examId] = com;
+        }
+
+        return acc;
+      }, {}),
     );
 
     const examsPassedCount = examCompletions.filter(
@@ -315,35 +321,13 @@ export class PerformanceService {
       (ec) => ec.score < ec.exam.passingPoints,
     ).length;
 
-    const examsExpiredCount = availableExams.filter((exam) => {
-      const isDone = exam.schedules.every((schedule) =>
-        dayjs(schedule.endDate).isSameOrBefore(currentDateTime),
-      );
+    const examsExpiredCount = pastExams.filter(
+      (exam) => !examCompletions.some((ec) => ec.exam.id === exam.id),
+    ).length;
 
-      const hasCompletion = !!examCompletions.find(
-        (ec) => ec.exam.id === exam.id,
-      );
-
-      return isDone && !hasCompletion;
-    }).length;
-
-    const overallExamCompletionPercent = (() => {
-      const ongoingExamsCount = availableExams.filter((exam) => {
-        const isOngoing = exam.schedules.some((schedule) =>
-          dayjs(schedule.endDate).isAfter(currentDateTime),
-        );
-
-        const hasCompletion = !!examCompletions.find(
-          (ec) => ec.exam.id === exam.id,
-        );
-
-        return isOngoing && !hasCompletion;
-      }).length;
-
-      const value =
-        ((availableExams.length - ongoingExamsCount) / allExams.length) * 100;
-      return +value.toFixed(2);
-    })();
+    // Only count exam with completion
+    const overallExamCompletionPercent =
+      (examCompletions.length / allExams.length) * 100;
 
     const { rankedStudents, unrankedStudents } =
       await this.generateOverallExamRankings([student, ...otherStudents]);
@@ -354,7 +338,7 @@ export class PerformanceService {
     ].find((s) => s.id === student.id);
 
     return {
-      currentExamCount: availableExams.length,
+      currentExamCount: pastExams.length,
       examsCompletedCount: examCompletions.length,
       examsPassedCount,
       examsFailedCount,

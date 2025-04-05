@@ -23,7 +23,7 @@ import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { UploadService } from '#/modules/upload/upload.service';
-import { LessonService } from '#/modules/lesson/lesson.service';
+import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
 import { UserService } from '#/modules/user/user.service';
 import { stripHtml } from '../helpers/exam.helper';
 import { ExamResponse } from '../models/exam.model';
@@ -51,8 +51,8 @@ export class TeacherExamService {
     private readonly examCompletionRepo: Repository<ExamCompletion>,
     @Inject(TeacherExamScheduleService)
     private readonly teacherExamScheduleService: TeacherExamScheduleService,
-    @Inject(LessonService)
-    private readonly lessonService: LessonService,
+    @Inject(TeacherLessonService)
+    private readonly teacherLessonService: TeacherLessonService,
     @Inject(UserService)
     private readonly userService: UserService,
     @Inject(UploadService)
@@ -146,14 +146,15 @@ export class TeacherExamService {
 
     // Validate if lessons from coveredLessonIds is owned by current user teacher
     if (coveredLessonIds?.length) {
-      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
-        teacherId,
-        undefined,
-        coveredLessonIds,
-        undefined,
-        RecordStatus.Published,
-        true,
-      );
+      const lessons =
+        await this.teacherLessonService.getTeacherLessonsByTeacherId(
+          teacherId,
+          undefined,
+          coveredLessonIds,
+          undefined,
+          RecordStatus.Published,
+          true,
+        );
       if (lessons.length !== coveredLessonIds.length) {
         throw new BadRequestException('Covered lessons is invalid');
       }
@@ -230,14 +231,15 @@ export class TeacherExamService {
 
     // Validate if lessons from coveredLessonIds is owned by current user teacher
     if (coveredLessonIds?.length) {
-      const lessons = await this.lessonService.getTeacherLessonsByTeacherId(
-        teacherId,
-        undefined,
-        coveredLessonIds,
-        undefined,
-        RecordStatus.Published,
-        true,
-      );
+      const lessons =
+        await this.teacherLessonService.getTeacherLessonsByTeacherId(
+          teacherId,
+          undefined,
+          coveredLessonIds,
+          undefined,
+          RecordStatus.Published,
+          true,
+        );
       if (lessons.length !== coveredLessonIds.length) {
         throw new BadRequestException('Covered lessons is invalid');
       }

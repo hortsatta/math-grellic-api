@@ -8,7 +8,7 @@ import { ActivityService } from '#/modules/activity/activity.service';
 import { Activity } from '#/modules/activity/entities/activity.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
-import { LessonService } from '#/modules/lesson/lesson.service';
+import { LessonService } from '#/modules/lesson/services/lesson.service';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
 import { ExamResponse } from '#/modules/exam/models/exam.model';

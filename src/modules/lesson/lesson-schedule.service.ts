@@ -1,12 +1,15 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, IsNull, Repository } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { RecordStatus } from '#/common/enums/content.enum';
-import { UserApprovalStatus } from '../user/enums/user.enum';
-import { UserService } from '../user/user.service';
 import { LessonSchedule } from './entities/lesson-schedule.entity';
+import { Lesson } from './entities/lesson.entity';
 import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
 import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
 
@@ -15,35 +18,40 @@ export class LessonScheduleService {
   constructor(
     @InjectRepository(LessonSchedule)
     private readonly repo: Repository<LessonSchedule>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @InjectRepository(Lesson)
+    private readonly lessonRepo: Repository<Lesson>,
   ) {}
 
-  async validateScheduleCreation(studentIds?: number[]): Promise<boolean> {
+  async validateScheduleCreation(studentIds?: number[], lesson?: Lesson) {
     if (!studentIds || !studentIds.length) {
-      return true;
+      return { error: null };
     }
 
-    // Check if all specified student ids are valid
-    const students = await this.userService.getStudentsByIds(
-      studentIds,
-      UserApprovalStatus.Approved,
-    );
-    if (students.length !== studentIds.length) {
-      return false;
+    // Don't allow if schedule is assigned to specific students,
+    // lesson should be available to all students
+    if (studentIds?.length) {
+      return {
+        error: new BadRequestException(
+          'Cannot set lesson to specific students at this time',
+        ),
+      };
     }
 
-    return true;
+    if (lesson.schedules.length) {
+      return {
+        error: new BadRequestException(
+          'Lesson cannot have more than one schedule',
+        ),
+      };
+    }
+
+    return { error: null };
   }
 
   getByLessonId(lessonId: number): Promise<LessonSchedule[]> {
     return this.repo.find({
       where: { lesson: { id: lessonId } },
     });
-  }
-
-  getOneById(id: number): Promise<LessonSchedule> {
-    return this.repo.findOne({ where: { id } });
   }
 
   getByDateRangeAndTeacherId(fromDate: Date, toDate: Date, teacherId: number) {
@@ -116,9 +124,24 @@ export class LessonScheduleService {
     return previousSchedules;
   }
 
-  async create(lessonScheduleDto: LessonScheduleCreateDto) {
+  async create(lessonScheduleDto: LessonScheduleCreateDto, teacherId: number) {
     const { lessonId, studentIds, ...moreLessonScheduleDto } =
       lessonScheduleDto;
+
+    const lesson = await this.lessonRepo.findOne({
+      where: {
+        id: lessonId,
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+      },
+      relations: { schedules: true },
+    });
+
+    const { error } = await this.validateScheduleCreation(studentIds, lesson);
+
+    if (error) {
+      throw error;
+    }
 
     const students = studentIds?.length
       ? studentIds.map((id) => ({ id }))
@@ -136,12 +159,21 @@ export class LessonScheduleService {
   async update(
     id: number,
     lessonScheduleDto: LessonScheduleUpdateDto,
+    teacherId: number,
   ): Promise<LessonSchedule> {
     const { startDate, studentIds } = lessonScheduleDto;
+
     // Get lesson schedule, cancel schedule update and throw error if not found
-    const lessonSchedule = await this.getOneById(id);
+    const lessonSchedule = await this.repo.findOne({
+      where: { id, lesson: { teacher: { id: teacherId } } },
+    });
+
     if (!lessonSchedule) {
       throw new NotFoundException('Lesson schedule not found');
+    } else if (studentIds?.length) {
+      throw new BadRequestException(
+        'Cannot set lesson to specific students at this time',
+      );
     }
 
     const students = studentIds?.length
@@ -156,8 +188,22 @@ export class LessonScheduleService {
     });
   }
 
-  async delete(id: number): Promise<boolean> {
+  async delete(id: number, teacherId: number): Promise<boolean> {
+    // Prevent if lesson has completions
+    const lesson = await this.lessonRepo.findOne({
+      where: {
+        schedules: { id },
+        teacher: { id: teacherId },
+        completions: true,
+      },
+    });
+
+    if (lesson.completions.length) {
+      throw new BadRequestException('Cannot delete lesson schedule');
+    }
+
     const result = await this.repo.delete({ id });
+
     return !!result.affected;
   }
 }
