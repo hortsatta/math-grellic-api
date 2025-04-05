@@ -78,7 +78,7 @@ import { AuditLog } from './audit-log/entities/audit-log.entity';
             Announcement,
             AuditLog,
           ],
-          synchronize: true,
+          synchronize: process.env.NODE_ENV !== 'production',
           ssl,
         };
       },
