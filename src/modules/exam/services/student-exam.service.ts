@@ -177,10 +177,10 @@ export class StudentExamService {
               dayjs(comA.schedule.startDate).valueOf(),
           );
 
-          const highestCompletion = exam.completions.reduce(
-            (acc, com) => (com.score > (acc?.score || 0) ? com : acc),
-            null,
-          );
+          const highestCompletion = exam.completions.reduce((acc, com) => {
+            if (acc == null) return com;
+            return com.score > (acc?.score || 0) ? com : acc;
+          }, null);
 
           exam.completions = exam.completions.map((com) => {
             if (com.id === highestCompletion.id) {
@@ -342,7 +342,10 @@ export class StudentExamService {
         );
 
         const highestCompletion = examResponse.completions.reduce(
-          (acc, com) => (com.score > (acc?.score || 0) ? com : acc),
+          (acc, com) => {
+            if (acc == null) return com;
+            return com.score > (acc?.score || 0) ? com : acc;
+          },
           null,
         );
 
@@ -548,10 +551,10 @@ export class StudentExamService {
     const studentData = studentIds.map((studentId) => {
       const completion = completions
         .filter((com) => com.student.id === studentId)
-        .reduce(
-          (acc, com) => (com.score > (acc?.score || 0) ? com : acc),
-          null,
-        );
+        .reduce((acc, com) => {
+          if (acc == null) return com;
+          return com.score > (acc?.score || 0) ? com : acc;
+        }, null);
 
       return {
         studentId,
