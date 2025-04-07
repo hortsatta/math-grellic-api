@@ -28,7 +28,7 @@ import { LessonCompletionUpsertDto } from './dtos/lesson-completion-upsert.dto';
 import { LessonCompletionResponseDto } from './dtos/lesson-completion-response.dto';
 import { TeacherLessonService } from './services/teacher-lesson.service';
 import { StudentLessonService } from './services/student-lesson.service';
-import { LessonScheduleService } from './lesson-schedule.service';
+import { LessonScheduleService } from './services/lesson-schedule.service';
 
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';

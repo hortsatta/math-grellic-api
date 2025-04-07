@@ -4,7 +4,7 @@ import { Not, Repository } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
 
-import { ActivityService } from '#/modules/activity/activity.service';
+import { ActivityService } from '#/modules/activity/services/activity.service';
 import { Activity } from '#/modules/activity/entities/activity.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
@@ -14,8 +14,8 @@ import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
 import { ExamResponse } from '#/modules/exam/models/exam.model';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 import { TeacherExamService } from '#/modules/exam/services/teacher-exam.service';
-import { PerformanceService } from './performance.service';
 import { StudentPerformance } from '../models/performance.model';
+import { PerformanceService } from './performance.service';
 
 @Injectable()
 export class StudentPerformanceService {

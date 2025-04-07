@@ -7,8 +7,8 @@ import { LessonCompletion } from '#/modules/lesson/entities/lesson-completion.en
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { ActivityCategoryType } from '#/modules/activity/enums/activity.enum';
 import { LessonService } from '#/modules/lesson/services/lesson.service';
-import { ActivityService } from '#/modules/activity/activity.service';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
+import { ActivityService } from '#/modules/activity/services/activity.service';
 
 @Injectable()
 export class PerformanceService {

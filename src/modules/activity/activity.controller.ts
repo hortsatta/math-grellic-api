@@ -24,14 +24,20 @@ import { StudentActivityListResponseDto } from './dtos/student-activity-list-res
 import { ActivityCategoryCompletionCreateDto } from './dtos/activity-category-completion-create.dto';
 import { ActivityCategoryCompletionUpdateDto } from './dtos/activity-category-completion-update.dto';
 import { ActivityCategoryCompletionResponseDto } from './dtos/activity-category-completion-response.dto';
-import { ActivityService } from './activity.service';
+import { ActivityService } from './services/activity.service';
+import { TeacherActivityService } from './services/teacher-activity.service';
+import { StudentActivityService } from './services/student-activity.service';
 
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 
 @Controller('activities')
 export class ActivityController {
-  constructor(private readonly activityService: ActivityService) {}
+  constructor(
+    private readonly activityService: ActivityService,
+    private readonly teacherActivityService: TeacherActivityService,
+    private readonly studentActivityService: StudentActivityService,
+  ) {}
 
   @Get('/games')
   @UseJwtAuthGuard(UserRole.Teacher)
@@ -55,7 +61,7 @@ export class ActivityController {
   ): Promise<[Activity[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.activityService.getPaginationTeacherActivitiesByTeacherId(
+    return this.teacherActivityService.getPaginationTeacherActivitiesByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -74,7 +80,7 @@ export class ActivityController {
     @Query('take') take?: number,
   ): Promise<Activity[]> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.activityService.getActivitySnippetsByTeacherId(
+    return this.teacherActivityService.getActivitySnippetsByTeacherId(
       teacherId,
       take || 3,
     );
@@ -90,7 +96,7 @@ export class ActivityController {
     @Query('status') status?: string,
   ): Promise<Activity> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.activityService.getOneBySlugAndTeacherId(
+    return this.teacherActivityService.getOneBySlugAndTeacherId(
       slug,
       teacherId,
       status,
@@ -105,7 +111,7 @@ export class ActivityController {
     @Query('slug') slug?: string,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.activityService.validateUpsert(body, teacherId, slug);
+    return this.teacherActivityService.validateUpsert(body, teacherId, slug);
   }
 
   @Post()
@@ -116,7 +122,7 @@ export class ActivityController {
     @CurrentUser() user: User,
   ): Promise<Activity> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.activityService.create(body, teacherId);
+    return this.teacherActivityService.create(body, teacherId);
   }
 
   @Patch('/:slug')
@@ -128,7 +134,7 @@ export class ActivityController {
     @CurrentUser() user: User,
   ): Promise<Activity> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.activityService.update(slug, body, teacherId);
+    return this.teacherActivityService.update(slug, body, teacherId);
   }
 
   @Delete('/:slug')
@@ -138,7 +144,7 @@ export class ActivityController {
     @CurrentUser() user: User,
   ): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.activityService.deleteBySlug(slug, teacherId);
+    return this.teacherActivityService.deleteBySlug(slug, teacherId);
   }
 
   // STUDENTS
@@ -151,7 +157,10 @@ export class ActivityController {
     @Query('q') q?: string,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.activityService.getStudentActivitiesByStudentId(studentId, q);
+    return this.studentActivityService.getStudentActivitiesByStudentId(
+      studentId,
+      q,
+    );
   }
 
   @Get(`/:slug${STUDENT_URL}`)
@@ -176,7 +185,7 @@ export class ActivityController {
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.activityService.createActivityCategoryCompletionBySlugAndStudentId(
+    return this.studentActivityService.createActivityCategoryCompletionBySlugAndStudentId(
       body,
       slug,
       categoryId,
@@ -194,7 +203,7 @@ export class ActivityController {
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.activityService.updateActivityCategoryCompletionBySlugAndStudentId(
+    return this.studentActivityService.updateActivityCategoryCompletionBySlugAndStudentId(
       body,
       slug,
       categoryId,

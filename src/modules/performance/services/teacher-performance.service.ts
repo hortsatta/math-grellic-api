@@ -12,7 +12,8 @@ import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
-import { ActivityService } from '#/modules/activity/activity.service';
+import { ActivityService } from '#/modules/activity/services/activity.service';
+import { TeacherActivityService } from '#/modules/activity/services/teacher-activity.service';
 import { ActivityCategory } from '#/modules/activity/entities/activity-category.entity';
 import { Activity } from '#/modules/activity/entities/activity.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
@@ -45,6 +46,8 @@ export class TeacherPerformanceService {
     private readonly studentExamService: StudentExamService,
     @Inject(ActivityService)
     private readonly activityService: ActivityService,
+    @Inject(TeacherActivityService)
+    private readonly teacherActivityService: TeacherActivityService,
   ) {}
 
   async getClassPerformanceByTeacherId(teacherId: number) {
@@ -217,7 +220,7 @@ export class TeacherPerformanceService {
     });
 
     const allActivities =
-      await this.activityService.getTeacherActivitiesByTeacherId(
+      await this.teacherActivityService.getTeacherActivitiesByTeacherId(
         teacherId,
         undefined,
         undefined,

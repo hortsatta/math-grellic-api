@@ -8,10 +8,10 @@ import { Between, FindOptionsWhere, IsNull, Repository } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { RecordStatus } from '#/common/enums/content.enum';
-import { LessonSchedule } from './entities/lesson-schedule.entity';
-import { Lesson } from './entities/lesson.entity';
-import { LessonScheduleCreateDto } from './dtos/lesson-schedule-create.dto';
-import { LessonScheduleUpdateDto } from './dtos/lesson-schedule-update.dto';
+import { LessonSchedule } from '../entities/lesson-schedule.entity';
+import { Lesson } from '../entities/lesson.entity';
+import { LessonScheduleCreateDto } from '../dtos/lesson-schedule-create.dto';
+import { LessonScheduleUpdateDto } from '../dtos/lesson-schedule-update.dto';
 
 @Injectable()
 export class LessonScheduleService {

@@ -7,7 +7,7 @@ import { LessonCompletion } from './entities/lesson-completion.entity';
 import { LessonController } from './lesson.controller';
 import { LessonSubscriber } from './subscribers/lesson.subscriber';
 import { LessonService } from './services/lesson.service';
-import { LessonScheduleService } from './lesson-schedule.service';
+import { LessonScheduleService } from './services/lesson-schedule.service';
 import { StudentLessonService } from './services/student-lesson.service';
 import { TeacherLessonService } from './services/teacher-lesson.service';
 

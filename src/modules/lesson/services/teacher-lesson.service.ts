@@ -22,7 +22,7 @@ import { LessonCompletion } from '../entities/lesson-completion.entity';
 import { Lesson } from '../entities/lesson.entity';
 import { LessonCreateDto } from '../dtos/lesson-create.dto';
 import { LessonUpdateDto } from '../dtos/lesson-update.dto';
-import { LessonScheduleService } from '../lesson-schedule.service';
+import { LessonScheduleService } from './lesson-schedule.service';
 
 @Injectable()
 export class TeacherLessonService {

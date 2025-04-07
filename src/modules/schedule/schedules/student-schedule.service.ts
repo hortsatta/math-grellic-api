@@ -19,7 +19,7 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { StudentExamScheduleService } from '#/modules/exam/services/student-exam-schedule.service';
 import { UserService } from '#/modules/user/user.service';
-import { LessonScheduleService } from '#/modules/lesson/lesson-schedule.service';
+import { LessonScheduleService } from '#/modules/lesson/services/lesson-schedule.service';
 import { MeetingSchedule } from '../entities/meeting-schedule.entity';
 
 @Injectable()

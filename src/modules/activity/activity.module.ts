@@ -10,7 +10,9 @@ import { ActivityCategoryQuestion } from './entities/activity-category-question.
 import { ActivityCategoryQuestionChoice } from './entities/activity-category-question-choice.entity';
 import { ActivityCategoryTypePoint } from './entities/activity-category-type-point.entity';
 import { ActivityCategoryTypeTime } from './entities/activity-category-type-time.entity';
-import { ActivityService } from './activity.service';
+import { ActivityService } from './services/activity.service';
+import { TeacherActivityService } from './services/teacher-activity.service';
+import { StudentActivityService } from './services/student-activity.service';
 import { ActivityCategoryCompletion } from './entities/activity-category-completion.entity';
 import { ActivityCategoryCompletionQuestionAnswer } from './entities/activity-category-completion-question-answer.entity';
 
@@ -29,7 +31,12 @@ import { ActivityCategoryCompletionQuestionAnswer } from './entities/activity-ca
     UserModule,
   ],
   controllers: [ActivityController],
-  providers: [ActivityService, ActivitySubscriber],
-  exports: [ActivityService],
+  providers: [
+    ActivityService,
+    TeacherActivityService,
+    StudentActivityService,
+    ActivitySubscriber,
+  ],
+  exports: [ActivityService, TeacherActivityService, StudentActivityService],
 })
 export class ActivityModule {}
