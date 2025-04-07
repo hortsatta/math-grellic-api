@@ -4,19 +4,22 @@ import { StudentUserResponseDto } from '#/modules/user/dtos/student-user-respons
 
 export class StudentPerformanceResponseDto extends StudentUserResponseDto {
   @Expose()
-  currentExamCount: number;
+  examCurrentCount: number;
 
   @Expose()
-  examsCompletedCount: number;
+  examTotalCount: number;
 
   @Expose()
-  examsPassedCount: number;
+  examCompletedCount: number;
 
   @Expose()
-  examsFailedCount: number;
+  examPassedCount: number;
 
   @Expose()
-  examsExpiredCount: number;
+  examFailedCount: number;
+
+  @Expose()
+  examExpiredCount: number;
 
   @Expose()
   overallExamCompletionPercent: number;
@@ -43,13 +46,13 @@ export class StudentPerformanceResponseDto extends StudentUserResponseDto {
   overallActivityScore: number | null;
 
   @Expose()
-  totalLessonCount: number;
+  lessonTotalCount: number;
 
   @Expose()
-  currentLessonCount: number;
+  lessonCurrentCount: number;
 
   @Expose()
-  lessonsCompletedCount: number;
+  lessonCompletedCount: number;
 
   @Expose()
   overallLessonCompletionPercent: number;

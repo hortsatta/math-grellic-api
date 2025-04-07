@@ -32,20 +32,12 @@ export class LessonService {
     const lessonsWithSchedule = allLessons.filter((lesson) =>
       lesson.schedules.some(
         (schedule) =>
-          schedule.students != null ||
+          !schedule.students.length ||
           schedule.students.some((s) => s.id === studentId),
       ),
     );
 
-    const transformedLessons = lessonsWithSchedule.map((lesson) => {
-      const schedules = lesson.schedules.filter((schedule) =>
-        schedule.students.some((s) => s.id === studentId),
-      );
-
-      return { ...lesson, schedules };
-    });
-
-    return transformedLessons;
+    return lessonsWithSchedule;
   }
 
   async getLessonsWithCompletionsByStudentIdAndTeacherId(

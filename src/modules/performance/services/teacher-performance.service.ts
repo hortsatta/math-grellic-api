@@ -8,6 +8,7 @@ import {
   Repository,
 } from 'typeorm';
 
+import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
@@ -124,13 +125,15 @@ export class TeacherPerformanceService {
     );
 
     return {
-      totalLessonCount: allLessons.length,
+      lessonTotalCount: allLessons.length,
       totalLessonDurationSeconds,
       overallLessonCompletionPercent,
     };
   }
 
   async getExamPerformanceByTeacherId(teacherId: number) {
+    const currentDateTime = dayjs().toDate();
+
     // Get all students (with completions) of teacher
     const allStudents = await this.studentUserAccountRepo.find({
       where: {
@@ -161,16 +164,25 @@ export class TeacherPerformanceService {
     // Get total completions points and current completion points
     allExams.forEach((exam) => {
       allStudents.forEach((student) => {
-        if (
-          student.examSchedules.some((schedule) => schedule.exam.id === exam.id)
-        ) {
+        const schedules = student.examSchedules.filter(
+          (schedule) => schedule.exam.id === exam.id,
+        );
+
+        const upcomingExamIds = schedules
+          .filter((schedule) =>
+            dayjs(schedule.startDate).isAfter(currentDateTime),
+          )
+          .map((schedule) => schedule.exam.id);
+
+        const completions = student.examCompletions.filter(
+          (com) => upcomingExamIds.findIndex((id) => id === com.exam.id) < 0,
+        );
+
+        if (schedules.length) {
           totalExamCompletionPoints += 1;
         }
 
-        if (
-          student.examCompletions?.some((com) => com.exam.id === exam.id) ||
-          false
-        ) {
+        if (completions.some((com) => com.exam.id === exam.id) || false) {
           currentExamCompletionPoints += 1;
         }
       });

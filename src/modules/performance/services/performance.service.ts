@@ -39,18 +39,18 @@ export class PerformanceService {
 
         return {
           ...student,
-          lessonsCompletedCount: filteredLessonCompletions.length,
-          totalLessonCount: lessons.length,
+          lessonCompletedCount: filteredLessonCompletions.length,
+          lessonTotalCount: lessons.length,
         };
       }),
     );
 
     const rankedStudents = transformedStudents
-      .filter((s) => s.lessonsCompletedCount > 0)
-      .sort((a, b) => b.lessonsCompletedCount - a.lessonsCompletedCount);
+      .filter((s) => s.lessonCompletedCount > 0)
+      .sort((a, b) => b.lessonCompletedCount - a.lessonCompletedCount);
 
     const unrankedStudents = transformedStudents
-      .filter((s) => s.lessonsCompletedCount <= 0)
+      .filter((s) => s.lessonCompletedCount <= 0)
       .sort((a, b) => {
         const aFullname = generateFullName(
           a.firstName,
@@ -278,9 +278,9 @@ export class PerformanceService {
       (lessonCompletions.length / allLessons.length) * 100;
 
     return {
-      totalLessonCount: allLessons.length,
-      currentLessonCount: availableLessons.length,
-      lessonsCompletedCount: lessonCompletions.length,
+      lessonTotalCount: allLessons.length,
+      lessonCurrentCount: availableLessons.length,
+      lessonCompletedCount: lessonCompletions.length,
       overallLessonCompletionPercent,
     };
   }
@@ -301,11 +301,25 @@ export class PerformanceService {
       ),
     );
 
+    const ongoingExams = allExams.filter((exam) =>
+      exam.schedules.some(
+        (schedule) =>
+          dayjs(schedule.startDate).isSameOrBefore(currentDateTime) &&
+          dayjs(schedule.endDate).isAfter(currentDateTime),
+      ),
+    );
+
     const examCompletions: ExamCompletion[] = Object.values(
       student.examCompletions.reduce((acc, com) => {
         const examId = com.exam.id;
+        const isExamUpcoming =
+          [...pastExams, ...ongoingExams].findIndex(
+            (exam) => exam.id === examId,
+          ) < 0;
 
-        if (!acc[examId] || com.score > acc[examId].score) {
+        if (isExamUpcoming) {
+          return acc;
+        } else if (!acc[examId] || com.score > acc[examId].score) {
           acc[examId] = com;
         }
 
@@ -313,15 +327,15 @@ export class PerformanceService {
       }, {}),
     );
 
-    const examsPassedCount = examCompletions.filter(
+    const examPassedCount = examCompletions.filter(
       (ec) => ec.score >= ec.exam.passingPoints,
     ).length;
 
-    const examsFailedCount = examCompletions.filter(
+    const examFailedCount = examCompletions.filter(
       (ec) => ec.score < ec.exam.passingPoints,
     ).length;
 
-    const examsExpiredCount = pastExams.filter(
+    const examExpiredCount = pastExams.filter(
       (exam) => !examCompletions.some((ec) => ec.exam.id === exam.id),
     ).length;
 
@@ -338,11 +352,12 @@ export class PerformanceService {
     ].find((s) => s.id === student.id);
 
     return {
-      currentExamCount: pastExams.length,
-      examsCompletedCount: examCompletions.length,
-      examsPassedCount,
-      examsFailedCount,
-      examsExpiredCount,
+      examCurrentCount: pastExams.length + ongoingExams.length,
+      examTotalCount: allExams.length,
+      examCompletedCount: examCompletions.length,
+      examPassedCount,
+      examFailedCount,
+      examExpiredCount,
       overallExamCompletionPercent,
       overallExamRank,
       overallExamScore,
