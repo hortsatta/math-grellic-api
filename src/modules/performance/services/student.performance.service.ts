@@ -269,6 +269,7 @@ export class StudentPerformanceService {
     return this.activityService.getOneBySlugAndStudentId(
       slug,
       student.id,
+      true,
     ) as Promise<Activity>;
   }
 }

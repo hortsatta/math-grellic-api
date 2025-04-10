@@ -537,6 +537,9 @@ export class StudentExamService {
   }
 
   async generateExamRankings(exam: Exam, teacherId: number) {
+    let previousScore = null;
+    let currentRank = null;
+
     const students = await this.userService.getStudentsByTeacherId(teacherId);
 
     const studentIds = students.map((student) => student.id);
@@ -568,12 +571,22 @@ export class StudentExamService {
         (dataA, dataB) =>
           dataB.completions[0].score - dataA.completions[0].score,
       )
-      .map((data, index) => ({ ...data, rank: index + 1 }));
+      .map((data, index) => {
+        const score = data.completions[0].score;
 
-    const incompleteStudentData = studentData
+        if (score !== previousScore) {
+          currentRank = index + 1;
+        }
+
+        previousScore = score;
+
+        return { ...data, rank: currentRank };
+      });
+
+    const pendingStudentData = studentData
       .filter((data) => !data.completions.length)
       .map((data) => ({ ...data, rank: null }));
 
-    return [...completeStudentData, ...incompleteStudentData];
+    return [...completeStudentData, ...pendingStudentData];
   }
 }

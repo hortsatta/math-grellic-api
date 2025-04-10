@@ -2,7 +2,7 @@ import { Expose } from 'class-transformer';
 
 export class TeacherActivityPerformanceResponseDto {
   @Expose()
-  totalActivityCount: number;
+  activityTotalCount: number;
 
   @Expose()
   overallActivityCompletionPercent: number;

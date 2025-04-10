@@ -16,6 +16,7 @@ import { ActivityCategoryQuestion } from '../entities/activity-category-question
 import { ActivityCategoryCompletionCreateDto } from '../dtos/activity-category-completion-create.dto';
 import { ActivityCategoryCompletionUpdateDto } from '../dtos/activity-category-completion-update.dto';
 import { ActivityCategoryCompletion } from '../entities/activity-category-completion.entity';
+import { ActivityService } from './activity.service';
 
 @Injectable()
 export class StudentActivityService {
@@ -28,6 +29,8 @@ export class StudentActivityService {
     private readonly activityCategoryQuestionRepo: Repository<ActivityCategoryQuestion>,
     @InjectRepository(ActivityCategoryCompletion)
     private readonly activityCategoryCompletionRepo: Repository<ActivityCategoryCompletion>,
+    @Inject(ActivityService)
+    private readonly activityService: ActivityService,
     @Inject(UserService)
     private readonly userService: UserService,
   ) {}
@@ -170,124 +173,6 @@ export class StudentActivityService {
     }
   }
 
-  async generateActivityWithCompletions(activity: Activity, studentId: number) {
-    // Remove duplicate category level
-    const filteredCategories = activity.categories
-      .sort((catA, catB) => catB.updatedAt.valueOf() - catA.updatedAt.valueOf())
-      .filter(
-        (cat, index, array) =>
-          array.findIndex((item) => item.level === cat.level) === index,
-      );
-
-    const categoryIds = filteredCategories.map((cat) => cat.id);
-
-    const targetCompletions = await this.activityCategoryCompletionRepo.find({
-      where: {
-        activityCategory: { id: In(categoryIds) },
-        student: { id: studentId },
-      },
-      relations: { activityCategory: true },
-    });
-
-    let categories: ActivityCategory[] = [];
-    let score = null;
-
-    // Calculate final score base on game type
-    // Type point
-    if (activity.game.type === ActivityCategoryType.Point) {
-      categories = filteredCategories.map((cat) => {
-        const completions = targetCompletions
-          .filter((com) => com.activityCategory.id === cat.id)
-          .sort(
-            (comA, comB) =>
-              comA.timeCompletedSeconds - comB.timeCompletedSeconds,
-          )
-          .sort((comA, comB) => comB.score - comA.score);
-
-        return {
-          ...cat,
-          completions: !!completions.length ? [completions[0]] : [],
-        } as ActivityCategory;
-      });
-
-      const catWithCompletions = categories.filter(
-        (cat) => !!cat.completions.length,
-      );
-
-      // Combine the completion score in each category
-      if (catWithCompletions.length) {
-        score = catWithCompletions.reduce(
-          (total, cat) => total + cat.completions[0].score,
-          0,
-        );
-      }
-      // Type time
-    } else if (activity.game.type === ActivityCategoryType.Time) {
-      categories = filteredCategories.map((cat) => {
-        const completions = targetCompletions
-          .filter((com) => com.activityCategory.id === cat.id)
-          .sort(
-            (comA, comB) =>
-              comA.timeCompletedSeconds - comB.timeCompletedSeconds,
-          );
-
-        return {
-          ...cat,
-          completions: !!completions.length ? [completions[0]] : [],
-        } as ActivityCategory;
-      });
-
-      const catWithCompletions = categories.filter(
-        (cat) => !!cat.completions.length,
-      );
-
-      // Get the average time completed
-      if (catWithCompletions.length) {
-        score =
-          catWithCompletions.reduce(
-            (total, cat) => total + cat.completions[0].timeCompletedSeconds,
-            0,
-          ) / catWithCompletions.length;
-      }
-      // Type stage
-    } else {
-      const targetCategory = filteredCategories.length
-        ? filteredCategories[0]
-        : null;
-
-      const completions = targetCompletions
-        .filter((com) => com.activityCategory.id === targetCategory.id)
-        .sort(
-          (comA, comB) => comA.timeCompletedSeconds - comB.timeCompletedSeconds,
-        )
-        .sort((comA, comB) => comB.score - comA.score);
-
-      categories = targetCategory
-        ? [
-            {
-              ...targetCategory,
-              completions: !!completions.length ? [completions[0]] : [],
-            } as ActivityCategory,
-          ]
-        : [];
-
-      const catWithCompletions = categories
-        .filter((cat) => !!cat.completions.length)
-        .sort(
-          (catA, catB) => catB.updatedAt.valueOf() - catA.updatedAt.valueOf(),
-        );
-
-      // Get the latest score
-      score = catWithCompletions[0]?.completions[0]?.score || null;
-    }
-
-    return {
-      ...activity,
-      categories,
-      score,
-    };
-  }
-
   async getStudentActivitiesByStudentId(studentId: number, q?: string) {
     const teacher = await this.userService.getTeacherByStudentId(studentId);
 
@@ -333,14 +218,20 @@ export class StudentActivityService {
     // Get featured activity completions
     const featuredActivities = await Promise.all(
       featuredEntities.map((activity) =>
-        this.generateActivityWithCompletions(activity, studentId),
+        this.activityService.generateActivityWithCompletions(
+          activity,
+          studentId,
+        ),
       ),
     );
 
     // Get other activity completions
     const otherActivities = await Promise.all(
       otherEntities.map(async (activity) =>
-        this.generateActivityWithCompletions(activity, studentId),
+        this.activityService.generateActivityWithCompletions(
+          activity,
+          studentId,
+        ),
       ),
     );
 

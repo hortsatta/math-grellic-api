@@ -31,10 +31,13 @@ export class StudentPerformanceResponseDto extends StudentUserResponseDto {
   overallExamScore: number | null;
 
   @Expose()
-  totalActivityCount: number;
+  activityTotalCount: number;
 
   @Expose()
-  activitiesCompletedCount: number;
+  activityCompletedCount: number;
+
+  @Expose()
+  activityIncompleteCount: number;
 
   @Expose()
   overallActivityCompletionPercent: number;

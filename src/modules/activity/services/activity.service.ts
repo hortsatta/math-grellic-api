@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
+import { StudentData } from '#/modules/performance/models/performance.model';
 import { UserService } from '#/modules/user/user.service';
 import { ActivityCategoryType } from '../enums/activity.enum';
 import { Activity } from '../entities/activity.entity';
@@ -24,6 +25,29 @@ export class ActivityService {
     @Inject(UserService)
     private readonly userService: UserService,
   ) {}
+
+  calculateStudentRank(
+    studentData: StudentData[],
+    currentData: StudentData,
+    currentIndex: number,
+  ) {
+    if (currentIndex <= 0) {
+      return { ...currentData, rank: currentIndex + 1 };
+    }
+
+    // Check if previous student has the same score, then give them the same rank
+    // else increment the current student rank
+    const previousData = studentData.length
+      ? studentData[currentIndex - 1]
+      : null;
+
+    const rank =
+      previousData?.score === currentData.score
+        ? currentIndex
+        : currentIndex + 1;
+
+    return { ...currentData, rank };
+  }
 
   async generateActivityRankings(activity: Activity, teacherId: number) {
     const students = await this.userService.getStudentsByTeacherId(teacherId);
@@ -127,43 +151,88 @@ export class ActivityService {
     );
 
     // Calculate student rankings
-    if (activity.game.type === ActivityCategoryType.Point) {
-      const completeStudentData = studentData
-        .filter((data) => data.score != null)
-        .sort((dataA, dataB) => dataB.score - dataA.score)
-        .map((data, index) => ({ ...data, rank: index + 1 }));
+    switch (activity.game.type) {
+      case ActivityCategoryType.Point: {
+        const completeStudentData = studentData
+          .filter((data) => data.score != null)
+          .sort((dataA, dataB) => dataB.score - dataA.score)
+          .map((data, index) =>
+            this.calculateStudentRank(studentData, data, index),
+          );
 
-      const incompleteStudentData = studentData
-        .filter((data) => data.score == null)
-        .map((data) => ({ ...data, rank: null }));
+        const pendingStudentData = studentData
+          .filter((data) => data.score == null)
+          .map((data) => ({ ...data, rank: null }));
 
-      return [...completeStudentData, ...incompleteStudentData];
-    } else if (activity.game.type === ActivityCategoryType.Time) {
-      const completeStudentData = studentData
-        .filter((data) => data.score != null && data.completions.length >= 3)
-        .sort((dataA, dataB) => dataA.score - dataB.score)
-        .map((data, index) => ({ ...data, rank: index + 1 }));
+        return [...completeStudentData, ...pendingStudentData];
+      }
+      case ActivityCategoryType.Time: {
+        const fullyCompletedList = studentData
+          .filter((data) => data.score != null && data.completions.length >= 3)
+          .sort((dataA, dataB) => dataA.score - dataB.score);
 
-      const incompleteStudentData = studentData
-        .filter((data) => data.score == null || data.completions.length < 3)
-        .map((data) => ({ ...data, rank: null }));
+        const twoCompletedList = studentData
+          .filter((data) => data.score != null || data.completions.length == 2)
+          .sort((dataA, dataB) => dataA.score - dataB.score);
 
-      return [...completeStudentData, ...incompleteStudentData];
-    } else {
-      const completeStudentData = studentData
-        .filter((data) => data.score != null)
-        .sort((dataA, dataB) => dataB.score - dataA.score)
-        .map((data, index) => ({ ...data, rank: index + 1 }));
+        const oneCompletedList = studentData
+          .filter((data) => data.score != null || data.completions.length == 1)
+          .sort((dataA, dataB) => dataA.score - dataB.score);
 
-      const incompleteStudentData = studentData
-        .filter((data) => data.score == null)
-        .map((data) => ({ ...data, rank: null }));
+        const fullyCompletedStudentData = fullyCompletedList.map(
+          (data, index) =>
+            this.calculateStudentRank(fullyCompletedList, data, index),
+        );
 
-      return [...completeStudentData, ...incompleteStudentData];
+        const twoCompletedStudentData = twoCompletedList.map((data, index) =>
+          this.calculateStudentRank(
+            [...fullyCompletedList, ...twoCompletedList],
+            data,
+            fullyCompletedList.length + index,
+          ),
+        );
+
+        const oneCompletedStudentData = oneCompletedList.map((data, index) =>
+          this.calculateStudentRank(
+            [...fullyCompletedList, ...twoCompletedList, ...oneCompletedList],
+            data,
+            fullyCompletedList.length + twoCompletedList.length + index,
+          ),
+        );
+
+        const pendingStudentData = studentData
+          .filter((data) => data.score == null)
+          .map((data) => ({ ...data, rank: null }));
+
+        return [
+          ...fullyCompletedStudentData,
+          ...twoCompletedStudentData,
+          ...oneCompletedStudentData,
+          ...pendingStudentData,
+        ];
+      }
+      case ActivityCategoryType.Stage: {
+        const completeStudentData = studentData
+          .filter((data) => data.score != null)
+          .sort((dataA, dataB) => dataB.score - dataA.score)
+          .map((data, index) =>
+            this.calculateStudentRank(studentData, data, index),
+          );
+
+        const pendingStudentData = studentData
+          .filter((data) => data.score == null)
+          .map((data) => ({ ...data, rank: null }));
+
+        return [...completeStudentData, ...pendingStudentData];
+      }
     }
   }
 
-  async generateActivityWithCompletions(activity: Activity, studentId: number) {
+  async generateActivityWithCompletions(
+    activity: Activity,
+    studentId: number,
+    isStudent?: boolean,
+  ) {
     // Remove duplicate category level
     const filteredCategories = activity.categories
       .sort((catA, catB) => catB.updatedAt.valueOf() - catA.updatedAt.valueOf())
@@ -179,7 +248,12 @@ export class ActivityService {
         activityCategory: { id: In(categoryIds) },
         student: { id: studentId },
       },
-      relations: { activityCategory: true },
+      relations: {
+        activityCategory: true,
+        ...(!isStudent && {
+          questionAnswers: { question: true, selectedQuestionChoice: true },
+        }),
+      },
     });
 
     let categories: ActivityCategory[] = [];
@@ -281,7 +355,10 @@ export class ActivityService {
     };
   }
 
-  async getAllByStudentId(studentId: number): Promise<Activity[]> {
+  async getAllByStudentId(
+    studentId: number,
+    withCompletions?: boolean,
+  ): Promise<Activity[]> {
     const teacher = await this.userService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
@@ -290,11 +367,15 @@ export class ActivityService {
 
     return this.activityRepo.find({
       where: { teacher: { id: teacher.id }, status: RecordStatus.Published },
-      relations: { categories: { completions: true } },
+      relations: { categories: { completions: withCompletions } },
     });
   }
 
-  async getOneBySlugAndStudentId(slug: string, studentId: number) {
+  async getOneBySlugAndStudentId(
+    slug: string,
+    studentId: number,
+    isStudent?: boolean,
+  ) {
     const teacher = await this.userService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
@@ -326,6 +407,7 @@ export class ActivityService {
     const transformedActivity = await this.generateActivityWithCompletions(
       activity,
       studentId,
+      isStudent,
     );
 
     const studentRankings = await this.generateActivityRankings(

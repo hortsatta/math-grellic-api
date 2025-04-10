@@ -9,6 +9,8 @@ import { ActivityCategoryType } from '#/modules/activity/enums/activity.enum';
 import { LessonService } from '#/modules/lesson/services/lesson.service';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 import { ActivityService } from '#/modules/activity/services/activity.service';
+import { UserService } from '#/modules/user/user.service';
+import { StudentData } from '../models/performance.model';
 
 @Injectable()
 export class PerformanceService {
@@ -19,6 +21,8 @@ export class PerformanceService {
     private readonly studentExamService: StudentExamService,
     @Inject(ActivityService)
     private readonly activityService: ActivityService,
+    @Inject(UserService)
+    private readonly userService: UserService,
   ) {}
 
   async generateOverallLessonRankings(students: StudentUserAccount[]) {
@@ -140,84 +144,79 @@ export class PerformanceService {
   async generateOverallActivityRankings(students: StudentUserAccount[]) {
     let previousScore = null;
     let currentRank = null;
+    let rankedStudents = [];
+    let unrankedStudents = [];
 
-    const transformedStudents = students.map((student) => {
-      // Remove duplicate activity completion
-      const filteredActivityCompletions = student.activityCompletions
-        .sort(
-          (catA, catB) =>
-            catB.submittedAt.valueOf() - catA.submittedAt.valueOf(),
-        )
-        .filter(
-          (cat, index, array) =>
-            array.findIndex(
-              (item) => item.activityCategory.id === cat.activityCategory.id,
-            ) === index,
+    if (!students.length) {
+      // return ranked and unranked students empty array
+    }
+
+    const teacher = await this.userService.getTeacherByStudentId(
+      students[0].id,
+    );
+
+    const allActivities = await this.activityService.getAllByStudentId(
+      students[0].id,
+    );
+
+    const activityRankings: {
+      activityId: number;
+      studentRankings: (StudentData & { rank: number | null })[];
+    }[] = [];
+    for (const activity of allActivities) {
+      const studentRankings =
+        await this.activityService.generateActivityRankings(
+          activity,
+          teacher.id,
         );
 
-      if (!filteredActivityCompletions.length) {
-        return {
-          ...student,
-          overallActivityScore: null,
-        };
-      }
+      activityRankings.push({
+        activityId: activity.id,
+        studentRankings,
+      });
+    }
 
-      // Filter non time-based activities
-      const poinLevelActivityCompletions = filteredActivityCompletions.filter(
-        (com) =>
-          com.activityCategory.activity.game.type !== ActivityCategoryType.Time,
-      );
+    // Apply rank number to all null rank values
+    const transformedActivityRankings = activityRankings.map((ar) => {
+      // Get last rank number
+      const lastRankNumber =
+        ar.studentRankings.filter((sr) => sr.rank != null).pop()?.rank || 0;
+      // And apply rank number to null ranks (last rank number + 1)
+      const studentRankings = ar.studentRankings.map((sr) => {
+        const rank = sr.rank ?? lastRankNumber + 1;
+        return { ...sr, rank };
+      });
 
-      // Calculate total point/level score
-      const totalPointLevelScore = poinLevelActivityCompletions.reduce(
-        (total, com) => (com.score || 0) + total,
-        0,
-      );
-
-      // Filter time-based activities
-      const timeActivityCompletions = filteredActivityCompletions.filter(
-        (com) =>
-          com.activityCategory.activity.game.type === ActivityCategoryType.Time,
-      );
-
-      const timeActivityIds = timeActivityCompletions
-        .map((com) => com.activityCategory.activity.id)
-        .filter((id, index, array) => array.indexOf(id) === index);
-
-      const totalTimeScore = timeActivityIds
-        .map((activityId) => {
-          const targetCompletions = timeActivityCompletions.filter(
-            (com) => com.activityCategory.activity.id === activityId,
-          );
-
-          // Remove duplicate
-          const filteredTargetCompletions = targetCompletions.filter(
-            (com, index, array) =>
-              array.findIndex(
-                (item) =>
-                  item.activityCategory.level === com.activityCategory.level,
-              ) === index,
-          );
-
-          if (filteredTargetCompletions.length === 3) {
-            const time = filteredTargetCompletions.reduce(
-              (total, com) => (com.score || 0) + total,
-              0,
-            );
-            return time / 3;
-          }
-
-          return null;
-        })
-        .filter((avgTime) => !!avgTime)
-        .reduce((total, avgTime) => total + 1 / avgTime, 0);
-
-      const overallActivityScore = totalPointLevelScore + totalTimeScore;
-
-      return { ...student, overallActivityScore, overallActivityRank: null };
+      return { ...ar, studentRankings };
     });
 
-    const rankedStudents = transformedStudents
+    const transformedStudents = students
+      .filter((student) => {
+        const hasCompletions = activityRankings.some((ar) =>
+          ar.studentRankings.some(
+            (sr) => sr.studentId === student.id && sr.rank != null,
+          ),
+        );
+
+        return hasCompletions;
+      })
+      .map((student) => {
+        const overallActivityScore = transformedActivityRankings
+          .filter((ar) =>
+            ar.studentRankings.some((sr) => sr.studentId === student.id),
+          )
+          .reduce((acc, ar) => {
+            const targetRank = ar.studentRankings.find(
+              (sr) => sr.studentId === student.id,
+            )?.rank;
+
+            return acc + targetRank;
+          }, 0);
+
+        return { ...student, overallActivityScore, overallActivityRank: null };
+      });
+
+    rankedStudents = transformedStudents
       .filter((s) => s.overallActivityScore != null)
       .sort((a, b) => b.overallActivityScore - a.overallActivityScore)
       .map((student, index) => {
@@ -230,8 +229,16 @@ export class PerformanceService {
         return { ...student, overallActivityRank: currentRank };
       });
 
-    const unrankedStudents = transformedStudents
-      .filter((s) => s.overallActivityScore == null)
+    unrankedStudents = students
+      .filter((student) => {
+        const hasCompletions = activityRankings.some((ar) =>
+          ar.studentRankings.some(
+            (sr) => sr.studentId === student.id && sr.rank != null,
+          ),
+        );
+
+        return !hasCompletions;
+      })
       .sort((a, b) => {
         const aFullname = generateFullName(
           a.firstName,
@@ -246,9 +253,16 @@ export class PerformanceService {
 
         return aFullname.localeCompare(bFullname);
       })
-      .map((s) => ({ ...s, overallActivityRank: null }));
+      .map((student) => ({
+        ...student,
+        overallActivityScore: null,
+        overallActivityRank: null,
+      }));
 
-    return { rankedStudents, unrankedStudents };
+    return {
+      rankedStudents,
+      unrankedStudents,
+    };
   }
 
   async generateOverallLessonDetailedPerformance(student: StudentUserAccount) {
@@ -370,6 +384,7 @@ export class PerformanceService {
   ) {
     const allActivities = await this.activityService.getAllByStudentId(
       student.id,
+      true,
     );
 
     const sortedCompletions = student.activityCompletions.sort(
@@ -391,42 +406,42 @@ export class PerformanceService {
         0,
       );
 
-      const categoryCompletionCount = sortedCompletions.filter(
-        (com, index, array) =>
-          array.findIndex(
-            (item) => item.activityCategory.id === com.activityCategory.id,
-          ) === index,
-      ).length;
+      const categoryCompletionCount = new Set(
+        sortedCompletions.map((com) => com.activityCategory.id),
+      ).size;
 
-      const value = (categoryCompletionCount / categoryCount) * 100;
-      return +value.toFixed(2);
+      return (categoryCompletionCount / categoryCount) * 100;
     })();
 
-    let activitiesCompletedCount = 0;
+    let activityCompletedCount = 0;
+    let activityIncompleteCount = 0;
     // Count activities completed,
     // for time or point game type. count as done if all three levels are completed
     allActivities.forEach((activity) => {
-      const completions = sortedCompletions
-        .filter((com) =>
-          activity.categories.some((cat) => cat.id === com.activityCategory.id),
-        )
-        .filter(
-          (com, index, array) =>
-            array.findIndex(
-              (item) =>
-                item.activityCategory.level === com.activityCategory.level,
-            ) === index,
-        );
+      // Set.size eliminates duplicates
+      const completionCount = new Set(
+        sortedCompletions
+          // Filter only mactching current activity categories
+          .filter((com) =>
+            activity.categories.some(
+              (cat) => cat.id === com.activityCategory.id,
+            ),
+          )
+          // Return array of number
+          .map((com) => com.activityCategory.id),
+      ).size;
 
-      if (!completions.length) {
+      if (!completionCount) {
         return;
       }
 
       if (activity.game.type === ActivityCategoryType.Stage) {
-        activitiesCompletedCount += 1;
+        activityCompletedCount += 1;
       } else {
-        if (completions.length === 3) {
-          activitiesCompletedCount += 1;
+        if (completionCount < 3) {
+          activityIncompleteCount += 1;
+        } else {
+          activityCompletedCount += 1;
         }
       }
     });
@@ -434,8 +449,9 @@ export class PerformanceService {
     return {
       overallActivityRank,
       overallActivityScore,
-      totalActivityCount: allActivities.length,
-      activitiesCompletedCount,
+      activityTotalCount: allActivities.length,
+      activityCompletedCount,
+      activityIncompleteCount,
       overallActivityCompletionPercent,
     };
   }

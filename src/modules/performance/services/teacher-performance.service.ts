@@ -213,8 +213,8 @@ export class TeacherPerformanceService {
       where: {
         teacherUser: { id: teacherId },
         user: { approvalStatus: UserApprovalStatus.Approved },
-        lessonCompletions: { lesson: true },
-        examCompletions: { exam: true },
+      },
+      relations: {
         activityCompletions: { activityCategory: true },
       },
     });
@@ -248,13 +248,11 @@ export class TeacherPerformanceService {
       });
     });
 
-    const overallActivityCompletionPercent = +(
-      (currentActivityPoints / totalActivityPoints) *
-      100
-    ).toFixed(2);
+    const overallActivityCompletionPercent =
+      (currentActivityPoints / totalActivityPoints) * 100;
 
     return {
-      totalActivityCount: allActivities.length,
+      activityTotalCount: allActivities.length,
       overallActivityCompletionPercent,
     };
   }
