@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -17,7 +16,6 @@ import {
 
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
-import { UserService } from '#/modules/user/user.service';
 import {
   ActivityCategoryLevel,
   ActivityCategoryType,
@@ -43,8 +41,6 @@ export class TeacherActivityService {
     private readonly activityCategoryQuestionChoiceRepo: Repository<ActivityCategoryQuestionChoice>,
     @InjectRepository(ActivityCategoryCompletion)
     private readonly activityCategoryCompletionRepo: Repository<ActivityCategoryCompletion>,
-    @Inject(UserService)
-    private readonly userService: UserService,
   ) {}
 
   async validateCreateActivity(

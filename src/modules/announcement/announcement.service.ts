@@ -9,7 +9,8 @@ import { IsNull, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { UserApprovalStatus } from '../user/enums/user.enum';
-import { UserService } from '../user/user.service';
+import { TeacherUserService } from '../user/services/teacher-user.service';
+import { StudentUserService } from '../user/services/student-user.service';
 import { Announcement } from './entities/announcement.entity';
 import { AnnouncementCreateDto } from './dtos/announcement-create.dto';
 import { AnnouncementUpdateDto } from './dtos/announcement-update.dto';
@@ -19,15 +20,17 @@ export class AnnouncementService {
   constructor(
     @InjectRepository(Announcement)
     private readonly repo: Repository<Announcement>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(TeacherUserService)
+    private readonly teacherUserService: TeacherUserService,
+    @Inject(StudentUserService)
+    private readonly studentUserService: StudentUserService,
   ) {}
 
   async validateAnnouncementUpsert(studentIds?: number[]) {
     // STUDENT
     // Check if all specified student ids are valid
     if (studentIds?.length) {
-      const students = await this.userService.getStudentsByIds(
+      const students = await this.studentUserService.getStudentsByIds(
         studentIds,
         UserApprovalStatus.Approved,
       );
@@ -153,7 +156,8 @@ export class AnnouncementService {
     const today = dayjs().toDate();
 
     // Get student teacher
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
       throw new NotFoundException('Student not found');
@@ -205,7 +209,8 @@ export class AnnouncementService {
 
   async getAnnouncementByIdAndStudentId(id: number, studentId: number) {
     // Get student teacher
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
       throw new NotFoundException('Student not found');

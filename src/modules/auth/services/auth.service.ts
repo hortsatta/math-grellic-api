@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { validatePassword } from '#/common/helpers/password.helper';
 import { User } from '#/modules/user/entities/user.entity';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
-import { UserService } from '#/modules/user/user.service';
+import { UserService } from '#/modules/user/services/user.service';
 import { AuthLoginDto } from '../dtos/auth-login.dto';
 import { RedisService } from './redis.service';
 

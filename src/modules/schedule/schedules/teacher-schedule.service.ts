@@ -23,7 +23,7 @@ import {
 
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
-import { UserService } from '#/modules/user/user.service';
+import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { LessonScheduleService } from '#/modules/lesson/services/lesson-schedule.service';
 import { TeacherExamScheduleService } from '#/modules/exam/services/teacher-exam-schedule.service';
 import { MeetingSchedule } from '../entities/meeting-schedule.entity';
@@ -34,8 +34,8 @@ export class TeacherScheduleService {
   constructor(
     @InjectRepository(MeetingSchedule)
     private readonly repo: Repository<MeetingSchedule>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(StudentUserService)
+    private readonly studentUserService: StudentUserService,
     @Inject(LessonScheduleService)
     private readonly lessonScheduleService: LessonScheduleService,
     @Inject(forwardRef(() => TeacherExamScheduleService))
@@ -52,7 +52,7 @@ export class TeacherScheduleService {
     // STUDENT
     // Check if all specified student ids are valid
     if (studentIds?.length) {
-      const students = await this.userService.getStudentsByIds(
+      const students = await this.studentUserService.getStudentsByIds(
         studentIds,
         UserApprovalStatus.Approved,
       );

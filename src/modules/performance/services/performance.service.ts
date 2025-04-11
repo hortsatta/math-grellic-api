@@ -9,7 +9,7 @@ import { ActivityCategoryType } from '#/modules/activity/enums/activity.enum';
 import { LessonService } from '#/modules/lesson/services/lesson.service';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 import { ActivityService } from '#/modules/activity/services/activity.service';
-import { UserService } from '#/modules/user/user.service';
+import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
 import { StudentData } from '../models/performance.model';
 
 @Injectable()
@@ -21,8 +21,8 @@ export class PerformanceService {
     private readonly studentExamService: StudentExamService,
     @Inject(ActivityService)
     private readonly activityService: ActivityService,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(TeacherUserService)
+    private readonly teacherUserService: TeacherUserService,
   ) {}
 
   async generateOverallLessonRankings(students: StudentUserAccount[]) {
@@ -151,7 +151,7 @@ export class PerformanceService {
       // return ranked and unranked students empty array
     }
 
-    const teacher = await this.userService.getTeacherByStudentId(
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
       students[0].id,
     );
 

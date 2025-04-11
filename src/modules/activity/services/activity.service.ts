@@ -9,7 +9,8 @@ import { In, Repository } from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
 import { StudentData } from '#/modules/performance/models/performance.model';
-import { UserService } from '#/modules/user/user.service';
+import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
+import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { ActivityCategoryType } from '../enums/activity.enum';
 import { Activity } from '../entities/activity.entity';
 import { ActivityCategory } from '../entities/activity-category.entity';
@@ -22,8 +23,10 @@ export class ActivityService {
     private readonly activityRepo: Repository<Activity>,
     @InjectRepository(ActivityCategoryCompletion)
     private readonly activityCategoryCompletionRepo: Repository<ActivityCategoryCompletion>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(TeacherUserService)
+    private readonly teacherUserService: TeacherUserService,
+    @Inject(StudentUserService)
+    private readonly studentUserService: StudentUserService,
   ) {}
 
   calculateStudentRank(
@@ -50,7 +53,8 @@ export class ActivityService {
   }
 
   async generateActivityRankings(activity: Activity, teacherId: number) {
-    const students = await this.userService.getStudentsByTeacherId(teacherId);
+    const students =
+      await this.studentUserService.getStudentsByTeacherId(teacherId);
 
     // Remove duplicate category level
     const filteredCategories = activity.categories
@@ -359,7 +363,8 @@ export class ActivityService {
     studentId: number,
     withCompletions?: boolean,
   ): Promise<Activity[]> {
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -376,7 +381,8 @@ export class ActivityService {
     studentId: number,
     isStudent?: boolean,
   ) {
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
       throw new BadRequestException('Student not found');

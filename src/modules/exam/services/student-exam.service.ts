@@ -10,7 +10,8 @@ import { Brackets, In, Repository } from 'typeorm';
 import dayjs from '#/common/configs/dayjs.config';
 import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
-import { UserService } from '#/modules/user/user.service';
+import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
+import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { Exam } from '../entities/exam.entity';
 import { ExamQuestion } from '../entities/exam-question.entity';
 import { ExamCompletion } from '../entities/exam-completion.entity';
@@ -25,8 +26,10 @@ export class StudentExamService {
     private readonly examQuestionRepo: Repository<ExamQuestion>,
     @InjectRepository(ExamCompletion)
     private readonly examCompletionRepo: Repository<ExamCompletion>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(TeacherUserService)
+    private readonly teacherUserService: TeacherUserService,
+    @Inject(StudentUserService)
+    private readonly studentUserService: StudentUserService,
   ) {}
 
   async getStudentExamsByStudentId(studentId: number, q?: string) {
@@ -269,7 +272,8 @@ export class StudentExamService {
   ) {
     const currentDateTime = dayjs();
 
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     const exam: Partial<ExamResponse> = await this.examRepo.findOne({
       where: [
@@ -540,7 +544,8 @@ export class StudentExamService {
     let previousScore = null;
     let currentRank = null;
 
-    const students = await this.userService.getStudentsByTeacherId(teacherId);
+    const students =
+      await this.studentUserService.getStudentsByTeacherId(teacherId);
 
     const studentIds = students.map((student) => student.id);
 

@@ -31,7 +31,10 @@ import { TeacherUserResponseDto } from './dtos/teacher-user-response.dto';
 import { StudentUserCreateDto } from './dtos/student-user-create.dto';
 import { StudentUserUpdateDto } from './dtos/student-user-update.dto';
 import { StudentUserResponseDto } from './dtos/student-user-response.dto';
-import { UserService } from './user.service';
+import { UserService } from './services/user.service';
+import { AdminUserService } from './services/admin-user.service';
+import { TeacherUserService } from './services/teacher-user.service';
+import { StudentUserService } from './services/student-user.service';
 
 const SUPER_ADMIN_URL = '/sad';
 const ADMIN_URL = '/admins';
@@ -40,7 +43,12 @@ const STUDENT_URL = '/students';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly adminUserService: AdminUserService,
+    private readonly teacherUserService: TeacherUserService,
+    private readonly studentUserService: StudentUserService,
+  ) {}
 
   @Get('/me')
   @UseJwtAuthGuard()
@@ -86,7 +94,7 @@ export class UserController {
   ): Promise<[StudentUserAccount[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.userService.getPaginationStudentsByTeacherId(
+    return this.studentUserService.getPaginationStudentsByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -109,7 +117,7 @@ export class UserController {
     const { id: teacherId } = user.teacherUserAccount;
 
     const transformedIds = ids?.split(',').map((id) => +id);
-    return this.userService.getStudentsByTeacherId(
+    return this.studentUserService.getStudentsByTeacherId(
       teacherId,
       transformedIds,
       q,
@@ -124,7 +132,10 @@ export class UserController {
     @Query('status') status?: UserApprovalStatus,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.userService.getStudentCountByTeacherId(teacherId, status);
+    return this.studentUserService.getStudentCountByTeacherId(
+      teacherId,
+      status,
+    );
   }
 
   @Get(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
@@ -136,7 +147,10 @@ export class UserController {
     @CurrentUser() user: User,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.userService.getStudentByIdAndTeacherId(studentId, teacherId);
+    return this.studentUserService.getStudentByIdAndTeacherId(
+      studentId,
+      teacherId,
+    );
   }
 
   @Patch(`${TEACHER_URL}`)
@@ -147,7 +161,11 @@ export class UserController {
     @CurrentUser() user: User,
   ) {
     const { id, teacherUserAccount } = user;
-    return this.userService.updateTeacherUser(teacherUserAccount.id, body, id);
+    return this.teacherUserService.updateTeacherUser(
+      teacherUserAccount.id,
+      body,
+      id,
+    );
   }
 
   @Patch(`${TEACHER_URL}${STUDENT_URL}/:studentId`)
@@ -158,7 +176,7 @@ export class UserController {
     @Body() body: StudentUserUpdateDto,
     @CurrentUser() user: User,
   ) {
-    return this.userService.updateStudentUser(studentId, body, user.id);
+    return this.studentUserService.updateStudentUser(studentId, body, user.id);
   }
 
   @Patch(`${TEACHER_URL}${STUDENT_URL}/approve/:studentId`)
@@ -171,7 +189,7 @@ export class UserController {
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
   }> {
-    return this.userService.setStudentApprovalStatus(
+    return this.studentUserService.setStudentApprovalStatus(
       studentId,
       body,
       user.id,
@@ -186,7 +204,10 @@ export class UserController {
     @Param('studentId') studentId: number,
     @CurrentUser() user: User,
   ) {
-    return this.userService.deleteStudentByIdAndTeacherId(studentId, user.id);
+    return this.studentUserService.deleteStudentByIdAndTeacherId(
+      studentId,
+      user.id,
+    );
   }
 
   @Post(`${TEACHER_URL}/register`)
@@ -196,7 +217,7 @@ export class UserController {
     @Body() body: TeacherUserCreateDto,
     @CurrentUser() user: User,
   ): Promise<User> {
-    return this.userService.createTeacherUser(
+    return this.teacherUserService.createTeacherUser(
       body,
       UserApprovalStatus.MailPending,
       user?.id,
@@ -212,7 +233,7 @@ export class UserController {
     @CurrentUser() user: User,
   ): Promise<Partial<User>> {
     const { id: studentId } = user.studentUserAccount;
-    return this.userService.getAssignedTeacherByStudentId(studentId);
+    return this.teacherUserService.getAssignedTeacherByStudentId(studentId);
   }
 
   @Post(`${STUDENT_URL}/register`)
@@ -222,7 +243,7 @@ export class UserController {
     @Body() body: StudentUserCreateDto,
     @CurrentUser() user: User,
   ): Promise<User> {
-    return this.userService.createStudentUser(
+    return this.studentUserService.createStudentUser(
       body,
       UserApprovalStatus.MailPending,
       user?.id,
@@ -237,7 +258,11 @@ export class UserController {
     @CurrentUser() user: User,
   ) {
     const { id, studentUserAccount } = user;
-    return this.userService.updateStudentUser(studentUserAccount.id, body, id);
+    return this.studentUserService.updateStudentUser(
+      studentUserAccount.id,
+      body,
+      id,
+    );
   }
 
   // ADMINS
@@ -250,7 +275,7 @@ export class UserController {
     @CurrentUser() user: User,
   ) {
     const { id, adminUserAccount } = user;
-    return this.userService.updateAdminUser(adminUserAccount.id, body, id);
+    return this.adminUserService.updateAdminUser(adminUserAccount.id, body, id);
   }
 
   @Patch(`${ADMIN_URL}${TEACHER_URL}/:teacherId`)
@@ -261,7 +286,7 @@ export class UserController {
     @Body() body: TeacherUserUpdateDto,
     @CurrentUser() user: User,
   ) {
-    return this.userService.updateTeacherUser(teacherId, body, user.id);
+    return this.teacherUserService.updateTeacherUser(teacherId, body, user.id);
   }
 
   @Delete(`${ADMIN_URL}${TEACHER_URL}/:teacherId`)
@@ -271,7 +296,10 @@ export class UserController {
     @Param('teacherId') teacherId: number,
     @CurrentUser() user: User,
   ) {
-    return this.userService.deleteTeacherByIdAndAdminId(teacherId, user.id);
+    return this.teacherUserService.deleteTeacherByIdAndAdminId(
+      teacherId,
+      user.id,
+    );
   }
 
   @Get(`${ADMIN_URL}${TEACHER_URL}/list`)
@@ -288,7 +316,7 @@ export class UserController {
   ): Promise<[TeacherUserAccount[], number]> {
     const { id: adminId } = user.adminUserAccount;
 
-    return this.userService.getPaginationTeachersByAdminId(
+    return this.teacherUserService.getPaginationTeachersByAdminId(
       adminId,
       sort,
       !!take ? take : undefined,
@@ -302,7 +330,7 @@ export class UserController {
   @Get(`${ADMIN_URL}${TEACHER_URL}/count`)
   @UseJwtAuthGuard(UserRole.Admin)
   getTeacherCountByAdmin(@Query('status') status?: UserApprovalStatus) {
-    return this.userService.getTeacherCountByAdmin(status);
+    return this.teacherUserService.getTeacherCountByAdmin(status);
   }
 
   @Patch(`${ADMIN_URL}${TEACHER_URL}/approve/:teacherId`)
@@ -315,7 +343,11 @@ export class UserController {
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
   }> {
-    return this.userService.setTeacherApprovalStatus(teacherId, body, user.id);
+    return this.teacherUserService.setTeacherApprovalStatus(
+      teacherId,
+      body,
+      user.id,
+    );
   }
 
   // SUPER ADMIN
@@ -331,7 +363,7 @@ export class UserController {
     @Query('take') take?: number,
     @Query('skip') skip?: number,
   ): Promise<[AdminUserAccount[], number]> {
-    return this.userService.getPaginationAdmins(
+    return this.adminUserService.getPaginationAdmins(
       sort,
       !!take ? take : undefined,
       !!skip ? skip : undefined,
@@ -350,13 +382,17 @@ export class UserController {
     @Query('status') status?: string | UserApprovalStatus,
   ) {
     const transformedIds = ids?.split(',').map((id) => +id);
-    return this.userService.getAdminsBySuperAdmin(transformedIds, q, status);
+    return this.adminUserService.getAdminsBySuperAdmin(
+      transformedIds,
+      q,
+      status,
+    );
   }
 
   @Get(`${SUPER_ADMIN_URL}${ADMIN_URL}/count`)
   @UseJwtAuthGuard(UserRole.SuperAdmin)
   getAdminCountBySuperAdmin(@Query('status') status?: UserApprovalStatus) {
-    return this.userService.getAdminCountBySuperAdmin(status);
+    return this.adminUserService.getAdminCountBySuperAdmin(status);
   }
 
   @Get(`${SUPER_ADMIN_URL}${ADMIN_URL}/:adminId`)
@@ -364,7 +400,7 @@ export class UserController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(AdminUserResponseDto)
   getAdminByPublicIdAndSuperAdmin(@Param('adminId') adminId: number) {
-    return this.userService.getAdminByIdAndSuperAdmin(adminId);
+    return this.adminUserService.getAdminByIdAndSuperAdmin(adminId);
   }
 
   @Post(`${SUPER_ADMIN_URL}/register`)
@@ -377,7 +413,7 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.SuperAdmin)
   @UseSerializeInterceptor(UserResponseDto)
   registerAdminBySuperAdmin(@Body() body: AdminUserCreateDto): Promise<User> {
-    return this.userService.createAdminUser(
+    return this.adminUserService.createAdminUser(
       body,
       UserApprovalStatus.MailPending,
     );
@@ -391,7 +427,7 @@ export class UserController {
     @Body() body: AdminUserUpdateDto,
     @CurrentUser() user: User,
   ) {
-    return this.userService.updateAdminUser(adminId, body, user.id);
+    return this.adminUserService.updateAdminUser(adminId, body, user.id);
   }
 
   @Patch(`${SUPER_ADMIN_URL}${ADMIN_URL}/approve/:adminId`)
@@ -404,7 +440,7 @@ export class UserController {
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
   }> {
-    return this.userService.setAdminApprovalStatus(adminId, body, user.id);
+    return this.adminUserService.setAdminApprovalStatus(adminId, body, user.id);
   }
 
   @Delete(`${SUPER_ADMIN_URL}${ADMIN_URL}/:adminId`)
@@ -414,6 +450,9 @@ export class UserController {
     @Param('adminId') adminId: number,
     @CurrentUser() user: User,
   ) {
-    return this.userService.deleteAdminByIdAndSuperAdminId(adminId, user.id);
+    return this.adminUserService.deleteAdminByIdAndSuperAdminId(
+      adminId,
+      user.id,
+    );
   }
 }

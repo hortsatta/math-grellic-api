@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
-import { UserService } from '#/modules/user/user.service';
+import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
 import { MeetingSchedule } from '../entities/meeting-schedule.entity';
 
 @Injectable()
@@ -11,8 +11,8 @@ export class ScheduleService {
   constructor(
     @InjectRepository(MeetingSchedule)
     private readonly repo: Repository<MeetingSchedule>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(TeacherUserService)
+    private readonly teacherUserService: TeacherUserService,
   ) {}
 
   async getOneByIdAndUserAccountId(
@@ -24,7 +24,7 @@ export class ScheduleService {
       const currentDateTime = dayjs().toDate();
 
       const teacher =
-        await this.userService.getTeacherByStudentId(userAccountId);
+        await this.teacherUserService.getTeacherByStudentId(userAccountId);
 
       if (!teacher) {
         throw new NotFoundException('Student not found');

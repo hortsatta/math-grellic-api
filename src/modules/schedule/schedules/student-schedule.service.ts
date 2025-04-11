@@ -18,7 +18,7 @@ import {
 
 import dayjs from '#/common/configs/dayjs.config';
 import { StudentExamScheduleService } from '#/modules/exam/services/student-exam-schedule.service';
-import { UserService } from '#/modules/user/user.service';
+import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
 import { LessonScheduleService } from '#/modules/lesson/services/lesson-schedule.service';
 import { MeetingSchedule } from '../entities/meeting-schedule.entity';
 
@@ -27,8 +27,8 @@ export class StudentScheduleService {
   constructor(
     @InjectRepository(MeetingSchedule)
     private readonly repo: Repository<MeetingSchedule>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(TeacherUserService)
+    private readonly teacherUserService: TeacherUserService,
     @Inject(LessonScheduleService)
     private readonly lessonScheduleService: LessonScheduleService,
     @Inject(forwardRef(() => StudentExamScheduleService))
@@ -38,7 +38,8 @@ export class StudentScheduleService {
   async getStudentMeetingSchedulesByStudentId(studentId: number) {
     const currentDateTime = dayjs().toDate();
 
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
       throw new NotFoundException('Student not found');
@@ -110,7 +111,8 @@ export class StudentScheduleService {
     toDate: Date,
     studentId: number,
   ) {
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
       throw new NotFoundException('Student not found');

@@ -24,7 +24,7 @@ import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { UploadService } from '#/modules/upload/upload.service';
 import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
-import { UserService } from '#/modules/user/user.service';
+import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { stripHtml } from '../helpers/exam.helper';
 import { ExamResponse } from '../models/exam.model';
 import { Exam } from '../entities/exam.entity';
@@ -53,8 +53,8 @@ export class TeacherExamService {
     private readonly teacherExamScheduleService: TeacherExamScheduleService,
     @Inject(TeacherLessonService)
     private readonly teacherLessonService: TeacherLessonService,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(StudentUserService)
+    private readonly studentUserService: StudentUserService,
     @Inject(UploadService)
     private readonly uploadService: UploadService,
     private configService: ConfigService,
@@ -623,7 +623,7 @@ export class TeacherExamService {
     }
 
     const totalStudentCount = (
-      await this.userService.getStudentsByTeacherId(teacherId)
+      await this.studentUserService.getStudentsByTeacherId(teacherId)
     ).length;
     // Generate schedule assigned student count over total student count
     if (exam.schedules.length) {

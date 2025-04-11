@@ -22,7 +22,7 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
-import { UserService } from '#/modules/user/user.service';
+import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { TeacherScheduleService } from '#/modules/schedule/schedules/teacher-schedule.service';
 import { ExamSchedule } from '../entities/exam-schedule.entity';
 import { Exam } from '../entities/exam.entity';
@@ -36,8 +36,8 @@ export class TeacherExamScheduleService {
     private readonly repo: Repository<ExamSchedule>,
     @InjectRepository(Exam)
     private readonly examRepo: Repository<Exam>,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(StudentUserService)
+    private readonly studentUserService: StudentUserService,
     @Inject(forwardRef(() => TeacherScheduleService))
     private readonly teacherMeetingScheduleService: TeacherScheduleService,
   ) {}
@@ -141,7 +141,7 @@ export class TeacherExamScheduleService {
     let targetStudentIds = studentIds || [];
     // Get all students by teacher id if studentIds is null
     if (!targetStudentIds.length) {
-      const allStudents = await this.userService.getStudentsByTeacherId(
+      const allStudents = await this.studentUserService.getStudentsByTeacherId(
         teacherId,
         null,
         null,
@@ -150,7 +150,7 @@ export class TeacherExamScheduleService {
       targetStudentIds = allStudents.map((student) => student.id);
     } else {
       // Check if all student ids are valid and approved
-      const students = await this.userService.getStudentsByIds(
+      const students = await this.studentUserService.getStudentsByIds(
         targetStudentIds,
         UserApprovalStatus.Approved,
       );
@@ -311,7 +311,7 @@ export class TeacherExamScheduleService {
 
     let students = studentIds?.length ? studentIds.map((id) => ({ id })) : [];
     if (!students.length) {
-      const allStudents = await this.userService.getStudentsByTeacherId(
+      const allStudents = await this.studentUserService.getStudentsByTeacherId(
         teacherId,
         null,
         null,
@@ -358,7 +358,7 @@ export class TeacherExamScheduleService {
 
     let students = studentIds?.length ? studentIds.map((id) => ({ id })) : [];
     if (!students.length) {
-      const allStudents = await this.userService.getStudentsByTeacherId(
+      const allStudents = await this.studentUserService.getStudentsByTeacherId(
         teacherId,
         null,
         null,

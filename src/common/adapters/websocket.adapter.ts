@@ -5,7 +5,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from 'jsonwebtoken';
 
-import { UserService } from '#/modules/user/user.service';
+import { UserService } from '#/modules/user/services/user.service';
 
 export class WebSocketAdapter extends IoAdapter {
   private configService: ConfigService;

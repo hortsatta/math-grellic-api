@@ -8,7 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, In, Not, Repository } from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
-import { UserService } from '#/modules/user/user.service';
+import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
+import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { ActivityCategoryType } from '../enums/activity.enum';
 import { Activity } from '../entities/activity.entity';
 import { ActivityCategory } from '../entities/activity-category.entity';
@@ -31,12 +32,15 @@ export class StudentActivityService {
     private readonly activityCategoryCompletionRepo: Repository<ActivityCategoryCompletion>,
     @Inject(ActivityService)
     private readonly activityService: ActivityService,
-    @Inject(UserService)
-    private readonly userService: UserService,
+    @Inject(TeacherUserService)
+    private readonly teacherUserService: TeacherUserService,
+    @Inject(StudentUserService)
+    private readonly studentUserService: StudentUserService,
   ) {}
 
   async generateActivityRankings(activity: Activity, teacherId: number) {
-    const students = await this.userService.getStudentsByTeacherId(teacherId);
+    const students =
+      await this.studentUserService.getStudentsByTeacherId(teacherId);
 
     // Remove duplicate category level
     const filteredCategories = activity.categories
@@ -174,7 +178,8 @@ export class StudentActivityService {
   }
 
   async getStudentActivitiesByStudentId(studentId: number, q?: string) {
-    const teacher = await this.userService.getTeacherByStudentId(studentId);
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
 
     if (!teacher) {
       throw new BadRequestException('Student not found');
