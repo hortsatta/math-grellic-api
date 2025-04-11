@@ -577,12 +577,12 @@ export class TeacherPerformanceService {
       throw new NotFoundException('Student not found');
     }
 
-    const exam = (await this.studentExamService.getOneBySlugAndStudentId(
-      slug,
-      student.id,
-      false,
-      true,
-    )) as Exam;
+    const exam =
+      (await this.studentExamService.getBasicOneWithCompletionsBySlugAndStudentId(
+        slug,
+        student.id,
+        true,
+      )) as Exam;
 
     if (!scheduleId) return exam;
 

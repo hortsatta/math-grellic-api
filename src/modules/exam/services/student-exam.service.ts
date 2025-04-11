@@ -268,7 +268,6 @@ export class StudentExamService {
     slug: string,
     studentId: number,
     noSchedules?: boolean,
-    withAnswerKey?: boolean,
   ) {
     const currentDateTime = dayjs();
 
@@ -332,9 +331,7 @@ export class StudentExamService {
       examResponse.completions = examResponse.completions
         .filter((com) => com.student.id === studentId)
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        .map(({ questionAnswers, ...moreCom }) =>
-          withAnswerKey ? { ...moreCom, questionAnswers } : moreCom,
-        );
+        .map(({ questionAnswers, ...moreCom }) => moreCom);
 
       // If completions is more than 1 then sort by recent
       // and set completion with highest and recent scores
@@ -432,6 +429,117 @@ export class StudentExamService {
       ...examResponse,
       scheduleStatus: ExamScheduleStatus.Past,
       rank,
+    };
+  }
+
+  async getBasicOneWithCompletionsBySlugAndStudentId(
+    slug: string,
+    studentId: number,
+    withAnswerKey?: boolean,
+  ) {
+    const currentDateTime = dayjs();
+
+    const teacher =
+      await this.teacherUserService.getTeacherByStudentId(studentId);
+
+    const exam: Partial<ExamResponse> = await this.examRepo.findOne({
+      where: [
+        {
+          slug,
+          status: RecordStatus.Published,
+          schedules: { students: { id: studentId } },
+        },
+      ],
+      relations: {
+        questions: { choices: true },
+        schedules: { students: true },
+        completions: {
+          questionAnswers: { question: true, selectedQuestionChoice: true },
+          schedule: true,
+          student: true,
+        },
+      },
+      order: { schedules: { startDate: 'ASC' } },
+    });
+
+    if (!exam || !teacher) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    const examResponse = { ...exam, highestScore: null, recentScore: null };
+
+    const filteredSchedules = examResponse.schedules.filter((schedule) =>
+      schedule.students.find((s) => s.id === studentId),
+    );
+
+    // Get recent schedule
+    const recentSchedule =
+      filteredSchedules
+        .sort(
+          (schedA, schedB) =>
+            dayjs(schedB.startDate).valueOf() -
+            dayjs(schedA.startDate).valueOf(),
+        )
+        .filter((sched) =>
+          dayjs(sched.startDate).isSameOrBefore(currentDateTime),
+        )[0] || null;
+
+    // If recent schedule exist then add isRecent property of main schedule list
+    if (recentSchedule) {
+      filteredSchedules.forEach((schedule) => {
+        if (schedule.id === recentSchedule.id) {
+          schedule.isRecent = true;
+        }
+      });
+    }
+
+    if (examResponse.completions.length) {
+      // Filter completions and that belong to current student and remove all questionAnswers
+      // unless explicitly specified by teacher to show
+      examResponse.completions = examResponse.completions
+        .filter((com) => com.student.id === studentId)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        .map(({ questionAnswers, ...moreCom }) =>
+          withAnswerKey ? { ...moreCom, questionAnswers } : moreCom,
+        );
+
+      // If completions is more than 1 then sort by recent
+      // and set completion with highest and recent scores
+      if (examResponse.completions.length > 1) {
+        examResponse.completions = examResponse.completions.sort(
+          (comA, comB) =>
+            dayjs(comB.schedule.startDate).valueOf() -
+            dayjs(comA.schedule.startDate).valueOf(),
+        );
+
+        const highestCompletion = examResponse.completions.reduce(
+          (acc, com) => {
+            if (acc == null) return com;
+            return com.score > (acc?.score || 0) ? com : acc;
+          },
+          null,
+        );
+
+        examResponse.completions.forEach((com) => {
+          if (com.id === highestCompletion.id) {
+            com.isHighest = true;
+          }
+        });
+      } else {
+        examResponse.completions[0].isHighest = true;
+      }
+
+      // Get recent schedule and match, if completion schedule is same as recent schedule
+      // then set completion as recent else student's recent schedule is either
+      // ongoing or expired
+      if (recentSchedule?.id === examResponse.completions[0].schedule.id) {
+        examResponse.completions[0].isRecent = true;
+      }
+    }
+
+    return {
+      ...examResponse,
+      scheduleStatus: ExamScheduleStatus.Past,
     };
   }
 

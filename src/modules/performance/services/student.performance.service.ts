@@ -222,10 +222,11 @@ export class StudentPerformanceService {
       throw new NotFoundException('Student not found');
     }
 
-    const exam = await this.studentExamService.getOneBySlugAndStudentId(
-      slug,
-      student.id,
-    );
+    const exam =
+      await this.studentExamService.getBasicOneWithCompletionsBySlugAndStudentId(
+        slug,
+        student.id,
+      );
 
     // Remove questions and answers from completion if current exam is ongoing
     if (exam.schedules.length) {
