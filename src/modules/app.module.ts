@@ -15,6 +15,7 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { AnnouncementModule } from './announcement/announcement.module';
 import { UploadModule } from './upload/upload.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
+import { SchoolYearModule } from './school-year/school-year.module';
 
 @Module({
   imports: [
@@ -43,8 +44,8 @@ import { AuditLogModule } from './audit-log/audit-log.module';
     AnnouncementModule,
     UploadModule,
     AuditLogModule,
+    SchoolYearModule,
   ],
   controllers: [],
-  providers: [],
 })
 export class AppModule {}

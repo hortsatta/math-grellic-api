@@ -191,6 +191,50 @@ export class TeacherUserService {
     };
   }
 
+  getAllTeachers(
+    teacherIds?: number[],
+    q?: string,
+    status?: string | UserApprovalStatus.Approved,
+  ): Promise<TeacherUserAccount[]> {
+    const generateWhere = () => {
+      const baseWhere: FindOptionsWhere<TeacherUserAccount> = status
+        ? {
+            user: { approvalStatus: In(status.split(',')) },
+          }
+        : {
+            user: { approvalStatus: UserApprovalStatus.Approved },
+          };
+
+      if (teacherIds?.length) {
+        return { ...baseWhere, id: In(teacherIds) };
+      } else if (!!q?.trim()) {
+        return [
+          { firstName: ILike(`%${q}%`), ...baseWhere },
+          { lastName: ILike(`%${q}%`), ...baseWhere },
+          { middleName: ILike(`%${q}%`), ...baseWhere },
+        ];
+      }
+
+      return baseWhere;
+    };
+
+    console.log(generateWhere());
+
+    return this.teacherUserAccountRepo.find({
+      where: generateWhere(),
+      loadEagerRelations: false,
+      relations: { user: true },
+      select: {
+        user: {
+          id: true,
+          publicId: true,
+          email: true,
+          approvalStatus: true,
+        },
+      },
+    });
+  }
+
   getTeacherCountByAdmin(status?: UserApprovalStatus): Promise<number> {
     const where: FindOptionsWhere<TeacherUserAccount> = {
       user: { approvalStatus: status || UserApprovalStatus.Approved },

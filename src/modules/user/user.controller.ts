@@ -327,6 +327,19 @@ export class UserController {
     );
   }
 
+  @Get(`${ADMIN_URL}${TEACHER_URL}/list/all`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(TeacherUserResponseDto)
+  getAllTeachersByAdminId(
+    @Query('ids') ids: string,
+    @Query('q') q: string,
+    @Query('status') status?: string | UserApprovalStatus,
+  ) {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.teacherUserService.getAllTeachers(transformedIds, q, status);
+  }
+
   @Get(`${ADMIN_URL}${TEACHER_URL}/count`)
   @UseJwtAuthGuard(UserRole.Admin)
   getTeacherCountByAdmin(@Query('status') status?: UserApprovalStatus) {
@@ -400,7 +413,7 @@ export class UserController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(AdminUserResponseDto)
   getAdminByPublicIdAndSuperAdmin(@Param('adminId') adminId: number) {
-    return this.adminUserService.getAdminByIdAndSuperAdmin(adminId);
+    return this.adminUserService.getAdminById(adminId);
   }
 
   @Post(`${SUPER_ADMIN_URL}/register`)

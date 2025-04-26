@@ -161,7 +161,7 @@ export class AdminUserService {
     return this.adminUserAccountRepo.count({ where });
   }
 
-  async getAdminByIdAndSuperAdmin(adminId: number) {
+  async getAdminById(adminId: number) {
     const admin = await this.adminUserAccountRepo.findOne({
       where: {
         id: adminId,

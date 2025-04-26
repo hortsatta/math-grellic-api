@@ -1,0 +1,26 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { AuditLogModule } from '../audit-log/audit-log.module';
+import { UserModule } from '../user/user.module';
+import { SchoolYear } from './entities/school-year.entity';
+import { SchoolYearEnrollment } from './entities/school-year-enrollment.entity';
+import { SchoolYearController } from './school-year.controller';
+import { SchoolYearEnrollmentSubscriber } from './subscribers/school-year-enrollment.subscriber';
+import { SchoolYearService } from './services/school-year.service';
+import { SchoolYearEnrollmentService } from './services/school-year-enrollment.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([SchoolYear, SchoolYearEnrollment]),
+    AuditLogModule,
+    UserModule,
+  ],
+  controllers: [SchoolYearController],
+  providers: [
+    SchoolYearEnrollmentSubscriber,
+    SchoolYearService,
+    SchoolYearEnrollmentService,
+  ],
+})
+export class SchoolYearModule {}

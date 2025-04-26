@@ -7,6 +7,7 @@ import {
   OneToOne,
 } from 'typeorm';
 
+import { SchoolYearEnrollment } from '#/modules/school-year/entities/school-year-enrollment.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Activity } from '#/modules/activity/entities/activity.entity';
@@ -55,11 +56,18 @@ export class TeacherUserAccount extends UserAccountEntity {
   @JoinColumn()
   adminUser: AdminUserAccount;
 
+  // TODO remove
   @OneToMany(
     () => StudentUserAccount,
     (studentUserAccount) => studentUserAccount.teacherUser,
   )
   students: StudentUserAccount[];
+
+  @OneToMany(
+    () => StudentUserAccount,
+    (studentUserAccount) => studentUserAccount.teacherUser,
+  )
+  enrolledStudents: SchoolYearEnrollment[];
 
   @OneToMany(() => Lesson, (lesson) => lesson.teacher)
   lessons: Lesson[];
