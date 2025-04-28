@@ -218,8 +218,6 @@ export class TeacherUserService {
       return baseWhere;
     };
 
-    console.log(generateWhere());
-
     return this.teacherUserAccountRepo.find({
       where: generateWhere(),
       loadEagerRelations: false,
@@ -251,6 +249,21 @@ export class TeacherUserService {
           user: { approvalStatus: UserApprovalStatus.Approved },
         },
         user: { approvalStatus: UserApprovalStatus.Approved },
+      },
+      loadEagerRelations: false,
+      relations: { user: true },
+      select: {
+        user: {
+          publicId: true,
+        },
+      },
+    });
+  }
+
+  getTeacherByPublicId(publicId: string): Promise<TeacherUserAccount> {
+    return this.teacherUserAccountRepo.findOne({
+      where: {
+        user: { publicId, approvalStatus: UserApprovalStatus.Approved },
       },
       loadEagerRelations: false,
       relations: { user: true },

@@ -219,7 +219,7 @@ export class UserController {
   ): Promise<User> {
     return this.teacherUserService.createTeacherUser(
       body,
-      UserApprovalStatus.MailPending,
+      UserApprovalStatus.Pending,
       user?.id,
     );
   }
@@ -245,7 +245,7 @@ export class UserController {
   ): Promise<User> {
     return this.studentUserService.createStudentUser(
       body,
-      UserApprovalStatus.MailPending,
+      UserApprovalStatus.Pending,
       user?.id,
     );
   }
@@ -428,7 +428,7 @@ export class UserController {
   registerAdminBySuperAdmin(@Body() body: AdminUserCreateDto): Promise<User> {
     return this.adminUserService.createAdminUser(
       body,
-      UserApprovalStatus.MailPending,
+      UserApprovalStatus.Pending,
     );
   }
 

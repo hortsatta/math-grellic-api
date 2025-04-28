@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
@@ -41,14 +42,14 @@ export class SchoolYearService {
   constructor(
     @InjectRepository(SchoolYear)
     private readonly repo: Repository<SchoolYear>,
-    @Inject(SchoolYearEnrollmentService)
-    private readonly syEnrollmentService: SchoolYearEnrollmentService,
     @Inject(AuditLogService)
     private readonly auditLogService: AuditLogService,
     @Inject(AdminUserService)
     private readonly adminUserService: AdminUserService,
     @Inject(TeacherUserService)
     private readonly teacherUserService: TeacherUserService,
+    @Inject(forwardRef(() => SchoolYearEnrollmentService))
+    private readonly syEnrollmentService: SchoolYearEnrollmentService,
   ) {}
 
   async validateUpsert(
@@ -213,34 +214,33 @@ export class SchoolYearService {
       },
       order: { startDate: 'DESC' },
     });
-
-    if (schoolYear) {
-      const totalTeacherCount = schoolYear.enrollments.filter(
-        (enrollment) =>
-          enrollment.approvalStatus ===
-            SchoolYearEnrollmentApprovalStatus.Approved &&
-          enrollment.user.role === UserRole.Teacher,
-      ).length;
-
-      const totalStudentCount = schoolYear.enrollments.filter(
-        (enrollment) =>
-          enrollment.approvalStatus ===
-            SchoolYearEnrollmentApprovalStatus.Approved &&
-          enrollment.user.role === UserRole.Student,
-      ).length;
-
-      const isDone = dayjs(schoolYear.endDate).isSameOrBefore(today);
-
-      return {
-        ...schoolYear,
-        totalTeacherCount,
-        totalStudentCount,
-        isActive: true,
-        isDone,
-      };
+    if (!schoolYear) {
+      return null;
     }
 
-    return schoolYear;
+    const totalTeacherCount = schoolYear.enrollments.filter(
+      (enrollment) =>
+        enrollment.approvalStatus ===
+          SchoolYearEnrollmentApprovalStatus.Approved &&
+        enrollment.user.role === UserRole.Teacher,
+    ).length;
+
+    const totalStudentCount = schoolYear.enrollments.filter(
+      (enrollment) =>
+        enrollment.approvalStatus ===
+          SchoolYearEnrollmentApprovalStatus.Approved &&
+        enrollment.user.role === UserRole.Student,
+    ).length;
+
+    const isDone = dayjs(schoolYear.endDate).isSameOrBefore(today);
+
+    return {
+      ...schoolYear,
+      totalTeacherCount,
+      totalStudentCount,
+      isActive: true,
+      isDone,
+    };
   }
 
   async getOneBySlug(slug: string) {
@@ -293,7 +293,7 @@ export class SchoolYearService {
     const currentSchoolYear = await this.getCurrentSchoolYear();
 
     if (currentSchoolYear?.id === schoolYear.id) {
-      return schoolYear;
+      return currentSchoolYear;
     }
 
     // Return school year and check if it is done
@@ -378,7 +378,6 @@ export class SchoolYearService {
       const enrollmentDtos = teacherUserIds.map((id) => ({
         schoolYearId: newSchoolYear.id,
         userId: id,
-        teacherId: undefined,
       }));
 
       await this.syEnrollmentService.createBatch(
@@ -472,7 +471,6 @@ export class SchoolYearService {
       const enrollmentDtos = teacherUserIds.map((id) => ({
         schoolYearId: updatedSchoolYear.id,
         userId: id,
-        teacherId: undefined,
       }));
 
       await this.syEnrollmentService.createBatch(

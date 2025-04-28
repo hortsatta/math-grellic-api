@@ -12,16 +12,16 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
-import { UserRole } from '../user/enums/user.enum';
-import { CurrentUser } from '../user/decorators/current-user.decorator';
-import { UseJwtAuthGuard } from '../auth/auth.guard';
-import { User } from '../user/entities/user.entity';
-import { SchoolYearResponse } from './models/school-year.model';
-import { SchoolYear } from './entities/school-year.entity';
-import { SchoolYearResponseDto } from './dtos/school-year-response.dto';
-import { SchoolYearCreateDto } from './dtos/school-year-create.dto';
-import { SchoolYearUpdateDto } from './dtos/school-year-update.dto';
-import { SchoolYearService } from './services/school-year.service';
+import { UserRole } from '../../user/enums/user.enum';
+import { CurrentUser } from '../../user/decorators/current-user.decorator';
+import { UseJwtAuthGuard } from '../../auth/auth.guard';
+import { User } from '../../user/entities/user.entity';
+import { SchoolYearResponse } from '../models/school-year.model';
+import { SchoolYear } from '../entities/school-year.entity';
+import { SchoolYearResponseDto } from '../dtos/school-year-response.dto';
+import { SchoolYearCreateDto } from '../dtos/school-year-create.dto';
+import { SchoolYearUpdateDto } from '../dtos/school-year-update.dto';
+import { SchoolYearService } from '../services/school-year.service';
 
 const ADMIN_URL = '/admins';
 

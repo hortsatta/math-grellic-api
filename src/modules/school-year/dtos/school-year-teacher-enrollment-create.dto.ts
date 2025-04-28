@@ -1,14 +1,9 @@
 import { IsInt, IsPositive, IsOptional } from 'class-validator';
 
-export class SchoolYearEnrollmentCreateDto {
+export class SchoolYearTeacherEnrollmentCreateDto {
   @IsInt()
   @IsPositive()
   schoolYearId: number;
-
-  @IsInt()
-  @IsPositive()
-  @IsOptional()
-  userId: number;
 
   @IsInt()
   @IsPositive()

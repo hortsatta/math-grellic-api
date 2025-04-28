@@ -215,12 +215,27 @@ export class StudentUserService {
   getStudentsByIds(
     ids: number[],
     status?: UserApprovalStatus,
+    includeUser?: boolean,
   ): Promise<StudentUserAccount[]> {
     const where: FindOptionsWhere<StudentUserAccount> = status
       ? { id: In(ids), user: { approvalStatus: status } }
       : { id: In(ids) };
 
-    return this.studentUserAccountRepo.find({ where });
+    return this.studentUserAccountRepo.find({
+      where,
+      ...(includeUser && {
+        loadEagerRelations: false,
+        relations: { user: true },
+        select: {
+          user: {
+            id: true,
+            publicId: true,
+            email: true,
+            approvalStatus: true,
+          },
+        },
+      }),
+    });
   }
 
   getStudentByPublicIdAndTeacherId(publicId: string, teacherId: number) {

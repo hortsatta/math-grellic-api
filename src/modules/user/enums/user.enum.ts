@@ -1,5 +1,4 @@
 export enum UserApprovalStatus {
-  MailPending = 'mail-pending',
   Pending = 'pending',
   Approved = 'approved',
   Rejected = 'rejected',

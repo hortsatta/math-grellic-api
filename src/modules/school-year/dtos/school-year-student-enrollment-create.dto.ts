@@ -6,13 +6,17 @@ import {
   Length,
 } from 'class-validator';
 
-export class SchoolYearEnrollmentUpdateDto {
+export class SchoolYearStudentEnrollmentCreateDto {
   @IsInt()
   @IsPositive()
   schoolYearId: number;
 
   @IsString()
   @Length(11)
-  @IsOptional()
   teacherId: string;
+
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  studentId: number;
 }

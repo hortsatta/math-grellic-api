@@ -91,7 +91,7 @@ export class UserService {
       throw new BadRequestException('Cannot confirm email');
     }
 
-    if (user.approvalStatus !== UserApprovalStatus.MailPending) {
+    if (user.approvalStatus !== UserApprovalStatus.Pending) {
       throw new BadRequestException('Email already confirmed');
     }
 
@@ -122,7 +122,7 @@ export class UserService {
       throw new BadRequestException('Cannot confirm email');
     }
 
-    if (user.approvalStatus !== UserApprovalStatus.MailPending) {
+    if (user.approvalStatus !== UserApprovalStatus.Pending) {
       throw new BadRequestException('Email already confirmed');
     }
 
