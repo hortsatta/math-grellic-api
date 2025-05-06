@@ -31,7 +31,7 @@ export class SchoolYearController {
 
   // ADMINS
 
-  @Get('/list')
+  @Get(`${ADMIN_URL}/list`)
   @UseJwtAuthGuard(UserRole.Admin)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(SchoolYearResponseDto)
@@ -51,12 +51,25 @@ export class SchoolYearController {
     );
   }
 
+  @Get('/list')
+  @UseJwtAuthGuard()
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(SchoolYearResponseDto)
+  getSchoolYearsByCurrentUserId(
+    @CurrentUser() user: User,
+  ): Promise<Partial<SchoolYearResponse>[]> {
+    return this.schoolYearService.getAllByCurrentUserId(user.id);
+  }
+
   @Get(`/:slug${ADMIN_URL}`)
   @UseJwtAuthGuard(UserRole.Admin)
   @UseSerializeInterceptor(SchoolYearResponseDto)
   @UseFilterFieldsInterceptor()
-  getOneBySlug(@Param('slug') slug: string): Promise<SchoolYearResponse> {
-    return this.schoolYearService.getOneBySlug(slug);
+  getOneBySlug(
+    @Param('slug') slug: string,
+    @CurrentUser() user: User,
+  ): Promise<Partial<SchoolYearResponse>> {
+    return this.schoolYearService.getOneBySlug(slug, user.id);
   }
 
   @Post()
@@ -142,15 +155,15 @@ export class SchoolYearController {
   @UseJwtAuthGuard()
   @UseSerializeInterceptor(SchoolYearResponseDto)
   @UseFilterFieldsInterceptor()
-  getCurrent() {
-    return this.schoolYearService.getCurrentSchoolYear();
+  getCurrent(@CurrentUser() user: User) {
+    return this.schoolYearService.getCurrentSchoolYear(user.id);
   }
 
   @Get('/:id')
   @UseJwtAuthGuard()
   @UseSerializeInterceptor(SchoolYearResponseDto)
   @UseFilterFieldsInterceptor()
-  getOneById(@Param('id') id: number) {
-    return this.schoolYearService.getOneById(id);
+  getOneById(@Param('id') id: number, @CurrentUser() user: User) {
+    return this.schoolYearService.getOneById(user.id, id);
   }
 }

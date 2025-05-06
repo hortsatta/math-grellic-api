@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { CurrentUser } from '../../user/decorators/current-user.decorator';
@@ -16,7 +16,7 @@ const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 
 @Controller('sy-enrollments')
-export class SchoolYearController {
+export class SchoolYearEnrollmentController {
   constructor(
     private readonly schoolYearEnrollmentService: SchoolYearEnrollmentService,
   ) {}
@@ -24,9 +24,13 @@ export class SchoolYearController {
   @Get('/me')
   @UseJwtAuthGuard()
   @UseSerializeInterceptor(SchoolYearEnrollmentResponseDto)
-  me(@CurrentUser() user: User): Promise<SchoolYearEnrollment> {
+  me(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<SchoolYearEnrollment> {
     return this.schoolYearEnrollmentService.getOneByUserIdAndSchoolYearId(
       user.id,
+      schoolYearId == null || isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 

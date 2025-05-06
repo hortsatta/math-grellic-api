@@ -1,10 +1,4 @@
-import {
-  IsOptional,
-  IsString,
-  Length,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { UserCreateDto } from './user-create.dto';
 
 export class StudentUserCreateDto extends UserCreateDto {
@@ -13,10 +7,6 @@ export class StudentUserCreateDto extends UserCreateDto {
   @MaxLength(100)
   @IsOptional()
   password: string;
-
-  @IsString()
-  @Length(11)
-  teacherId: string;
 
   @IsString()
   @IsOptional()

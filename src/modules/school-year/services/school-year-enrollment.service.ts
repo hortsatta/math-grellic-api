@@ -52,35 +52,11 @@ export class SchoolYearEnrollmentService {
     return { error: null };
   }
 
-  // TODO email
-
-  // async create(
-  //   enrollmentDto: SchoolYearEnrollmentCreateDto,
-  //   status?: SchoolYearEnrollmentApprovalStatus,
-  //   isStudent?: boolean,
-  // ): Promise<SchoolYearEnrollment> {
-  //   const { schoolYearId, userId, teacherId } = enrollmentDto;
-
-  //   const user = { id: userId };
-
-  //   // TODO get teacher user using public id first (teacherId)
-  //   const teacherUser = isStudent ? { id: teacherId } : undefined;
-
-  //   const schoolYearEnrollment = this.repo.create({
-  //     schoolYear: { id: schoolYearId },
-  //     user,
-  //     teacherUser,
-  //     approvalStatus: status,
-  //   });
-
-  //   return this.repo.save(schoolYearEnrollment);
-  // }
-
   async getOneByUserIdAndSchoolYearId(userId: number, schoolYearId?: number) {
     const schoolYear =
       schoolYearId != null
-        ? await this.schoolYearService.getOneById(schoolYearId)
-        : await this.schoolYearService.getCurrentSchoolYear();
+        ? await this.schoolYearService.getOneById(userId, schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear(userId);
 
     if (!schoolYear) {
       return null;

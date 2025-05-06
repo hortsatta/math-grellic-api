@@ -135,6 +135,75 @@ export class SchoolYearService {
     return [title?.trim().length ? title : transformedTitle, slugify(slug)];
   }
 
+  createSchoolYearResponse(
+    schoolYear: SchoolYear,
+    userId?: number,
+  ): Partial<SchoolYearResponse> {
+    const today = dayjs().toDate();
+
+    const totalTeacherCount = schoolYear.enrollments.filter(
+      (enrollment) =>
+        enrollment.approvalStatus ===
+          SchoolYearEnrollmentApprovalStatus.Approved &&
+        enrollment.user.role === UserRole.Teacher,
+    ).length;
+
+    const totalStudentCount = schoolYear.enrollments.filter(
+      (enrollment) =>
+        enrollment.approvalStatus ===
+          SchoolYearEnrollmentApprovalStatus.Approved &&
+        enrollment.user.role === UserRole.Student,
+    ).length;
+
+    const isDone = dayjs(schoolYear.endDate).isSameOrBefore(today);
+
+    const isEnrolled = schoolYear.enrollments.some(
+      (enrollment) => enrollment.user.id === userId,
+    );
+
+    const canEnroll = dayjs(today).isBetween(
+      schoolYear.enrollmentStartDate,
+      schoolYear.gracePeriodEndDate,
+      null,
+      '[]',
+    );
+
+    return {
+      ...schoolYear,
+      totalTeacherCount,
+      totalStudentCount,
+      isDone,
+      isEnrolled,
+      canEnroll,
+    };
+  }
+
+  async getCurrentSchoolYear(userId?: number) {
+    const today = dayjs().toDate();
+
+    const schoolYear = await this.repo.findOne({
+      where: {
+        status: RecordStatus.Published,
+        startDate: LessThanOrEqual(today),
+      },
+      relations: {
+        enrollments: { user: true },
+      },
+      order: { startDate: 'DESC' },
+    });
+
+    if (!schoolYear) {
+      return null;
+    }
+
+    const transformedSchoolYear = this.createSchoolYearResponse(
+      schoolYear,
+      userId,
+    );
+
+    return { ...transformedSchoolYear, isActive: true };
+  }
+
   async getPaginatedSchoolYears(
     sort: string,
     take: number = DEFAULT_TAKE,
@@ -201,49 +270,37 @@ export class SchoolYearService {
     return [transformedSchoolYears, schoolYearCount];
   }
 
-  async getCurrentSchoolYear() {
+  async getAllByCurrentUserId(userId: number) {
     const today = dayjs().toDate();
-
-    const schoolYear = await this.repo.findOne({
+    // Get current active school year
+    const currentSchoolYear = await this.getCurrentSchoolYear(userId);
+    // Get all school years
+    const allSchoolYears = await this.repo.find({
       where: {
         status: RecordStatus.Published,
         startDate: LessThanOrEqual(today),
       },
-      relations: {
-        enrollments: { user: true },
-      },
+      relations: { enrollments: { user: true } },
       order: { startDate: 'DESC' },
     });
-    if (!schoolYear) {
-      return null;
-    }
 
-    const totalTeacherCount = schoolYear.enrollments.filter(
-      (enrollment) =>
-        enrollment.approvalStatus ===
-          SchoolYearEnrollmentApprovalStatus.Approved &&
-        enrollment.user.role === UserRole.Teacher,
-    ).length;
+    const userSchoolYears = allSchoolYears.map((schoolYear) => {
+      if (schoolYear.id === currentSchoolYear.id) {
+        return currentSchoolYear;
+      }
 
-    const totalStudentCount = schoolYear.enrollments.filter(
-      (enrollment) =>
-        enrollment.approvalStatus ===
-          SchoolYearEnrollmentApprovalStatus.Approved &&
-        enrollment.user.role === UserRole.Student,
-    ).length;
+      const transformedSchoolYear = this.createSchoolYearResponse(
+        schoolYear,
+        userId,
+      );
 
-    const isDone = dayjs(schoolYear.endDate).isSameOrBefore(today);
+      return { ...transformedSchoolYear, isActive: false };
+    });
 
-    return {
-      ...schoolYear,
-      totalTeacherCount,
-      totalStudentCount,
-      isActive: true,
-      isDone,
-    };
+    return userSchoolYears;
   }
 
-  async getOneBySlug(slug: string) {
+  async getOneBySlug(slug: string, userId: number) {
     const schoolYear = await this.repo.findOne({
       where: { slug },
       relations: {
@@ -255,33 +312,10 @@ export class SchoolYearService {
       throw new NotFoundException('School year not found');
     }
 
-    const totalTeacherCount = schoolYear.enrollments.filter(
-      (enrollment) =>
-        enrollment.approvalStatus ===
-          SchoolYearEnrollmentApprovalStatus.Approved &&
-        enrollment.user.role === UserRole.Teacher,
-    ).length;
-
-    const totalStudentCount = schoolYear.enrollments.filter(
-      (enrollment) =>
-        enrollment.approvalStatus ===
-          SchoolYearEnrollmentApprovalStatus.Approved &&
-        enrollment.user.role === UserRole.Student,
-    ).length;
-
-    const today = dayjs().toDate();
-    const isDone = dayjs(schoolYear.endDate).isSameOrBefore(today);
-
-    return {
-      ...schoolYear,
-      totalTeacherCount,
-      totalStudentCount,
-      isActive: false,
-      isDone,
-    };
+    return this.createSchoolYearResponse(schoolYear, userId);
   }
 
-  async getOneById(id?: number) {
+  async getOneById(userId: number, id?: number) {
     const schoolYear = await this.repo.findOne({
       where: { id },
     });
@@ -290,7 +324,7 @@ export class SchoolYearService {
       throw new NotFoundException('School year not found');
     }
 
-    const currentSchoolYear = await this.getCurrentSchoolYear();
+    const currentSchoolYear = await this.getCurrentSchoolYear(userId);
 
     if (currentSchoolYear?.id === schoolYear.id) {
       return currentSchoolYear;

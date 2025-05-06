@@ -6,6 +6,7 @@ import { UserModule } from '../user/user.module';
 import { SchoolYear } from './entities/school-year.entity';
 import { SchoolYearEnrollment } from './entities/school-year-enrollment.entity';
 import { SchoolYearController } from './controllers/school-year.controller';
+import { SchoolYearEnrollmentController } from './controllers/school-year-enrollment.controller';
 import { SchoolYearEnrollmentSubscriber } from './subscribers/school-year-enrollment.subscriber';
 import { SchoolYearService } from './services/school-year.service';
 import { SchoolYearEnrollmentService } from './services/school-year-enrollment.service';
@@ -16,7 +17,7 @@ import { SchoolYearEnrollmentService } from './services/school-year-enrollment.s
     AuditLogModule,
     UserModule,
   ],
-  controllers: [SchoolYearController],
+  controllers: [SchoolYearController, SchoolYearEnrollmentController],
   providers: [
     SchoolYearEnrollmentSubscriber,
     SchoolYearService,

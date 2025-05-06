@@ -268,21 +268,14 @@ export class StudentUserService {
     approvalStatus: UserApprovalStatus,
     currentUserId?: number,
   ): Promise<User> {
-    const { teacherId, email, password, profileImageUrl, ...moreUserDto } =
-      userDto;
-
-    const assignedTeacherUser = await this.userRepo.findOne({
-      where: { publicId: teacherId },
-    });
+    const { email, password, profileImageUrl, ...moreUserDto } = userDto;
 
     const isUserExisting = !!(await this.userRepo.findOne({
       where: { email },
     }));
 
-    // Check if teacher or email is valid, else throw error
-    if (!assignedTeacherUser) {
-      throw new NotFoundException("Teacher's ID is Invalid");
-    } else if (isUserExisting) {
+    // Check if email is valid, else throw error
+    if (isUserExisting) {
       throw new ConflictException('Email is already taken');
     }
 
@@ -308,11 +301,9 @@ export class StudentUserService {
     const studentUser = this.studentUserAccountRepo.create({
       ...moreUserDto,
       user: { id: user.id },
-      teacherUser: { id: assignedTeacherUser.teacherUserAccount.id },
     });
 
     const newStudentUser = await this.studentUserAccountRepo.save(studentUser);
-    const teacherUser = { ...newStudentUser.teacherUser, publicId: teacherId };
 
     await this.userService.sendUserRegisterEmailConfirmation(
       user.email,
@@ -332,7 +323,7 @@ export class StudentUserService {
       );
     }
 
-    return { ...user, studentUserAccount: { ...newStudentUser, teacherUser } };
+    return { ...user, studentUserAccount: newStudentUser };
   }
 
   async updateStudentUser(
@@ -340,7 +331,7 @@ export class StudentUserService {
     userDto: StudentUserUpdateDto,
     currentUserId: number,
   ): Promise<User> {
-    const { teacherId, profileImageUrl, ...moreUserDto } = userDto;
+    const { profileImageUrl, ...moreUserDto } = userDto;
     // Get existing user and corresponding student user account
     const user = await this.userRepo.findOne({
       where: { studentUserAccount: { id } },
@@ -363,11 +354,6 @@ export class StudentUserService {
       ...moreUserDto,
     });
 
-    const teacherUser = {
-      ...updatedStudentUser.teacherUser,
-      publicId: teacherId,
-    };
-
     // Log update
     this.auditLogService.create(
       {
@@ -380,7 +366,7 @@ export class StudentUserService {
 
     return {
       ...updatedUser,
-      studentUserAccount: { ...updatedStudentUser, teacherUser },
+      studentUserAccount: updatedStudentUser,
     };
   }
 

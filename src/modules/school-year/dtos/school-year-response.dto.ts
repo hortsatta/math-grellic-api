@@ -38,6 +38,12 @@ export class SchoolYearResponseDto extends BaseResponseDto {
   isDone: boolean;
 
   @Expose()
+  isEnrolled: boolean;
+
+  @Expose()
+  canEnroll: boolean;
+
+  @Expose()
   totalTeacherCount: number;
 
   @Expose()
