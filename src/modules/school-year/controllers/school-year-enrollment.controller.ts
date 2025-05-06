@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
+import { UserRole } from '#/modules/user/enums/user.enum';
 import { CurrentUser } from '../../user/decorators/current-user.decorator';
 import { UseJwtAuthGuard } from '../../auth/auth.guard';
 import { User } from '../../user/entities/user.entity';
@@ -65,9 +66,11 @@ export class SchoolYearEnrollmentController {
     });
   }
 
+  // ADMINS
+
   // Batch enrollment by teacher or admin
   @Post(`${ADMIN_URL}/enroll${TEACHER_URL}`)
-  @UseJwtAuthGuard()
+  @UseJwtAuthGuard(UserRole.Admin)
   @UseSerializeInterceptor(SchoolYearEnrollmentResponseDto)
   enrollTeachers(
     @Body() body: SchoolYearBatchEnrollmentCreateDto,
@@ -75,8 +78,10 @@ export class SchoolYearEnrollmentController {
     return this.schoolYearEnrollmentService.enrollTeachers(body);
   }
 
+  // TEACHERS
+
   @Post(`${TEACHER_URL}/enroll${STUDENT_URL}`)
-  @UseJwtAuthGuard()
+  @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(SchoolYearEnrollmentResponseDto)
   enrollStudents(
     @Body() body: SchoolYearBatchEnrollmentCreateDto,

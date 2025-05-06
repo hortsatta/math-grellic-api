@@ -12,6 +12,7 @@ import {
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { UseJwtAuthGuard } from '../auth/auth.guard';
+import { SchoolYearEnrollmentApprovalStatus } from '../school-year/enums/school-year-enrollment.enum';
 import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from './entities/user.entity';
@@ -67,7 +68,7 @@ export class UserController {
   @Get('/register/confirm')
   confirmUserRegistrationEmail(
     @Query('token') token: string,
-  ): Promise<boolean> {
+  ): Promise<{ publicId: string }> {
     return this.userService.confirmUserRegistrationEmail(token);
   }
 
@@ -87,7 +88,7 @@ export class UserController {
   getStudentsByTeacherId(
     @CurrentUser() user: User,
     @Query('q') q?: string,
-    @Query('status') status?: UserApprovalStatus,
+    @Query('status') status?: SchoolYearEnrollmentApprovalStatus,
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
