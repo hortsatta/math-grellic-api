@@ -3,12 +3,24 @@ import {
   forwardRef,
   Inject,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
-import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
+import { UserApprovalStatus, UserRole } from '#/modules/user/enums/user.enum';
+import {
+  AuditFeatureType,
+  AuditUserAction,
+} from '#/modules/audit-log/enums/audit-log.enum';
+import { StudentUserCreateDto } from '#/modules/user/dtos/student-user-create.dto';
+import { UserLastStepRegisterDto } from '#/modules/user/dtos/user-last-step-register.dto';
+import { MailerService } from '#/modules/mailer/mailer.service';
+import { AuditLogService } from '#/modules/audit-log/audit-log.service';
+import { UserService } from '#/modules/user/services/user.service';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
 import { SchoolYearEnrollmentApprovalStatus } from '../enums/school-year-enrollment.enum';
@@ -16,13 +28,23 @@ import { SchoolYearEnrollment } from '../entities/school-year-enrollment.entity'
 import { SchoolYearTeacherEnrollmentCreateDto } from '../dtos/school-year-teacher-enrollment-create.dto';
 import { SchoolYearStudentEnrollmentCreateDto } from '../dtos/school-year-student-enrollment-create.dto';
 import { SchoolYearBatchEnrollmentCreateDto } from '../dtos/school-year-batch-enrollment-create.dto';
+import { SchoolYearEnrollmentApprovalDto } from '../dtos/school-year-enrollment-approval.dto';
+import { SchoolYearStudentEnrollmentNewStudentCreateDto } from '../dtos/school-year-student-enrollment-new-student-create.dto';
 import { SchoolYearService } from './school-year.service';
 
 @Injectable()
 export class SchoolYearEnrollmentService {
   constructor(
+    private jwtService: JwtService,
+    private configService: ConfigService,
     @InjectRepository(SchoolYearEnrollment)
     private readonly repo: Repository<SchoolYearEnrollment>,
+    @Inject(MailerService)
+    private readonly mailerService: MailerService,
+    @Inject(AuditLogService)
+    private readonly auditLogService: AuditLogService,
+    @Inject(UserService)
+    private readonly userService: UserService,
     @Inject(StudentUserService)
     private readonly studentUserService: StudentUserService,
     @Inject(TeacherUserService)
@@ -52,6 +74,100 @@ export class SchoolYearEnrollmentService {
     return { error: null };
   }
 
+  async validateUserEnrollmentNewToken(token: string) {
+    try {
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+      // Check if user and enrollment exist
+      const user = await this.userService.findOneByEmail(payload.email);
+      const enrollment = await this.repo.findOne({
+        where: { id: payload.enrollmentId },
+      });
+
+      if (!user || !enrollment) return false;
+
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async confirmUserEnrollmentNewLastStep(
+    userLastStepDto: UserLastStepRegisterDto,
+  ): Promise<{ publicId: string }> {
+    try {
+      const { token, password } = userLastStepDto;
+
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+
+      const user = await this.userService.findOneByEmail(payload.email);
+      const enrollment = await this.repo.findOne({
+        where: { id: payload.enrollmentId },
+      });
+
+      if (
+        !user ||
+        !enrollment ||
+        user.approvalStatus === UserApprovalStatus.Rejected ||
+        enrollment.approvalStatus ===
+          SchoolYearEnrollmentApprovalStatus.Rejected
+      ) {
+        throw new BadRequestException('Cannot confirm enrollment');
+      }
+
+      if (
+        user.approvalStatus !== UserApprovalStatus.Pending ||
+        enrollment.approvalStatus !== SchoolYearEnrollmentApprovalStatus.Pending
+      ) {
+        throw new BadRequestException('User already enrolled');
+      }
+
+      const { id: userId, role: userRole, studentUserAccount } = user;
+
+      if (userRole === UserRole.Student) {
+        await this.studentUserService.setStudentApprovalStatus(
+          studentUserAccount.id,
+          {
+            approvalStatus: UserApprovalStatus.Approved,
+            approvalRejectedReason: undefined,
+          },
+          userId,
+          password,
+        );
+      } else {
+        await this.teacherUserService.setTeacherApprovalStatus(
+          userId,
+          {
+            approvalStatus: UserApprovalStatus.Approved,
+            approvalRejectedReason: undefined,
+          },
+          userId,
+          password,
+        );
+      }
+
+      if (userRole === UserRole.Student) {
+        await this.setStudentApprovalStatus(
+          enrollment.id,
+          {
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+            approvalRejectedReason: undefined,
+          },
+          user.id,
+        );
+      }
+
+      const updatedUser = await this.userService.getOneByEmail(payload.email);
+
+      return { publicId: updatedUser.publicId };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getOneByUserIdAndSchoolYearId(userId: number, schoolYearId?: number) {
     const schoolYear =
       schoolYearId != null
@@ -67,13 +183,16 @@ export class SchoolYearEnrollmentService {
     });
   }
 
-  async enrollTeacher(enrollmentDto: SchoolYearTeacherEnrollmentCreateDto) {
+  async enrollTeacher(
+    enrollmentDto: SchoolYearTeacherEnrollmentCreateDto,
+    fromRegister?: boolean,
+  ) {
     const { schoolYearId, teacherId } = enrollmentDto;
 
     const [teacher] = await this.teacherUserService.getAllTeachers(
       [teacherId],
       undefined,
-      UserApprovalStatus.Approved,
+      fromRegister ? UserApprovalStatus.Pending : UserApprovalStatus.Approved,
     );
 
     const schoolYear = await this.schoolYearService.getCurrentSchoolYear();
@@ -114,15 +233,22 @@ export class SchoolYearEnrollmentService {
     return this.repo.save(enrollment);
   }
 
-  async enrollStudent(enrollmentDto: SchoolYearStudentEnrollmentCreateDto) {
-    const { schoolYearId, teacherId, studentId } = enrollmentDto;
+  async enrollStudent(
+    enrollmentDto: SchoolYearStudentEnrollmentCreateDto,
+    fromRegister?: boolean,
+  ) {
+    const {
+      schoolYearId,
+      teacherId: teacherPublicId,
+      studentId,
+    } = enrollmentDto;
 
     const teacher =
-      await this.teacherUserService.getTeacherByPublicId(teacherId);
+      await this.teacherUserService.getTeacherByPublicId(teacherPublicId);
 
     const [student] = await this.studentUserService.getStudentsByIds(
       [studentId],
-      UserApprovalStatus.Approved,
+      fromRegister ? UserApprovalStatus.Pending : UserApprovalStatus.Approved,
       true,
     );
 
@@ -264,5 +390,108 @@ export class SchoolYearEnrollmentService {
 
     const enrollments = this.repo.create(transformedEnrollmentDtos);
     return this.repo.save(enrollments);
+  }
+
+  // TEACHERS
+
+  async enrollNewStudent(
+    studentUserDto: StudentUserCreateDto,
+    studentEnrollmentDto: SchoolYearStudentEnrollmentNewStudentCreateDto,
+    teacherPublicId: string,
+    userId: number,
+  ) {
+    try {
+      const newStudent = await this.studentUserService.createStudentUser(
+        studentUserDto,
+        UserApprovalStatus.Pending,
+        userId,
+        true,
+      );
+
+      const newEnrollment = await this.enrollStudent(
+        {
+          ...studentEnrollmentDto,
+          teacherId: teacherPublicId,
+          studentId: newStudent.studentUserAccount.id,
+        },
+        true,
+      );
+
+      await this.mailerService.sendUserEnrollmentNewConfirmation(
+        newEnrollment.id,
+        newStudent.email,
+        newStudent.studentUserAccount.firstName,
+      );
+
+      return {
+        user: newStudent,
+        enrollment: newEnrollment,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async setStudentApprovalStatus(
+    enrollmentId: number,
+    enrollmentApprovalDto: SchoolYearEnrollmentApprovalDto,
+    logUserId: number,
+    teacherId?: number,
+  ): Promise<{
+    approvalStatus: SchoolYearEnrollment['approvalStatus'];
+    approvalDate: SchoolYearEnrollment['approvalDate'];
+    approvalRejectedReason: SchoolYearEnrollment['approvalRejectedReason'];
+  }> {
+    const { approvalStatus, approvalRejectedReason } = enrollmentApprovalDto;
+
+    const enrollment = await this.repo.findOne({
+      where: {
+        id: enrollmentId,
+        ...(teacherId && { teacherUser: { user: { id: teacherId } } }),
+      },
+      relations: { user: { studentUserAccount: true }, schoolYear: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    const { user: studentUser, schoolYear, ...moreEnrollment } = enrollment;
+
+    const updatedEnrollment = await this.repo.save({
+      ...moreEnrollment,
+      ...enrollmentApprovalDto,
+    });
+
+    // Send a notification email to user
+    approvalStatus === SchoolYearEnrollmentApprovalStatus.Approved
+      ? this.mailerService.sendUserEnrollmentApproved(
+          schoolYear.title,
+          studentUser.email,
+          studentUser.studentUserAccount.firstName,
+        )
+      : this.mailerService.sendUserEnrollmentRejected(
+          approvalRejectedReason || '',
+          schoolYear.title,
+          studentUser.email,
+          studentUser.studentUserAccount.firstName,
+        );
+
+    // Log approval status
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.setEnrollmentApprovalStatus,
+        actionValue: approvalStatus,
+        featureId: studentUser.id,
+        featureType: AuditFeatureType.schoolYearEnrollment,
+      },
+      logUserId,
+    );
+
+    return {
+      approvalStatus,
+      approvalDate: updatedEnrollment.approvalDate,
+      approvalRejectedReason: updatedEnrollment.approvalRejectedReason,
+    };
   }
 }

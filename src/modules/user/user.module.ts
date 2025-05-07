@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MailerModule } from '../mailer/mailer.module';
 import { CoreModule } from '../core/core.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { SchoolYearModule } from '../school-year/school-year.module';
 import { UserController } from './user.controller';
 import { UserSubscriber } from './subscribers/user.subscriber';
 import { UserService } from './services/user.service';
@@ -26,6 +27,7 @@ import { AdminUserService } from './services/admin-user.service';
     MailerModule,
     CoreModule,
     AuditLogModule,
+    forwardRef(() => SchoolYearModule),
   ],
   controllers: [UserController],
   providers: [

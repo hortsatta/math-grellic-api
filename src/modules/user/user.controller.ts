@@ -88,10 +88,12 @@ export class UserController {
   getStudentsByTeacherId(
     @CurrentUser() user: User,
     @Query('q') q?: string,
-    @Query('status') status?: SchoolYearEnrollmentApprovalStatus,
+    @Query('status') status?: UserApprovalStatus,
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus') enrollmentStatus?: string,
   ): Promise<[StudentUserAccount[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -102,6 +104,8 @@ export class UserController {
       !!skip ? skip : undefined,
       q,
       status,
+      schoolYearId,
+      enrollmentStatus,
     );
   }
 
@@ -113,7 +117,10 @@ export class UserController {
     @CurrentUser() user: User,
     @Query('ids') ids: string,
     @Query('q') q: string,
-    @Query('status') status?: string | UserApprovalStatus,
+    @Query('status') status?: string,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus')
+    enrollmentStatus?: string,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -123,6 +130,8 @@ export class UserController {
       transformedIds,
       q,
       status,
+      schoolYearId,
+      enrollmentStatus,
     );
   }
 
@@ -131,11 +140,15 @@ export class UserController {
   getStudentCountByTeacherId(
     @CurrentUser() user: User,
     @Query('status') status?: UserApprovalStatus,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus') enrollmentStatus?: SchoolYearEnrollmentApprovalStatus,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
     return this.studentUserService.getStudentCountByTeacherId(
       teacherId,
       status,
+      schoolYearId,
+      enrollmentStatus,
     );
   }
 
@@ -193,7 +206,6 @@ export class UserController {
     return this.studentUserService.setStudentApprovalStatus(
       studentId,
       body,
-      user.id,
       user.id,
     );
   }

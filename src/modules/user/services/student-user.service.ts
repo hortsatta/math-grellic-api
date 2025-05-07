@@ -24,9 +24,11 @@ import { generatePublicId } from '#/modules/user/helpers/user.helper';
 import {
   AuditFeatureType,
   AuditUserAction,
-} from '../../audit-log/enums/audit-log.enum';
-import { MailerService } from '../../mailer/mailer.service';
-import { AuditLogService } from '../../audit-log/audit-log.service';
+} from '#/modules/audit-log/enums/audit-log.enum';
+import { MailerService } from '#/modules/mailer/mailer.service';
+import { AuditLogService } from '#/modules/audit-log/audit-log.service';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { UserApprovalStatus, UserRole } from '../enums/user.enum';
 import { User } from '../entities/user.entity';
 import { StudentUserAccount } from '../entities/student-user-account.entity';
@@ -45,6 +47,8 @@ export class StudentUserService {
     private readonly mailerService: MailerService,
     @Inject(AuditLogService)
     private readonly auditLogService: AuditLogService,
+    @Inject(forwardRef(() => SchoolYearService))
+    private readonly schoolYearService: SchoolYearService,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
   ) {}
@@ -56,20 +60,24 @@ export class StudentUserService {
     skip: number = 0,
     q?: string,
     status?: string,
+    schoolYearId?: number,
+    enrollmentStatus?: string,
   ): Promise<[StudentUserAccount[], number]> {
     const generateWhere = () => {
       let baseWhere:
         | FindOptionsWhere<StudentUserAccount>
         | FindOptionsWhere<StudentUserAccount>[] = {
-        teacherUser: { id: teacherId },
+        user: {
+          enrollments: {
+            teacherUser: { id: teacherId },
+            ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+            ...(enrollmentStatus && {
+              approvalStatus: In(enrollmentStatus.split(',')),
+            }),
+          },
+          ...(status?.trim() && { approvalStatus: In(status.split(',')) }),
+        },
       };
-
-      if (status?.trim()) {
-        baseWhere = {
-          ...baseWhere,
-          user: { approvalStatus: In(status.split(',')) },
-        };
-      }
 
       if (q?.trim()) {
         baseWhere = [
@@ -102,18 +110,18 @@ export class StudentUserService {
 
     const results = await this.studentUserAccountRepo.findAndCount({
       where: generateWhere(),
-      relations: { user: true },
+      relations: { user: { enrollments: true } },
       order: generateOrder(),
       skip,
       take,
     });
 
     const students = results[0].map((student) => {
-      const { publicId, email, approvalStatus } = student.user;
+      const { publicId, email, approvalStatus, enrollments } = student.user;
 
       return {
         ...student,
-        user: { publicId, email, approvalStatus },
+        user: { publicId, email, approvalStatus, enrollments },
       };
     }) as StudentUserAccount[];
 
@@ -124,18 +132,23 @@ export class StudentUserService {
     teacherId: number,
     studentIds?: number[],
     q?: string,
-    status?: string | UserApprovalStatus.Approved,
+    status?: string,
+    schoolYearId?: number,
+    enrollmentStatus?: string,
   ): Promise<StudentUserAccount[]> {
     const generateWhere = () => {
-      const baseWhere: FindOptionsWhere<StudentUserAccount> = status
-        ? {
+      const baseWhere: FindOptionsWhere<StudentUserAccount> = {
+        user: {
+          enrollments: {
             teacherUser: { id: teacherId },
-            user: { approvalStatus: In(status.split(',')) },
-          }
-        : {
-            teacherUser: { id: teacherId },
-            user: { approvalStatus: UserApprovalStatus.Approved },
-          };
+            ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+            ...(enrollmentStatus && {
+              approvalStatus: In(enrollmentStatus.split(',')),
+            }),
+          },
+          ...(status?.trim() && { approvalStatus: In(status.split(',')) }),
+        },
+      };
 
       if (studentIds?.length) {
         return { ...baseWhere, id: In(studentIds) };
@@ -153,27 +166,38 @@ export class StudentUserService {
     return this.studentUserAccountRepo.find({
       where: generateWhere(),
       loadEagerRelations: false,
-      relations: { user: true },
+      relations: { user: { enrollments: true } },
       select: {
         user: {
           publicId: true,
           email: true,
           approvalStatus: true,
+          enrollments: true,
         },
       },
     });
   }
 
-  getStudentCountByTeacherId(
+  async getStudentCountByTeacherId(
     teacherId: number,
     status?: UserApprovalStatus,
+    schoolYearId?: number,
+    enrollmentStatus?: SchoolYearEnrollmentApprovalStatus,
   ): Promise<number> {
-    const where: FindOptionsWhere<StudentUserAccount> = status
-      ? { teacherUser: { id: teacherId }, user: { approvalStatus: status } }
-      : {
+    const targetSchoolYearId =
+      schoolYearId ?? (await this.schoolYearService.getCurrentSchoolYear())?.id;
+
+    const where: FindOptionsWhere<StudentUserAccount> = {
+      user: {
+        approvalStatus: status ?? UserApprovalStatus.Approved,
+        enrollments: {
           teacherUser: { id: teacherId },
-          user: { approvalStatus: UserApprovalStatus.Approved },
-        };
+          schoolYear: { id: targetSchoolYearId },
+          approvalStatus:
+            enrollmentStatus ?? SchoolYearEnrollmentApprovalStatus.Approved,
+        },
+      },
+    };
 
     return this.studentUserAccountRepo.count({ where });
   }
@@ -267,6 +291,7 @@ export class StudentUserService {
     userDto: StudentUserCreateDto,
     approvalStatus: UserApprovalStatus,
     currentUserId?: number,
+    noEmail?: boolean,
   ): Promise<User> {
     const { email, password, profileImageUrl, ...moreUserDto } = userDto;
 
@@ -305,11 +330,13 @@ export class StudentUserService {
 
     const newStudentUser = await this.studentUserAccountRepo.save(studentUser);
 
-    await this.userService.sendUserRegisterEmailConfirmation(
-      user.email,
-      newStudentUser.firstName,
-      currentUserId != null,
-    );
+    if (!noEmail) {
+      await this.userService.sendUserRegisterEmailConfirmation(
+        user.email,
+        newStudentUser.firstName,
+        currentUserId != null,
+      );
+    }
 
     // Log creation
     if (currentUserId) {
@@ -373,20 +400,19 @@ export class StudentUserService {
   async setStudentApprovalStatus(
     studentId: number,
     userApprovalDto: UserApprovalDto,
-    teacherId: number,
     logUserId: number,
     password?: string,
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
+    approvalRejectedReason: User['approvalRejectedReason'];
   }> {
-    const { approvalStatus, approvalRejectReason } = userApprovalDto;
+    const { approvalStatus, approvalRejectedReason } = userApprovalDto;
 
     const user = await this.userRepo.findOne({
       where: {
         studentUserAccount: {
           id: studentId,
-          teacherUser: { user: { id: teacherId } },
         },
       },
     });
@@ -422,11 +448,11 @@ export class StudentUserService {
     approvalStatus === UserApprovalStatus.Approved
       ? this.mailerService.sendUserRegisterApproved(
           user.email,
-          user.studentUserAccount.firstName,
           publicId,
+          user.studentUserAccount.firstName,
         )
       : this.mailerService.sendUserRegisterRejected(
-          approvalRejectReason || '',
+          approvalRejectedReason || '',
           user.email,
           user.studentUserAccount.firstName,
         );
@@ -442,7 +468,11 @@ export class StudentUserService {
       logUserId,
     );
 
-    return { approvalStatus, approvalDate: updatedUser.approvalDate };
+    return {
+      approvalStatus,
+      approvalDate: updatedUser.approvalDate,
+      approvalRejectedReason: updatedUser.approvalRejectedReason,
+    };
   }
 
   async deleteStudentByIdAndTeacherId(

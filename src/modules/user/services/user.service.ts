@@ -160,7 +160,6 @@ export class UserService {
             await this.studentUserService.setStudentApprovalStatus(
               user.studentUserAccount?.id,
               userApprovalDto,
-              user.studentUserAccount?.teacherUser?.user?.id,
               user.id,
               password,
             );

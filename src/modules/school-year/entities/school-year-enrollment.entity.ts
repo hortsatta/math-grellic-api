@@ -28,7 +28,7 @@ export class SchoolYearEnrollment extends BaseEntity {
   })
   schoolYear: SchoolYear;
 
-  @ManyToOne(() => User, (user) => user.enrollment, {
+  @ManyToOne(() => User, (user) => user.enrollments, {
     onDelete: 'CASCADE',
   })
   user: User;

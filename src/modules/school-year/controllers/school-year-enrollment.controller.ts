@@ -1,15 +1,27 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { UserRole } from '#/modules/user/enums/user.enum';
-import { CurrentUser } from '../../user/decorators/current-user.decorator';
-import { UseJwtAuthGuard } from '../../auth/auth.guard';
-import { User } from '../../user/entities/user.entity';
+import { CurrentUser } from '#/modules/user/decorators/current-user.decorator';
+import { UseJwtAuthGuard } from '#/modules/auth/auth.guard';
+import { User } from '#/modules/user/entities/user.entity';
+import { UserLastStepRegisterDto } from '#/modules/user/dtos/user-last-step-register.dto';
 import { SchoolYearEnrollment } from '../entities/school-year-enrollment.entity';
 import { SchoolYearEnrollmentResponseDto } from '../dtos/school-year-enrollment-response.dto';
 import { SchoolYearTeacherEnrollmentCreateDto } from '../dtos/school-year-teacher-enrollment-create.dto';
 import { SchoolYearStudentEnrollmentCreateDto } from '../dtos/school-year-student-enrollment-create.dto';
+import { SchoolYearStudentEnrollmentNewCreateDto } from '../dtos/school-year-student-enrollment-new-create.dto';
 import { SchoolYearBatchEnrollmentCreateDto } from '../dtos/school-year-batch-enrollment-create.dto';
+import { SchoolYearEnrollmentNewResponseDto } from '../dtos/school-year-enrollment-new-response.dto';
+import { SchoolYearEnrollmentApprovalDto } from '../dtos/school-year-enrollment-approval.dto';
 import { SchoolYearEnrollmentService } from '../services/school-year-enrollment.service';
 
 const ADMIN_URL = '/admins';
@@ -32,6 +44,24 @@ export class SchoolYearEnrollmentController {
     return this.schoolYearEnrollmentService.getOneByUserIdAndSchoolYearId(
       user.id,
       schoolYearId == null || isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
+  }
+
+  @Get('/enroll-new/confirm/validate')
+  validateUserRegistrationToken(
+    @Query('token') token: string,
+  ): Promise<boolean> {
+    return this.schoolYearEnrollmentService.validateUserEnrollmentNewToken(
+      token,
+    );
+  }
+
+  @Post('/enroll-new/confirm')
+  confirmUserEnrollmentNewLastStep(
+    @Body() body: UserLastStepRegisterDto,
+  ): Promise<{ publicId: string }> {
+    return this.schoolYearEnrollmentService.confirmUserEnrollmentNewLastStep(
+      body,
     );
   }
 
@@ -90,5 +120,42 @@ export class SchoolYearEnrollmentController {
     const { id: teacherId } = user.teacherUserAccount;
 
     return this.schoolYearEnrollmentService.enrollStudents(body, teacherId);
+  }
+
+  @Post(`${TEACHER_URL}/enroll-new${STUDENT_URL}`)
+  @UseJwtAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(SchoolYearEnrollmentNewResponseDto)
+  enrollNewStudent(
+    @Body() body: SchoolYearStudentEnrollmentNewCreateDto,
+    @CurrentUser() user: User,
+  ): Promise<{ user: User; enrollment: SchoolYearEnrollment }> {
+    const { studentUser, studentEnrollment } = body;
+    const { id: teacherId, publicId: teacherPublicId } = user;
+
+    return this.schoolYearEnrollmentService.enrollNewStudent(
+      studentUser,
+      studentEnrollment,
+      teacherPublicId,
+      teacherId,
+    );
+  }
+
+  @Patch(`${TEACHER_URL}${STUDENT_URL}/approve/:enrollmentId`)
+  @UseJwtAuthGuard(UserRole.Teacher)
+  approveStudentByIdAndTeacherId(
+    @CurrentUser() user: User,
+    @Param('enrollmentId') enrollmentId: number,
+    @Body() body: SchoolYearEnrollmentApprovalDto,
+  ): Promise<{
+    approvalStatus: SchoolYearEnrollment['approvalStatus'];
+    approvalDate: SchoolYearEnrollment['approvalDate'];
+    approvalRejectedReason: SchoolYearEnrollment['approvalRejectedReason'];
+  }> {
+    return this.schoolYearEnrollmentService.setStudentApprovalStatus(
+      enrollmentId,
+      body,
+      user.id,
+      user.id,
+    );
   }
 }

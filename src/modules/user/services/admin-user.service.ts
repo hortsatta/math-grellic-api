@@ -306,8 +306,9 @@ export class AdminUserService {
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
+    approvalRejectedReason: User['approvalRejectedReason'];
   }> {
-    const { approvalStatus, approvalRejectReason } = userApprovalDto;
+    const { approvalStatus, approvalRejectedReason } = userApprovalDto;
 
     const user = await this.userRepo.findOne({
       where: { adminUserAccount: { id: adminId } },
@@ -344,11 +345,11 @@ export class AdminUserService {
     approvalStatus === UserApprovalStatus.Approved
       ? this.mailerService.sendUserRegisterApproved(
           user.email,
-          user.adminUserAccount.firstName,
           publicId,
+          user.adminUserAccount.firstName,
         )
       : this.mailerService.sendUserRegisterRejected(
-          approvalRejectReason || '',
+          approvalRejectedReason || '',
           user.email,
           user.adminUserAccount.firstName,
         );
@@ -364,6 +365,10 @@ export class AdminUserService {
       logUserId,
     );
 
-    return { approvalStatus, approvalDate: updatedUser.approvalDate };
+    return {
+      approvalStatus,
+      approvalDate: updatedUser.approvalDate,
+      approvalRejectedReason: updatedUser.approvalRejectedReason,
+    };
   }
 }

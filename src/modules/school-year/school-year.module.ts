@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { MailerModule } from '../mailer/mailer.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { UserModule } from '../user/user.module';
 import { SchoolYear } from './entities/school-year.entity';
@@ -14,8 +15,9 @@ import { SchoolYearEnrollmentService } from './services/school-year-enrollment.s
 @Module({
   imports: [
     TypeOrmModule.forFeature([SchoolYear, SchoolYearEnrollment]),
+    MailerModule,
     AuditLogModule,
-    UserModule,
+    forwardRef(() => UserModule),
   ],
   controllers: [SchoolYearController, SchoolYearEnrollmentController],
   providers: [
@@ -23,5 +25,6 @@ import { SchoolYearEnrollmentService } from './services/school-year-enrollment.s
     SchoolYearService,
     SchoolYearEnrollmentService,
   ],
+  exports: [SchoolYearService],
 })
 export class SchoolYearModule {}

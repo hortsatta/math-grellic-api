@@ -377,8 +377,9 @@ export class TeacherUserService {
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
+    approvalRejectedReason: User['approvalRejectedReason'];
   }> {
-    const { approvalStatus, approvalRejectReason } = userApprovalDto;
+    const { approvalStatus, approvalRejectedReason } = userApprovalDto;
 
     const user = await this.userRepo.findOne({
       where: { teacherUserAccount: { id: teacherId } },
@@ -415,11 +416,11 @@ export class TeacherUserService {
     approvalStatus === UserApprovalStatus.Approved
       ? this.mailerService.sendUserRegisterApproved(
           user.email,
-          user.teacherUserAccount.firstName,
           publicId,
+          user.teacherUserAccount.firstName,
         )
       : this.mailerService.sendUserRegisterRejected(
-          approvalRejectReason || '',
+          approvalRejectedReason || '',
           user.email,
           user.teacherUserAccount.firstName,
         );
@@ -435,7 +436,11 @@ export class TeacherUserService {
       logUserId,
     );
 
-    return { approvalStatus, approvalDate: updatedUser.approvalDate };
+    return {
+      approvalStatus,
+      approvalDate: updatedUser.approvalDate,
+      approvalRejectedReason: updatedUser.approvalRejectedReason,
+    };
   }
 
   async deleteTeacherByIdAndAdminId(

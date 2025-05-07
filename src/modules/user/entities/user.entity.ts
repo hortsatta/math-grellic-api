@@ -71,5 +71,5 @@ export class User extends BaseEntity {
   @OneToMany(() => SchoolYearEnrollment, (enrollment) => enrollment.user, {
     cascade: true,
   })
-  enrollment: SchoolYearEnrollment[];
+  enrollments: SchoolYearEnrollment[];
 }
