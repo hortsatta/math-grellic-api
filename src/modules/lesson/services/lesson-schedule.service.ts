@@ -22,7 +22,7 @@ export class LessonScheduleService {
     private readonly lessonRepo: Repository<Lesson>,
   ) {}
 
-  async validateScheduleCreation(studentIds?: number[], lesson?: Lesson) {
+  validateScheduleCreation(studentIds?: number[], lesson?: Lesson) {
     if (!studentIds || !studentIds.length) {
       return { error: null };
     }

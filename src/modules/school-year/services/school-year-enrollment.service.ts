@@ -171,7 +171,7 @@ export class SchoolYearEnrollmentService {
   async getOneByUserIdAndSchoolYearId(userId: number, schoolYearId?: number) {
     const schoolYear =
       schoolYearId != null
-        ? await this.schoolYearService.getOneById(userId, schoolYearId)
+        ? await this.schoolYearService.getOneById(schoolYearId, userId)
         : await this.schoolYearService.getCurrentSchoolYear(userId);
 
     if (!schoolYear) {

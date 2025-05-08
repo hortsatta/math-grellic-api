@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   FindOptionsRelations,
@@ -12,17 +17,18 @@ import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
-import { ActivityService } from '#/modules/activity/services/activity.service';
-import { TeacherActivityService } from '#/modules/activity/services/teacher-activity.service';
+import { ExamResponse } from '#/modules/exam/models/exam.model';
+import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { ActivityCategory } from '#/modules/activity/entities/activity-category.entity';
 import { Activity } from '#/modules/activity/entities/activity.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
-import { LessonService } from '#/modules/lesson/services/lesson.service';
-import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
-import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
-import { ExamResponse } from '#/modules/exam/models/exam.model';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
+import { LessonService } from '#/modules/lesson/services/lesson.service';
+import { ActivityService } from '#/modules/activity/services/activity.service';
+import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
+import { TeacherActivityService } from '#/modules/activity/services/teacher-activity.service';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 import { TeacherExamService } from '#/modules/exam/services/teacher-exam.service';
 import { StudentPerformanceType } from '../enums/performance.enum';
@@ -36,6 +42,8 @@ export class TeacherPerformanceService {
     private readonly performanceService: PerformanceService,
     @InjectRepository(StudentUserAccount)
     private readonly studentUserAccountRepo: Repository<StudentUserAccount>,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
     @Inject(LessonService)
     private readonly lessonService: LessonService,
     @Inject(TeacherLessonService)
@@ -50,12 +58,15 @@ export class TeacherPerformanceService {
     private readonly teacherActivityService: TeacherActivityService,
   ) {}
 
-  async getClassPerformanceByTeacherId(teacherId: number) {
+  async getClassPerformanceByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
     // LESSONS
     // Get all lessons and calculate overall class lesson completion
 
     const { overallLessonCompletionPercent } =
-      await this.getLessonPerformanceByTeacherId(teacherId);
+      await this.getLessonPerformanceByTeacherId(teacherId, schoolYearId);
 
     // EXAMS
     // Get all exams and calculate overall class exam completion
@@ -76,7 +87,20 @@ export class TeacherPerformanceService {
     };
   }
 
-  async getLessonPerformanceByTeacherId(teacherId: number) {
+  async getLessonPerformanceByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     // Get all teacher's students (with completions)
     const allStudents = await this.studentUserAccountRepo.find({
       where: {
@@ -96,6 +120,7 @@ export class TeacherPerformanceService {
         undefined,
         undefined,
         RecordStatus.Published,
+        schoolYear.id,
         true,
       );
 

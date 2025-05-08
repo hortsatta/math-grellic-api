@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { SchoolYearModule } from '../school-year/school-year.module';
 import { Lesson } from './entities/lesson.entity';
 import { LessonSchedule } from './entities/lesson-schedule.entity';
 import { LessonCompletion } from './entities/lesson-completion.entity';
@@ -14,6 +15,7 @@ import { TeacherLessonService } from './services/teacher-lesson.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Lesson, LessonSchedule, LessonCompletion]),
+    SchoolYearModule,
   ],
   controllers: [LessonController],
   providers: [

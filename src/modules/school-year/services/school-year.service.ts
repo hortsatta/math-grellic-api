@@ -315,7 +315,7 @@ export class SchoolYearService {
     return this.createSchoolYearResponse(schoolYear, userId);
   }
 
-  async getOneById(userId: number, id?: number) {
+  async getOneById(id: number, userId?: number) {
     const schoolYear = await this.repo.findOne({
       where: { id },
     });

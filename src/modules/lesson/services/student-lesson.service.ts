@@ -1,9 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets, IsNull, MoreThan } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { RecordStatus } from '#/common/enums/content.enum';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { LessonCompletion } from '../entities/lesson-completion.entity';
 import { Lesson } from '../entities/lesson.entity';
 import { LessonCompletionUpsertDto } from '../dtos/lesson-completion-upsert.dto';
@@ -14,15 +20,32 @@ export class StudentLessonService {
     @InjectRepository(Lesson) private readonly lessonRepo: Repository<Lesson>,
     @InjectRepository(LessonCompletion)
     private readonly lessonCompletionRepo: Repository<LessonCompletion>,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
   ) {}
 
-  async getStudentLessonsByStudentId(studentId: number, q?: string) {
+  async getStudentLessonsByStudentId(
+    studentId: number,
+    q?: string,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const currentDateTime = dayjs().toDate();
 
     const upcomingLessonQuery = this.lessonRepo
       .createQueryBuilder('lesson')
       .leftJoinAndSelect('lesson.schedules', 'schedules')
       .leftJoin('schedules.students', 'students')
+      .leftJoin('lesson.schoolYear', 'schoolYear')
       .where('lesson.status = :status', { status: RecordStatus.Published })
       .andWhere('schedules.startDate > :currentDateTime', { currentDateTime })
       .andWhere(
@@ -30,7 +53,8 @@ export class StudentLessonService {
           sqb.where('students.id = :studentId', { studentId });
           sqb.orWhere('students.id IS NULL');
         }),
-      );
+      )
+      .andWhere('schoolYear.id = :schoolYearId', { schoolYearId });
 
     const otherLessonsQuery = this.lessonRepo
       .createQueryBuilder('lesson')
@@ -42,6 +66,7 @@ export class StudentLessonService {
         'completions.student.id = :studentId',
         { studentId },
       )
+      .leftJoin('lesson.schoolYear', 'schoolYear')
       .where('lesson.status = :status', { status: RecordStatus.Published })
       .andWhere('schedules.startDate <= :currentDateTime', { currentDateTime })
       .andWhere(
@@ -49,7 +74,8 @@ export class StudentLessonService {
           sqb.where('students.id = :studentId', { studentId });
           sqb.orWhere('students.id IS NULL');
         }),
-      );
+      )
+      .andWhere('schoolYear.id = :schoolYearId', { schoolYearId });
 
     if (q) {
       upcomingLessonQuery.andWhere('lesson.title ILIKE :q', { q });
@@ -101,7 +127,21 @@ export class StudentLessonService {
     };
   }
 
-  async getOneBySlugAndStudentId(slug: string, studentId: number) {
+  async getOneBySlugAndStudentId(
+    slug: string,
+    studentId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const currentDateTime = dayjs().toDate();
 
     const lesson = await this.lessonRepo.findOne({
@@ -110,11 +150,13 @@ export class StudentLessonService {
           slug,
           status: RecordStatus.Published,
           schedules: { students: { id: studentId } },
+          schoolYear: { id: schoolYear.id },
         },
         {
           slug,
           status: RecordStatus.Published,
           schedules: { students: { id: IsNull() } },
+          schoolYear: { id: schoolYear.id },
         },
       ],
       relations: { schedules: true, completions: true },
@@ -135,6 +177,7 @@ export class StudentLessonService {
               startDate: MoreThan(currentDateTime),
               students: { id: studentId },
             },
+            schoolYear: { id: schoolYear.id },
           },
           {
             status: RecordStatus.Published,
@@ -142,6 +185,7 @@ export class StudentLessonService {
               startDate: MoreThan(currentDateTime),
               students: { id: IsNull() },
             },
+            schoolYear: { id: schoolYear.id },
           },
         ],
         relations: { schedules: true, completions: true },
@@ -160,9 +204,9 @@ export class StudentLessonService {
     return lesson;
   }
 
-  async setLessonCompletionBySlugAndStudentId(
+  async setLessonCompletionByIdAndStudentId(
     body: LessonCompletionUpsertDto,
-    slug: string,
+    id: number,
     studentId: number,
   ) {
     const currentDateTime = dayjs();
@@ -170,12 +214,12 @@ export class StudentLessonService {
     const lesson = await this.lessonRepo.findOne({
       where: [
         {
-          slug,
+          id,
           status: RecordStatus.Published,
           schedules: { students: { id: studentId } },
         },
         {
-          slug,
+          id,
           status: RecordStatus.Published,
           schedules: { students: { id: IsNull() } },
         },

@@ -104,7 +104,7 @@ export class UserController {
       !!skip ? skip : undefined,
       q,
       status,
-      schoolYearId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
       enrollmentStatus,
     );
   }
@@ -130,7 +130,7 @@ export class UserController {
       transformedIds,
       q,
       status,
-      schoolYearId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
       enrollmentStatus,
     );
   }
@@ -147,7 +147,7 @@ export class UserController {
     return this.studentUserService.getStudentCountByTeacherId(
       teacherId,
       status,
-      schoolYearId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
       enrollmentStatus,
     );
   }

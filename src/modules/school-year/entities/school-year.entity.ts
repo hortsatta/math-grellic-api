@@ -2,6 +2,8 @@ import { Column, Entity, OneToMany } from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
+import { Lesson } from '#/modules/lesson/entities/lesson.entity';
+import { Exam } from '#/modules/exam/entities/exam.entity';
 import { SchoolYearEnrollment } from './school-year-enrollment.entity';
 
 @Entity()
@@ -45,4 +47,10 @@ export class SchoolYear extends BaseEntity {
     },
   )
   enrollments: SchoolYearEnrollment[];
+
+  @OneToMany(() => Lesson, (lesson) => lesson.schoolYear)
+  lessons: Lesson[];
+
+  @OneToMany(() => Exam, (exam) => exam.schoolYear)
+  exams: Exam[];
 }

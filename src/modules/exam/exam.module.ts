@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UploadModule } from '../upload/upload.module';
 import { UserModule } from '../user/user.module';
+import { SchoolYearModule } from '../school-year/school-year.module';
 import { ScheduleModule } from '../schedule/schedule.module';
 import { LessonModule } from '../lesson/lesson.module';
 import { Exam } from './entities/exam.entity';
@@ -31,6 +32,7 @@ import { TeacherExamScheduleService } from './services/teacher-exam-schedule.ser
     ]),
     UploadModule,
     UserModule,
+    SchoolYearModule,
     LessonModule,
     forwardRef(() => ScheduleModule),
   ],

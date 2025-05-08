@@ -37,20 +37,30 @@ export class PerformanceController {
   @Get(`${TEACHER_URL}/class`)
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherClassPerformanceResponseDto)
-  getClassPerformanceByTeacherId(@CurrentUser() user: User) {
+  getClassPerformanceByTeacherId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getClassPerformanceByTeacherId(
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
   @Get(`${TEACHER_URL}/lessons`)
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherLessonPerformanceResponseDto)
-  getLessonPerformanceByTeacherId(@CurrentUser() user: User) {
+  getLessonPerformanceByTeacherId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getLessonPerformanceByTeacherId(
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 

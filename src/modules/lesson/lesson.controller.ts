@@ -56,8 +56,10 @@ export class LessonController {
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
+    @Query('sy') schoolYearId?: number,
   ): Promise<[Lesson[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherLessonService.getPaginatedTeacherLessonsByTeacherId(
       teacherId,
       sort,
@@ -65,6 +67,7 @@ export class LessonController {
       !!skip ? skip : undefined,
       q,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -78,6 +81,7 @@ export class LessonController {
     @Query('q') q?: string,
     @Query('status') status?: string,
     @Query('sort') sort?: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Lesson[]> {
     const { id: teacherId } = user.teacherUserAccount;
     const transformedIds = ids?.split(',').map((id) => +id);
@@ -87,6 +91,7 @@ export class LessonController {
       transformedIds,
       q,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -97,11 +102,14 @@ export class LessonController {
   getLessonSnippetsByTeacherId(
     @CurrentUser() user: User,
     @Query('take') take?: number,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Lesson[]> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherLessonService.getLessonSnippetsByTeacherId(
       teacherId,
       take || 3,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -110,15 +118,17 @@ export class LessonController {
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndTeacherId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
     @Query('status') status?: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Lesson> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.teacherLessonService.getOneBySlugAndTeacherId(
       slug,
       teacherId,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -140,26 +150,23 @@ export class LessonController {
     return this.teacherLessonService.create(transformedBody, teacherId);
   }
 
-  @Patch('/:slug')
+  @Patch('/:id')
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(LessonResponseDto)
   update(
-    @Param('slug') slug: string,
+    @Param('id') id: number,
     @Body() body: LessonUpdateDto,
     @CurrentUser() user: User,
   ): Promise<Lesson> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.teacherLessonService.update(slug, body, teacherId);
+    return this.teacherLessonService.update(id, body, teacherId);
   }
 
-  @Delete('/:slug')
+  @Delete('/:id')
   @UseJwtAuthGuard(UserRole.Teacher)
-  delete(
-    @Param('slug') slug: string,
-    @CurrentUser() user: User,
-  ): Promise<boolean> {
+  delete(@Param('id') id: number, @CurrentUser() user: User): Promise<boolean> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.teacherLessonService.deleteBySlug(slug, teacherId);
+    return this.teacherLessonService.delete(id, teacherId);
   }
 
   // STUDENTS
@@ -170,9 +177,14 @@ export class LessonController {
   getStudentLessonsByStudentId(
     @CurrentUser() user: User,
     @Query('q') q?: string,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentLessonService.getStudentLessonsByStudentId(studentId, q);
+    return this.studentLessonService.getStudentLessonsByStudentId(
+      studentId,
+      q,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
   @Get(`/:slug${STUDENT_URL}`)
@@ -180,25 +192,31 @@ export class LessonController {
   @UseSerializeInterceptor(LessonResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndStudentId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentLessonService.getOneBySlugAndStudentId(slug, studentId);
+    return this.studentLessonService.getOneBySlugAndStudentId(
+      slug,
+      studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
-  @Post(`/:slug${STUDENT_URL}/completion`)
+  @Post(`/:id${STUDENT_URL}/completion`)
   @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(LessonCompletionResponseDto)
-  setLessonCompletionBySlugAndStudentId(
+  setLessonCompletionByIdAndStudentId(
     @Body() body: LessonCompletionUpsertDto,
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('id') id: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentLessonService.setLessonCompletionBySlugAndStudentId(
+
+    return this.studentLessonService.setLessonCompletionByIdAndStudentId(
       body,
-      slug,
+      id,
       studentId,
     );
   }
@@ -247,7 +265,7 @@ export class LessonController {
 
   @Delete(`${SCHEDULE_URL}/:scheduleId`)
   @UseJwtAuthGuard(UserRole.Teacher)
-  deleteDelete(
+  deleteSchedule(
     @Param('scheduleId') scheduleId: number,
     @CurrentUser() user: User,
   ) {

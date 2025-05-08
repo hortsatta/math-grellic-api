@@ -18,6 +18,7 @@ import {
 
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { LessonCompletion } from '../entities/lesson-completion.entity';
 import { Lesson } from '../entities/lesson.entity';
 import { LessonCreateDto } from '../dtos/lesson-create.dto';
@@ -28,23 +29,37 @@ import { LessonScheduleService } from './lesson-schedule.service';
 export class TeacherLessonService {
   constructor(
     @InjectRepository(Lesson) private readonly lessonRepo: Repository<Lesson>,
-    @Inject(LessonScheduleService)
-    private readonly lessonScheduleService: LessonScheduleService,
     @InjectRepository(LessonCompletion)
     private readonly lessonCompletionRepo: Repository<LessonCompletion>,
+    @Inject(LessonScheduleService)
+    private readonly lessonScheduleService: LessonScheduleService,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
   ) {}
 
-  getPaginatedTeacherLessonsByTeacherId(
+  async getPaginatedTeacherLessonsByTeacherId(
     teacherId: number,
     sort: string,
     take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
     status?: string,
+    schoolYearId?: number,
   ): Promise<[Lesson[], number]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Lesson> = {
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (q?.trim()) {
@@ -66,7 +81,9 @@ export class TeacherLessonService {
       const [sortBy, sortOrder] = sort?.split(',') || [];
 
       if (sortBy === 'scheduleDate') {
-        return { schedules: { startDate: sortOrder as FindOptionsOrderValue } };
+        return {
+          schedules: { startDate: sortOrder as FindOptionsOrderValue },
+        };
       }
 
       return { [sortBy]: sortOrder };
@@ -81,18 +98,30 @@ export class TeacherLessonService {
     });
   }
 
-  getTeacherLessonsByTeacherId(
+  async getTeacherLessonsByTeacherId(
     teacherId: number,
     sort?: string,
     lessonIds?: number[],
     q?: string,
     status?: string,
+    schoolYearId?: number,
     withSchedules?: boolean,
     withCompletions?: boolean,
   ): Promise<Lesson[]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Lesson> = {
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (lessonIds?.length) {
@@ -134,9 +163,23 @@ export class TeacherLessonService {
   async getLessonSnippetsByTeacherId(
     teacherId: number,
     take = 3,
+    schoolYearId?: number,
   ): Promise<Lesson[]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const lessons = await this.lessonRepo.find({
-      where: { teacher: { id: teacherId } },
+      where: {
+        teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
+      },
       relations: { schedules: true },
     });
 
@@ -180,11 +223,23 @@ export class TeacherLessonService {
     slug: string,
     teacherId: number,
     status?: string,
+    schoolYearId?: number,
   ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Lesson> = {
         slug,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (status?.trim()) {
@@ -207,13 +262,24 @@ export class TeacherLessonService {
   }
 
   async create(lessonDto: LessonCreateDto, teacherId: number): Promise<Lesson> {
-    const { startDate, studentIds, ...moreLessonDto } = lessonDto;
+    const { startDate, studentIds, schoolYearId, ...moreLessonDto } = lessonDto;
+
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
 
     // Validate lesson order number if unique for current teacher user
     const orderNumberCount = await this.lessonRepo.count({
       where: {
         orderNumber: moreLessonDto.orderNumber,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       },
     });
     if (!!orderNumberCount) {
@@ -232,6 +298,7 @@ export class TeacherLessonService {
     const lesson = this.lessonRepo.create({
       ...moreLessonDto,
       teacher: { id: teacherId },
+      schoolYear: { id: schoolYear.id },
     });
     const newLesson = await this.lessonRepo.save(lesson);
 
@@ -254,7 +321,7 @@ export class TeacherLessonService {
   }
 
   async update(
-    slug: string,
+    id: number,
     lessonDto: LessonUpdateDto,
     teacherId: number,
   ): Promise<Lesson> {
@@ -262,8 +329,8 @@ export class TeacherLessonService {
 
     // Find lesson, throw error if none found
     const lesson = await this.lessonRepo.findOne({
-      where: { slug, teacher: { id: teacherId } },
-      relations: { completions: true },
+      where: { id, teacher: { id: teacherId } },
+      relations: { completions: true, schoolYear: true },
     });
 
     if (!lesson) {
@@ -280,8 +347,9 @@ export class TeacherLessonService {
     const orderNumberCount = await this.lessonRepo.count({
       where: {
         orderNumber: lessonDto.orderNumber,
-        slug: Not(slug),
+        id: Not(id),
         teacher: { id: teacherId },
+        schoolYear: { id: lesson.schoolYear.id },
       },
     });
     if (!!orderNumberCount) {
@@ -318,8 +386,11 @@ export class TeacherLessonService {
     return { ...updatedLesson, schedules: [schedule] };
   }
 
-  async deleteBySlug(slug: string, teacherId: number): Promise<boolean> {
-    const lesson = await this.getOneBySlugAndTeacherId(slug, teacherId);
+  async delete(id: number, teacherId: number): Promise<boolean> {
+    // Find lesson, throw error if none found
+    const lesson = await this.lessonRepo.findOne({
+      where: { id, teacher: { id: teacherId } },
+    });
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
@@ -333,7 +404,7 @@ export class TeacherLessonService {
       throw new BadRequestException('Cannot delete lesson');
     }
 
-    const result = await this.lessonRepo.delete({ slug });
+    const result = await this.lessonRepo.delete({ id });
     return !!result.affected;
 
     // TODO soft delete

@@ -164,6 +164,6 @@ export class SchoolYearController {
   @UseSerializeInterceptor(SchoolYearResponseDto)
   @UseFilterFieldsInterceptor()
   getOneById(@Param('id') id: number, @CurrentUser() user: User) {
-    return this.schoolYearService.getOneById(user.id, id);
+    return this.schoolYearService.getOneById(id, user.id);
   }
 }

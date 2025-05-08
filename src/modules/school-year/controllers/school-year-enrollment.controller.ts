@@ -43,7 +43,7 @@ export class SchoolYearEnrollmentController {
   ): Promise<SchoolYearEnrollment> {
     return this.schoolYearEnrollmentService.getOneByUserIdAndSchoolYearId(
       user.id,
-      schoolYearId == null || isNaN(schoolYearId) ? undefined : schoolYearId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 

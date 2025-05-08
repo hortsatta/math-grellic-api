@@ -23,6 +23,7 @@ import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { UploadService } from '#/modules/upload/upload.service';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { stripHtml } from '../helpers/exam.helper';
@@ -57,6 +58,8 @@ export class TeacherExamService {
     private readonly studentUserService: StudentUserService,
     @Inject(UploadService)
     private readonly uploadService: UploadService,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
     private configService: ConfigService,
   ) {}
 
@@ -65,13 +68,26 @@ export class TeacherExamService {
     teacherId: number,
     slug?: string,
   ) {
+    // Get target school year
+    const schoolYear = await this.schoolYearService.getOneById(
+      examDto.schoolYearId || 0,
+    );
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     if (!slug?.trim()) {
       return this.validateCreateExam(examDto as ExamCreateDto, teacherId);
     }
 
     // Find exam, throw error if none found
     const exam = await this.examRepo.findOne({
-      where: { slug, teacher: { id: teacherId } },
+      where: {
+        slug,
+        teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
+      },
       relations: {
         questions: { choices: true },
         schedules: true,
@@ -120,6 +136,7 @@ export class TeacherExamService {
       startDate,
       endDate,
       studentIds,
+      schoolYearId,
       ...moreExamDto
     } = examDto;
 
@@ -136,6 +153,7 @@ export class TeacherExamService {
       where: {
         orderNumber: moreExamDto.orderNumber,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       },
     });
     if (!!orderNumberCount) {
@@ -153,6 +171,7 @@ export class TeacherExamService {
           coveredLessonIds,
           undefined,
           RecordStatus.Published,
+          schoolYearId,
           true,
         );
       if (lessons.length !== coveredLessonIds.length) {
@@ -188,6 +207,7 @@ export class TeacherExamService {
       startDate,
       endDate,
       studentIds,
+      schoolYearId,
       ...moreExamDto
     } = examDto;
 
@@ -238,6 +258,7 @@ export class TeacherExamService {
           coveredLessonIds,
           undefined,
           RecordStatus.Published,
+          schoolYearId,
           true,
         );
       if (lessons.length !== coveredLessonIds.length) {
@@ -674,8 +695,19 @@ export class TeacherExamService {
       studentIds,
       coveredLessonIds,
       questions,
+      schoolYearId,
       ...moreExamDto
     } = examDto;
+
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
 
     await this.validateCreateExam(examDto, teacherId);
 
@@ -689,6 +721,7 @@ export class TeacherExamService {
       coveredLessons,
       questions,
       teacher: { id: teacherId },
+      schoolYear: { id: schoolYear.id },
     });
     const { id } = await this.examRepo.save(exam);
     // Manually query newly created exam since relations aren't returned on exam creation
@@ -736,12 +769,22 @@ export class TeacherExamService {
       startDate,
       endDate,
       studentIds,
+      schoolYearId,
       ...moreExamDto
     } = examDto;
 
+    // Get target SY or if undefined, then get current SY
+    const schoolYear = await this.schoolYearService.getOneById(
+      schoolYearId || 0,
+    );
+
     // Find exam, throw error if none found
     const exam = await this.examRepo.findOne({
-      where: { slug, teacher: { id: teacherId } },
+      where: {
+        slug,
+        teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
+      },
       relations: {
         questions: { choices: true },
         schedules: true,
