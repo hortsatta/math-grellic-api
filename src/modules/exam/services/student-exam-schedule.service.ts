@@ -18,6 +18,7 @@ export class StudentExamScheduleService {
     toDate: Date,
     teacherId: number,
     studentId: number,
+    schoolYearId: number,
   ) {
     const currentDateTime = dayjs();
 
@@ -25,7 +26,11 @@ export class StudentExamScheduleService {
       where: {
         startDate: Between(fromDate, toDate),
         students: { id: studentId },
-        exam: { status: RecordStatus.Published, teacher: { id: teacherId } },
+        exam: {
+          status: RecordStatus.Published,
+          teacher: { id: teacherId },
+          schoolYear: { id: schoolYearId },
+        },
       },
       relations: { exam: true },
       order: { startDate: 'ASC' },

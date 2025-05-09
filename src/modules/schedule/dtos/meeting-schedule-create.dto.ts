@@ -39,4 +39,9 @@ export class MeetingScheduleCreateDto {
   @IsPositive({ each: true })
   @IsOptional()
   studentIds: number[];
+
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  schoolYearId: number;
 }

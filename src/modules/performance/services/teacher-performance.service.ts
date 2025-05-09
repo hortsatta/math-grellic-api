@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   FindOptionsRelations,
@@ -12,17 +17,19 @@ import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
-import { ActivityService } from '#/modules/activity/services/activity.service';
-import { TeacherActivityService } from '#/modules/activity/services/teacher-activity.service';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
+import { ExamResponse } from '#/modules/exam/models/exam.model';
+import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { ActivityCategory } from '#/modules/activity/entities/activity-category.entity';
 import { Activity } from '#/modules/activity/entities/activity.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
-import { LessonService } from '#/modules/lesson/services/lesson.service';
-import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
-import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
-import { ExamResponse } from '#/modules/exam/models/exam.model';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
+import { LessonService } from '#/modules/lesson/services/lesson.service';
+import { ActivityService } from '#/modules/activity/services/activity.service';
+import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
+import { TeacherActivityService } from '#/modules/activity/services/teacher-activity.service';
 import { StudentExamService } from '#/modules/exam/services/student-exam.service';
 import { TeacherExamService } from '#/modules/exam/services/teacher-exam.service';
 import { StudentPerformanceType } from '../enums/performance.enum';
@@ -36,6 +43,8 @@ export class TeacherPerformanceService {
     private readonly performanceService: PerformanceService,
     @InjectRepository(StudentUserAccount)
     private readonly studentUserAccountRepo: Repository<StudentUserAccount>,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
     @Inject(LessonService)
     private readonly lessonService: LessonService,
     @Inject(TeacherLessonService)
@@ -50,24 +59,27 @@ export class TeacherPerformanceService {
     private readonly teacherActivityService: TeacherActivityService,
   ) {}
 
-  async getClassPerformanceByTeacherId(teacherId: number) {
+  async getClassPerformanceByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
     // LESSONS
     // Get all lessons and calculate overall class lesson completion
 
     const { overallLessonCompletionPercent } =
-      await this.getLessonPerformanceByTeacherId(teacherId);
+      await this.getLessonPerformanceByTeacherId(teacherId, schoolYearId);
 
     // EXAMS
     // Get all exams and calculate overall class exam completion
 
     const { overallExamCompletionPercent } =
-      await this.getExamPerformanceByTeacherId(teacherId);
+      await this.getExamPerformanceByTeacherId(teacherId, schoolYearId);
 
     // ACTIVITIES
     // Get all activities and calculate overall class activity completion
 
     const { overallActivityCompletionPercent } =
-      await this.getActivityPerformanceByTeacherId(teacherId);
+      await this.getActivityPerformanceByTeacherId(teacherId, schoolYearId);
 
     return {
       overallLessonCompletionPercent,
@@ -76,12 +88,31 @@ export class TeacherPerformanceService {
     };
   }
 
-  async getLessonPerformanceByTeacherId(teacherId: number) {
+  async getLessonPerformanceByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     // Get all teacher's students (with completions)
     const allStudents = await this.studentUserAccountRepo.find({
       where: {
-        teacherUser: { id: teacherId },
-        user: { approvalStatus: UserApprovalStatus.Approved },
+        user: {
+          approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
+        },
       },
       relations: { lessonCompletions: { lesson: true } },
     });
@@ -96,6 +127,7 @@ export class TeacherPerformanceService {
         undefined,
         undefined,
         RecordStatus.Published,
+        schoolYear.id,
         true,
       );
 
@@ -134,14 +166,33 @@ export class TeacherPerformanceService {
     };
   }
 
-  async getExamPerformanceByTeacherId(teacherId: number) {
+  async getExamPerformanceByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const currentDateTime = dayjs().toDate();
 
     // Get all students (with completions) of teacher
     const allStudents = await this.studentUserAccountRepo.find({
       where: {
-        teacherUser: { id: teacherId },
-        user: { approvalStatus: UserApprovalStatus.Approved },
+        user: {
+          approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
+        },
       },
       relations: {
         examCompletions: { exam: true },
@@ -152,6 +203,7 @@ export class TeacherPerformanceService {
     const allPublishedExams =
       await this.teacherExamService.getTeacherExamsByTeacherId(
         teacherId,
+        schoolYear.id,
         undefined,
         undefined,
         undefined,
@@ -207,12 +259,31 @@ export class TeacherPerformanceService {
     };
   }
 
-  async getActivityPerformanceByTeacherId(teacherId: number) {
+  async getActivityPerformanceByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     // Get all students (with completions) of teacher
     const students = await this.studentUserAccountRepo.find({
       where: {
-        teacherUser: { id: teacherId },
-        user: { approvalStatus: UserApprovalStatus.Approved },
+        user: {
+          approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
+        },
       },
       relations: {
         activityCompletions: { activityCategory: true },
@@ -222,6 +293,7 @@ export class TeacherPerformanceService {
     const allActivities =
       await this.teacherActivityService.getTeacherActivitiesByTeacherId(
         teacherId,
+        schoolYear.id,
         undefined,
         undefined,
         RecordStatus.Published,
@@ -264,11 +336,28 @@ export class TeacherPerformanceService {
     skip: number = 0,
     q?: string,
     performance = StudentPerformanceType.Exam,
+    schoolYearId?: number,
   ): Promise<[Partial<StudentPerformance>[], number]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       const baseWhere: FindOptionsWhere<StudentUserAccount> = {
-        teacherUser: { id: teacherId },
-        user: { approvalStatus: UserApprovalStatus.Approved },
+        user: {
+          approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
+        },
       };
 
       if (!!q?.trim()) {
@@ -289,14 +378,22 @@ export class TeacherPerformanceService {
       };
 
       if (performance === StudentPerformanceType.Exam) {
-        return { ...baseRelations, examCompletions: { exam: true } };
+        return {
+          ...baseRelations,
+          examCompletions: { exam: { schoolYear: true } },
+        };
       } else if (performance === StudentPerformanceType.Activity) {
         return {
           ...baseRelations,
-          activityCompletions: { activityCategory: { activity: true } },
+          activityCompletions: {
+            activityCategory: { activity: { schoolYear: true } },
+          },
         };
       } else {
-        return { ...baseRelations, lessonCompletions: { lesson: true } };
+        return {
+          ...baseRelations,
+          lessonCompletions: { lesson: { schoolYear: true } },
+        };
       }
     };
 
@@ -313,24 +410,54 @@ export class TeacherPerformanceService {
         },
       });
 
-    let rankedStudents,
+    // Get completions from target school year only
+    const filteredStudents: StudentUserAccount[] = students.map((student) => {
+      const lessonCompletions = student.lessonCompletions?.filter(
+        (com) => com.lesson.schoolYear.id === schoolYear.id,
+      );
+
+      const examCompletions = student.examCompletions?.filter(
+        (com) => com.exam.schoolYear.id === schoolYear.id,
+      );
+
+      const activityCompletions = student.activityCompletions?.filter(
+        (com) => com.activityCategory.activity.schoolYear.id === schoolYear.id,
+      );
+
+      return {
+        ...student,
+        lessonCompletions,
+        examCompletions,
+        activityCompletions,
+      };
+    });
+
+    let rankedStudents: any[],
       unrankedStudents = [];
 
     if (performance === StudentPerformanceType.Exam) {
       const examRankings =
-        await this.performanceService.generateOverallExamRankings(students);
+        await this.performanceService.generateOverallExamRankings(
+          filteredStudents,
+        );
 
       rankedStudents = examRankings.rankedStudents;
       unrankedStudents = examRankings.unrankedStudents;
     } else if (performance === StudentPerformanceType.Activity) {
       const activityRankings =
-        await this.performanceService.generateOverallActivityRankings(students);
+        await this.performanceService.generateOverallActivityRankings(
+          filteredStudents,
+          schoolYear.id,
+        );
 
       rankedStudents = activityRankings.rankedStudents;
       unrankedStudents = activityRankings.unrankedStudents;
     } else {
       const lessonRankings =
-        await this.performanceService.generateOverallLessonRankings(students);
+        await this.performanceService.generateOverallLessonRankings(
+          filteredStudents,
+          schoolYear.id,
+        );
       rankedStudents = lessonRankings.rankedStudents;
       unrankedStudents = lessonRankings.unrankedStudents;
     }
@@ -375,21 +502,38 @@ export class TeacherPerformanceService {
   async getStudentPerformanceByPublicIdAndTeacherId(
     publicId: string,
     teacherId: number,
+    schoolYearId?: number,
   ): Promise<StudentPerformance> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: publicId.toUpperCase(),
           approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
       },
       loadEagerRelations: false,
       relations: {
         user: true,
-        lessonCompletions: { lesson: true },
-        activityCompletions: { activityCategory: { activity: true } },
-        examCompletions: { exam: true },
+        lessonCompletions: { lesson: { schoolYear: true } },
+        activityCompletions: {
+          activityCategory: { activity: { schoolYear: true } },
+        },
+        examCompletions: { exam: { schoolYear: true } },
       },
       select: {
         user: {
@@ -405,39 +549,86 @@ export class TeacherPerformanceService {
 
     const otherStudents = await this.studentUserAccountRepo.find({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: Not(publicId.toUpperCase()),
           approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
       },
       loadEagerRelations: false,
       relations: {
-        lessonCompletions: { lesson: true },
-        activityCompletions: { activityCategory: { activity: true } },
-        examCompletions: { exam: true },
+        lessonCompletions: { lesson: { schoolYear: true } },
+        activityCompletions: {
+          activityCategory: { activity: { schoolYear: true } },
+        },
+        examCompletions: { exam: { schoolYear: true } },
       },
     });
 
+    // Get completions from target school year only
+    const filteredStudent: StudentUserAccount = {
+      ...student,
+      lessonCompletions: student.lessonCompletions?.filter(
+        (com) => com.lesson.schoolYear.id === schoolYear.id,
+      ),
+      examCompletions: student.examCompletions?.filter(
+        (com) => com.exam.schoolYear.id === schoolYear.id,
+      ),
+      activityCompletions: student.activityCompletions?.filter(
+        (com) => com.activityCategory.activity.schoolYear.id === schoolYear.id,
+      ),
+    };
+
+    const filteredOtherStudents: StudentUserAccount[] = otherStudents.map(
+      (student) => {
+        const lessonCompletions = student.lessonCompletions?.filter(
+          (com) => com.lesson.schoolYear.id === schoolYear.id,
+        );
+
+        const examCompletions = student.examCompletions?.filter(
+          (com) => com.exam.schoolYear.id === schoolYear.id,
+        );
+
+        const activityCompletions = student.activityCompletions?.filter(
+          (com) =>
+            com.activityCategory.activity.schoolYear.id === schoolYear.id,
+        );
+
+        return {
+          ...student,
+          lessonCompletions,
+          examCompletions,
+          activityCompletions,
+        };
+      },
+    );
+
     const examPerformance =
       await this.performanceService.generateOverallExamDetailedPerformance(
-        student,
-        otherStudents,
+        filteredStudent,
+        filteredOtherStudents,
+        schoolYear.id,
       );
 
     const activityPerformance =
       await this.performanceService.generateOverallActivityDetailedPerformance(
-        student,
-        otherStudents,
+        filteredStudent,
+        filteredOtherStudents,
+        schoolYear.id,
       );
 
     const lessonPerformance =
       await this.performanceService.generateOverallLessonDetailedPerformance(
-        student,
+        filteredStudent,
+        schoolYear.id,
       );
 
     const transformedStudent = {
-      ...student,
+      ...filteredStudent,
       lessonCompletions: undefined,
       examCompletions: undefined,
       activityCompletions: undefined,
@@ -454,13 +645,28 @@ export class TeacherPerformanceService {
   async getStudentLessonsByPublicIdAndTeacherId(
     publicId: string,
     teacherId: number,
+    schoolYearId?: number,
   ): Promise<Lesson[]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: publicId.toUpperCase(),
           approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
       },
     });
@@ -472,19 +678,35 @@ export class TeacherPerformanceService {
     return this.lessonService.getLessonsWithCompletionsByStudentIdAndTeacherId(
       student.id,
       teacherId,
+      schoolYear.id,
     );
   }
 
   async getStudentExamsByPublicIdAndTeacherId(
     publicId: string,
     teacherId: number,
+    schoolYearId?: number,
   ): Promise<Partial<ExamResponse>[]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: publicId.toUpperCase(),
           approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
       },
     });
@@ -497,6 +719,7 @@ export class TeacherPerformanceService {
       await this.teacherExamService.getExamsWithCompletionsByStudentIdAndTeacherId(
         student.id,
         teacherId,
+        schoolYear.id,
       );
 
     const transformedExams = Promise.all(
@@ -504,6 +727,7 @@ export class TeacherPerformanceService {
         const rankings = await this.studentExamService.generateExamRankings(
           exam as Exam,
           teacherId,
+          schoolYear.id,
         );
 
         const { rank } = rankings.find((rank) => rank.studentId === student.id);
@@ -518,13 +742,28 @@ export class TeacherPerformanceService {
   async getStudentActivitiesByPublicIdAndTeacherId(
     publicId: string,
     teacherId: number,
+    schoolYearId?: number,
   ): Promise<Activity[]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: publicId.toUpperCase(),
           approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
       },
     });
@@ -537,6 +776,7 @@ export class TeacherPerformanceService {
       await this.activityService.getActivitiesWithCompletionsByStudentIdAndTeacherId(
         student.id,
         teacherId,
+        schoolYear.id,
       );
 
     const transformedActivities = Promise.all(
@@ -562,13 +802,28 @@ export class TeacherPerformanceService {
     slug: string,
     teacherId: number,
     scheduleId?: number,
+    schoolYearId?: number,
   ): Promise<Exam> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: publicId.toUpperCase(),
           approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
       },
     });
@@ -581,6 +836,7 @@ export class TeacherPerformanceService {
       (await this.studentExamService.getBasicOneWithCompletionsBySlugAndStudentId(
         slug,
         student.id,
+        schoolYear.id,
         true,
       )) as Exam;
 
@@ -600,13 +856,28 @@ export class TeacherPerformanceService {
     publicId: string,
     slug: string,
     teacherId: number,
+    schoolYearId?: number,
   ): Promise<Activity> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: publicId.toUpperCase(),
           approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
       },
     });
@@ -618,6 +889,7 @@ export class TeacherPerformanceService {
     return this.activityService.getOneBySlugAndStudentId(
       slug,
       student.id,
+      schoolYear.id,
     ) as Promise<Activity>;
   }
 }

@@ -23,17 +23,22 @@ import {
 
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { LessonScheduleService } from '#/modules/lesson/services/lesson-schedule.service';
 import { TeacherExamScheduleService } from '#/modules/exam/services/teacher-exam-schedule.service';
 import { MeetingSchedule } from '../entities/meeting-schedule.entity';
 import { MeetingScheduleCreateDto } from '../dtos/meeting-schedule-create.dto';
+import { MeetingScheduleUpdateDto } from '../dtos/meeting-schedule-update.dto';
 
 @Injectable()
 export class TeacherScheduleService {
   constructor(
     @InjectRepository(MeetingSchedule)
     private readonly repo: Repository<MeetingSchedule>,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
     @Inject(StudentUserService)
     private readonly studentUserService: StudentUserService,
     @Inject(LessonScheduleService)
@@ -46,6 +51,7 @@ export class TeacherScheduleService {
     startDate: Date,
     endDate: Date,
     teacherId: number,
+    schoolYearId: number,
     studentIds?: number[],
     scheduleId?: number,
   ) {
@@ -54,7 +60,9 @@ export class TeacherScheduleService {
     if (studentIds?.length) {
       const students = await this.studentUserService.getStudentsByIds(
         studentIds,
+        schoolYearId,
         UserApprovalStatus.Approved,
+        SchoolYearEnrollmentApprovalStatus.Approved,
       );
 
       if (students.length !== studentIds.length) {
@@ -72,6 +80,7 @@ export class TeacherScheduleService {
         startDate,
         endDate,
         teacherId,
+        schoolYearId,
       );
 
     if (examSchedules.length) {
@@ -131,16 +140,28 @@ export class TeacherScheduleService {
     return { error: null };
   }
 
-  getPaginationTeacherMeetingSchedulesByTeacherId(
+  async getPaginationTeacherMeetingSchedulesByTeacherId(
     teacherId: number,
     sort: string,
     take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
+    schoolYearId?: number,
   ): Promise<[MeetingSchedule[], number]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<MeetingSchedule> = {
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (q?.trim()) {
@@ -189,12 +210,24 @@ export class TeacherScheduleService {
     fromDate: Date,
     toDate: Date,
     teacherId: number,
+    schoolYearId?: number,
   ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const lessonSchedules =
       await this.lessonScheduleService.getByDateRangeAndTeacherId(
         fromDate,
         toDate,
         teacherId,
+        schoolYear.id,
       );
 
     const examSchedules =
@@ -202,12 +235,14 @@ export class TeacherScheduleService {
         fromDate,
         toDate,
         teacherId,
+        schoolYear.id,
       );
 
     const meetingSchedules = await this.repo.find({
       where: {
         startDate: Between(fromDate, toDate),
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       },
       order: { startDate: 'ASC' },
     });
@@ -219,14 +254,30 @@ export class TeacherScheduleService {
     meetingScheduleDto: MeetingScheduleCreateDto,
     teacherId: number,
   ): Promise<MeetingSchedule> {
-    const { studentIds, startDate, endDate, ...moreMeetingScheduleDto } =
-      meetingScheduleDto;
+    const {
+      studentIds,
+      startDate,
+      endDate,
+      schoolYearId,
+      ...moreMeetingScheduleDto
+    } = meetingScheduleDto;
+
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
 
     // Validate data before creation
     const { error: scheduleError } = await this.validateScheduleUpsert(
       startDate,
       endDate,
       teacherId,
+      schoolYear.id,
       studentIds,
     );
 
@@ -244,6 +295,7 @@ export class TeacherScheduleService {
       endDate,
       students,
       teacher: { id: teacherId },
+      schoolYear: { id: schoolYear.id },
     });
 
     return this.repo.save(meetingSchedule);
@@ -251,14 +303,17 @@ export class TeacherScheduleService {
 
   async update(
     id: number,
-    meetingScheduleDto: MeetingScheduleCreateDto,
+    meetingScheduleDto: MeetingScheduleUpdateDto,
     teacherId: number,
   ): Promise<MeetingSchedule> {
     const { studentIds, startDate, endDate, ...moreMeetingScheduleDto } =
       meetingScheduleDto;
 
     // Get meeting schedule, cancel schedule update and throw error if not found
-    const meetingSchedule = await this.repo.findOne({ where: { id } });
+    const meetingSchedule = await this.repo.findOne({
+      where: { id },
+      relations: { schoolYear: true },
+    });
     if (!meetingSchedule) {
       throw new NotFoundException('Exam schedule not found');
     }
@@ -268,6 +323,7 @@ export class TeacherScheduleService {
       startDate,
       endDate,
       teacherId,
+      meetingSchedule.schoolYear.id,
       studentIds,
       id,
     );

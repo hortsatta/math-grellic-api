@@ -1,6 +1,7 @@
 import path from 'path';
 import {
   BadRequestException,
+  Inject,
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -8,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import sharp, { AvailableFormatInfo, FitEnum, FormatEnum } from 'sharp';
 
 import { SupabaseService } from '../core/supabase.service';
+import { SchoolYearService } from '../school-year/services/school-year.service';
 
 const COMPRESSION_OPTIONS = {
   width: 800,
@@ -20,6 +22,8 @@ const COMPRESSION_OPTIONS = {
 @Injectable()
 export class UploadService {
   constructor(
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
     private readonly supabaseService: SupabaseService,
     private configService: ConfigService,
   ) {}
@@ -27,6 +31,7 @@ export class UploadService {
   async uploadExamImages(
     files: Express.Multer.File[],
     publicId: string,
+    schoolYearId?: number,
     strict?: boolean,
   ) {
     const baseName = files[0]?.originalname?.split('-')[0];
@@ -35,9 +40,19 @@ export class UploadService {
       throw new BadRequestException('Invalid filename');
     }
 
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const basePath = `${this.configService.get<string>(
       'SUPABASE_BASE_FOLDER_NAME',
-    )}/${publicId.toLowerCase()}/exams/${baseName}`;
+    )}/${publicId.toLowerCase()}/exams/${baseName}_${schoolYear.id}`;
 
     try {
       if (strict) {
@@ -83,16 +98,30 @@ export class UploadService {
     }
   }
 
-  async uploadActivityImages(files: Express.Multer.File[], publicId: string) {
+  async uploadActivityImages(
+    files: Express.Multer.File[],
+    publicId: string,
+    schoolYearId?: number,
+  ) {
     const baseName = files[0]?.originalname?.split('-')[0];
 
     if (!this.validateActivityFiles(files, baseName)) {
       throw new BadRequestException('Invalid filename');
     }
 
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const basePath = `${this.configService.get<string>(
       'SUPABASE_BASE_FOLDER_NAME',
-    )}/${publicId.toLowerCase()}/activities/${baseName}`;
+    )}/${publicId.toLowerCase()}/activities/${baseName}_${schoolYear.id}`;
 
     try {
       const transformedFiles = await Promise.all(

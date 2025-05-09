@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { UploadModule } from '../upload/upload.module';
 import { UserModule } from '../user/user.module';
+import { SchoolYearModule } from '../school-year/school-year.module';
 import { ActivityController } from './activity.controller';
 import { ActivitySubscriber } from './subscribers/activity.subscriber';
 import { Activity } from './entities/activity.entity';
@@ -28,7 +30,9 @@ import { ActivityCategoryCompletionQuestionAnswer } from './entities/activity-ca
       ActivityCategoryCompletion,
       ActivityCategoryCompletionQuestionAnswer,
     ]),
+    UploadModule,
     UserModule,
+    SchoolYearModule,
   ],
   controllers: [ActivityController],
   providers: [

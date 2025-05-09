@@ -3,6 +3,7 @@ import { Column, Entity, OneToMany, OneToOne } from 'typeorm';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { UserApprovalStatus, UserRole } from '#/modules/user/enums/user.enum';
 import { AuditLog } from '#/modules/audit-log/entities/audit-log.entity';
+import { SchoolYearEnrollment } from '#/modules/school-year/entities/school-year-enrollment.entity';
 import { AdminUserAccount } from './admin-user-account.entity';
 import { TeacherUserAccount } from './teacher-user-account.entity';
 import { StudentUserAccount } from './student-user-account.entity';
@@ -66,4 +67,9 @@ export class User extends BaseEntity {
     { eager: true },
   )
   studentUserAccount: StudentUserAccount;
+
+  @OneToMany(() => SchoolYearEnrollment, (enrollment) => enrollment.user, {
+    cascade: true,
+  })
+  enrollments: SchoolYearEnrollment[];
 }

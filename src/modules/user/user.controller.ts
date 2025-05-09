@@ -12,6 +12,7 @@ import {
 import { UseFilterFieldsInterceptor } from '#/common/interceptors/filter-fields.interceptor';
 import { UseSerializeInterceptor } from '#/common/interceptors/serialize.interceptor';
 import { UseJwtAuthGuard } from '../auth/auth.guard';
+import { SchoolYearEnrollmentApprovalStatus } from '../school-year/enums/school-year-enrollment.enum';
 import { UserApprovalStatus, UserRole } from './enums/user.enum';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from './entities/user.entity';
@@ -67,7 +68,7 @@ export class UserController {
   @Get('/register/confirm')
   confirmUserRegistrationEmail(
     @Query('token') token: string,
-  ): Promise<boolean> {
+  ): Promise<{ publicId: string }> {
     return this.userService.confirmUserRegistrationEmail(token);
   }
 
@@ -91,6 +92,8 @@ export class UserController {
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus') enrollmentStatus?: string,
   ): Promise<[StudentUserAccount[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -101,6 +104,8 @@ export class UserController {
       !!skip ? skip : undefined,
       q,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      enrollmentStatus,
     );
   }
 
@@ -112,7 +117,10 @@ export class UserController {
     @CurrentUser() user: User,
     @Query('ids') ids: string,
     @Query('q') q: string,
-    @Query('status') status?: string | UserApprovalStatus,
+    @Query('status') status?: string,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus')
+    enrollmentStatus?: string,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -122,6 +130,8 @@ export class UserController {
       transformedIds,
       q,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      enrollmentStatus,
     );
   }
 
@@ -130,11 +140,15 @@ export class UserController {
   getStudentCountByTeacherId(
     @CurrentUser() user: User,
     @Query('status') status?: UserApprovalStatus,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus') enrollmentStatus?: SchoolYearEnrollmentApprovalStatus,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
     return this.studentUserService.getStudentCountByTeacherId(
       teacherId,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      enrollmentStatus,
     );
   }
 
@@ -142,14 +156,16 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentUserResponseDto)
-  getStudentByPublicIdAndTeacherId(
-    @Param('studentId') studentId: number,
+  getStudentByIdAndTeacherId(
     @CurrentUser() user: User,
+    @Param('studentId') studentId: number,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
     return this.studentUserService.getStudentByIdAndTeacherId(
       studentId,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -193,7 +209,6 @@ export class UserController {
       studentId,
       body,
       user.id,
-      user.id,
     );
   }
 
@@ -201,12 +216,14 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
   deleteStudentByIdAndTeacherId(
-    @Param('studentId') studentId: number,
     @CurrentUser() user: User,
+    @Param('studentId') studentId: number,
+    @Query('sy') schoolYearId?: number,
   ) {
     return this.studentUserService.deleteStudentByIdAndTeacherId(
       studentId,
       user.id,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -219,7 +236,7 @@ export class UserController {
   ): Promise<User> {
     return this.teacherUserService.createTeacherUser(
       body,
-      UserApprovalStatus.MailPending,
+      UserApprovalStatus.Pending,
       user?.id,
     );
   }
@@ -231,9 +248,13 @@ export class UserController {
   @UseSerializeInterceptor(UserResponseDto)
   getAssignedTeacherByStudentId(
     @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Partial<User>> {
     const { id: studentId } = user.studentUserAccount;
-    return this.teacherUserService.getAssignedTeacherByStudentId(studentId);
+    return this.teacherUserService.getAssignedTeacherByStudentId(
+      studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
   @Post(`${STUDENT_URL}/register`)
@@ -245,7 +266,7 @@ export class UserController {
   ): Promise<User> {
     return this.studentUserService.createStudentUser(
       body,
-      UserApprovalStatus.MailPending,
+      UserApprovalStatus.Pending,
       user?.id,
     );
   }
@@ -327,6 +348,19 @@ export class UserController {
     );
   }
 
+  @Get(`${ADMIN_URL}${TEACHER_URL}/list/all`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(TeacherUserResponseDto)
+  getAllTeachersByAdminId(
+    @Query('ids') ids: string,
+    @Query('q') q: string,
+    @Query('status') status?: string | UserApprovalStatus,
+  ) {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.teacherUserService.getAllTeachers(transformedIds, q, status);
+  }
+
   @Get(`${ADMIN_URL}${TEACHER_URL}/count`)
   @UseJwtAuthGuard(UserRole.Admin)
   getTeacherCountByAdmin(@Query('status') status?: UserApprovalStatus) {
@@ -400,7 +434,7 @@ export class UserController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(AdminUserResponseDto)
   getAdminByPublicIdAndSuperAdmin(@Param('adminId') adminId: number) {
-    return this.adminUserService.getAdminByIdAndSuperAdmin(adminId);
+    return this.adminUserService.getAdminById(adminId);
   }
 
   @Post(`${SUPER_ADMIN_URL}/register`)
@@ -415,7 +449,7 @@ export class UserController {
   registerAdminBySuperAdmin(@Body() body: AdminUserCreateDto): Promise<User> {
     return this.adminUserService.createAdminUser(
       body,
-      UserApprovalStatus.MailPending,
+      UserApprovalStatus.Pending,
     );
   }
 

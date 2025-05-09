@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   FindOptionsOrder,
@@ -16,6 +18,8 @@ import {
 
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
+import { UploadService } from '#/modules/upload/upload.service';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import {
   ActivityCategoryLevel,
   ActivityCategoryType,
@@ -41,19 +45,25 @@ export class TeacherActivityService {
     private readonly activityCategoryQuestionChoiceRepo: Repository<ActivityCategoryQuestionChoice>,
     @InjectRepository(ActivityCategoryCompletion)
     private readonly activityCategoryCompletionRepo: Repository<ActivityCategoryCompletion>,
+    @Inject(UploadService)
+    private readonly uploadService: UploadService,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
+    private configService: ConfigService,
   ) {}
 
   async validateCreateActivity(
     activityDto: ActivityCreateDto,
     teacherId: number,
   ) {
-    const { orderNumber, categories } = activityDto;
+    const { orderNumber, categories, schoolYearId } = activityDto;
 
     // Validate activity order number if unique for current teacher user
     const orderNumberCount = await this.activityRepo.count({
       where: {
         orderNumber: orderNumber,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       },
     });
     if (!!orderNumberCount) {
@@ -88,7 +98,7 @@ export class TeacherActivityService {
 
   async validateUpdateActivity(
     activityDto: ActivityUpdateDto,
-    slug: string,
+    id: number,
     activity: Activity,
     teacherId: number,
   ) {
@@ -98,6 +108,8 @@ export class TeacherActivityService {
       throw new NotFoundException('Activity not found');
     }
 
+    const { schoolYear } = activity;
+
     // TODO cancel or clear completion if exist
 
     // Validate activity order number if unique for current teacher user
@@ -105,8 +117,9 @@ export class TeacherActivityService {
     const orderNumberCount = await this.activityRepo.count({
       where: {
         orderNumber: orderNumber,
-        slug: Not(slug),
+        id: Not(id),
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       },
     });
     if (!!orderNumberCount) {
@@ -142,18 +155,30 @@ export class TeacherActivityService {
   async validateUpsert(
     activityDto: ActivityCreateDto | ActivityUpdateDto,
     teacherId: number,
-    slug?: string,
+    id?: number,
   ) {
-    if (!slug?.trim()) {
+    if (!id) {
+      const { schoolYearId } = activityDto as ActivityCreateDto;
+
+      // Get target SY or if undefined, then get current SY
+      const schoolYear =
+        schoolYearId != null
+          ? await this.schoolYearService.getOneById(schoolYearId)
+          : await this.schoolYearService.getCurrentSchoolYear();
+
+      if (!schoolYear) {
+        throw new BadRequestException('Invalid school year');
+      }
+
       return this.validateCreateActivity(
-        activityDto as ActivityCreateDto,
+        { ...activityDto, schoolYearId: schoolYear.id } as ActivityCreateDto,
         teacherId,
       );
     }
 
     // Find activity, throw error if none found
     const activity = await this.activityRepo.findOne({
-      where: { slug, teacher: { id: teacherId } },
+      where: { id, teacher: { id: teacherId } },
       relations: {
         categories: {
           questions: { choices: true },
@@ -164,16 +189,21 @@ export class TeacherActivityService {
       },
     });
 
+    if (!activity) {
+      throw new BadRequestException('Activity not found');
+    }
+
     return this.validateUpdateActivity(
       activityDto as ActivityUpdateDto,
-      slug,
+      id,
       activity,
       teacherId,
     );
   }
 
-  getTeacherActivitiesByTeacherId(
+  async getTeacherActivitiesByTeacherId(
     teacherId: number,
+    schoolYearId: number,
     activityIds?: number[],
     q?: string,
     status?: string,
@@ -182,6 +212,7 @@ export class TeacherActivityService {
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Activity> = {
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       };
 
       if (activityIds?.length) {
@@ -213,10 +244,22 @@ export class TeacherActivityService {
     skip: number = 0,
     q?: string,
     status?: string,
+    schoolYearId?: number,
   ): Promise<[Activity[], number]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Activity> = {
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (q?.trim()) {
@@ -272,9 +315,23 @@ export class TeacherActivityService {
   async getActivitySnippetsByTeacherId(
     teacherId: number,
     take = 3,
+    schoolYearId?: number,
   ): Promise<Activity[]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const activities = await this.activityRepo.find({
-      where: { teacher: { id: teacherId } },
+      where: {
+        teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
+      },
       relations: {
         categories: { typePoint: true, typeTime: true, typeStage: true },
       },
@@ -307,11 +364,23 @@ export class TeacherActivityService {
     slug: string,
     teacherId: number,
     status?: string,
+    schoolYearId?: number,
   ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Activity> = {
         slug,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (status?.trim()) {
@@ -350,9 +419,22 @@ export class TeacherActivityService {
     activityDto: ActivityCreateDto,
     teacherId: number,
   ): Promise<Activity> {
-    const { categories, game, ...moreActivityDto } = activityDto;
+    const { categories, game, schoolYearId, ...moreActivityDto } = activityDto;
 
-    await this.validateCreateActivity(activityDto, teacherId);
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
+    await this.validateCreateActivity(
+      { ...activityDto, schoolYearId: schoolYear.id },
+      teacherId,
+    );
 
     // Transform categories base on game type
     const transformedCategories = categories.map(
@@ -393,6 +475,7 @@ export class TeacherActivityService {
       game: activityGameType[game],
       categories: transformedCategories,
       teacher: { id: teacherId },
+      schoolYear: { id: schoolYear.id },
     });
     const { id } = await this.activityRepo.save(activity);
 
@@ -412,7 +495,7 @@ export class TeacherActivityService {
   }
 
   async update(
-    slug: string,
+    id: number,
     activityDto: ActivityUpdateDto,
     teacherId: number,
   ): Promise<Activity> {
@@ -420,7 +503,7 @@ export class TeacherActivityService {
 
     // Find activity, throw error if none found
     const activity = await this.activityRepo.findOne({
-      where: { slug, teacher: { id: teacherId } },
+      where: { id, teacher: { id: teacherId } },
       relations: {
         categories: {
           questions: { choices: true },
@@ -428,10 +511,11 @@ export class TeacherActivityService {
           typeTime: true,
           typeStage: true,
         },
+        schoolYear: true,
       },
     });
 
-    await this.validateUpdateActivity(activityDto, slug, activity, teacherId);
+    await this.validateUpdateActivity(activityDto, id, activity, teacherId);
 
     // Delete questions not included in request
     for (const cat of categories) {
@@ -479,7 +563,7 @@ export class TeacherActivityService {
     );
 
     // Update activity
-    const { id } = await this.activityRepo.save({
+    const updatedActivity = await this.activityRepo.save({
       ...activity,
       ...moreActivityDto,
       game: activityGameType[game],
@@ -488,7 +572,7 @@ export class TeacherActivityService {
 
     // Manually query newly created activity since relations aren't returned on creation
     return await this.activityRepo.findOne({
-      where: { id },
+      where: { id: updatedActivity.id },
       relations: {
         categories: {
           questions: { choices: true },
@@ -501,8 +585,16 @@ export class TeacherActivityService {
     });
   }
 
-  async deleteBySlug(slug: string, teacherId: number): Promise<boolean> {
-    const activity = await this.getOneBySlugAndTeacherId(slug, teacherId);
+  async delete(
+    id: number,
+    teacherId: number,
+    publicId: string,
+  ): Promise<boolean> {
+    // Find exam, throw error if none found
+    const activity = await this.activityRepo.findOne({
+      where: { id, teacher: { id: teacherId } },
+      relations: { schoolYear: true },
+    });
 
     if (!activity) {
       throw new NotFoundException('Activity not found');
@@ -518,7 +610,14 @@ export class TeacherActivityService {
       throw new BadRequestException('Cannot delete activity');
     }
 
-    const result = await this.activityRepo.delete({ slug });
+    // Define base path and delete exam images if exists
+    const basePath = `${this.configService.get<string>(
+      'SUPABASE_BASE_FOLDER_NAME',
+    )}/${publicId.toLowerCase()}/activities/a${activity.orderNumber}_${activity.schoolYear.id}`;
+
+    await this.uploadService.deleteFolderRecursively(basePath);
+
+    const result = await this.activityRepo.delete({ id });
     return !!result.affected;
   }
 

@@ -48,4 +48,9 @@ export class ActivityCreateDto {
   @ValidateNested({ each: true })
   @Type(() => ActivityCategoryCreateDto)
   categories: ActivityCategoryCreateDto[];
+
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  schoolYearId: number;
 }

@@ -7,6 +7,8 @@ import { User } from './user/entities/user.entity';
 import { AdminUserAccount } from './user/entities/admin-user-account.entity';
 import { TeacherUserAccount } from './user/entities/teacher-user-account.entity';
 import { StudentUserAccount } from './user/entities/student-user-account.entity';
+import { SchoolYear } from './school-year/entities/school-year.entity';
+import { SchoolYearEnrollment } from './school-year/entities/school-year-enrollment.entity';
 import { Lesson } from './lesson/entities/lesson.entity';
 import { LessonSchedule } from './lesson/entities/lesson-schedule.entity';
 import { LessonCompletion } from './lesson/entities/lesson-completion.entity';
@@ -56,6 +58,8 @@ import { AuditLog } from './audit-log/entities/audit-log.entity';
             AdminUserAccount,
             TeacherUserAccount,
             StudentUserAccount,
+            SchoolYear,
+            SchoolYearEnrollment,
             Lesson,
             LessonSchedule,
             LessonCompletion,

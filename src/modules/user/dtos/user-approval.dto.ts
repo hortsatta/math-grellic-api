@@ -8,5 +8,5 @@ export abstract class UserApprovalDto {
 
   @IsString()
   @IsOptional()
-  approvalRejectReason: string;
+  approvalRejectedReason: string;
 }

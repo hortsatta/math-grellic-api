@@ -8,8 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, In, Not, Repository } from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
-import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { ActivityCategoryType } from '../enums/activity.enum';
 import { Activity } from '../entities/activity.entity';
 import { ActivityCategory } from '../entities/activity-category.entity';
@@ -34,152 +34,29 @@ export class StudentActivityService {
     private readonly activityService: ActivityService,
     @Inject(TeacherUserService)
     private readonly teacherUserService: TeacherUserService,
-    @Inject(StudentUserService)
-    private readonly studentUserService: StudentUserService,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
   ) {}
 
-  async generateActivityRankings(activity: Activity, teacherId: number) {
-    const students =
-      await this.studentUserService.getStudentsByTeacherId(teacherId);
+  async getStudentActivitiesByStudentId(
+    studentId: number,
+    q?: string,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
 
-    // Remove duplicate category level
-    const filteredCategories = activity.categories
-      .sort((catA, catB) => catB.updatedAt.valueOf() - catA.updatedAt.valueOf())
-      .filter(
-        (cat, index, array) =>
-          array.findIndex((item) => item.level === cat.level) === index,
-      );
-
-    const categoryIds = filteredCategories.map((cat) => cat.id);
-
-    const studentData = await Promise.all(
-      students.map(async ({ id: studentId }) => {
-        const targetCompletions =
-          await this.activityCategoryCompletionRepo.find({
-            where: {
-              activityCategory: { id: In(categoryIds) },
-              student: { id: studentId },
-            },
-            relations: { activityCategory: true },
-          });
-
-        if (activity.game.type === ActivityCategoryType.Point) {
-          const completions = filteredCategories.reduce((total, cat) => {
-            const list = targetCompletions
-              .filter((com) => com.activityCategory.id === cat.id)
-              .sort(
-                (comA, comB) =>
-                  comA.timeCompletedSeconds - comB.timeCompletedSeconds,
-              )
-              .sort((comA, comB) => comB.score - comA.score);
-
-            if (list.length) {
-              total.push(list[0]);
-            }
-
-            return total;
-          }, []);
-
-          // Combine the completion score in each category
-          const score = completions.length
-            ? completions.reduce((total, com) => total + com.score, 0)
-            : null;
-
-          return {
-            studentId,
-            score,
-            completions,
-          };
-        } else if (activity.game.type === ActivityCategoryType.Time) {
-          const completions = filteredCategories.reduce((total, cat) => {
-            const list = targetCompletions
-              .filter((com) => com.activityCategory.id === cat.id)
-              .sort(
-                (comA, comB) =>
-                  comA.timeCompletedSeconds - comB.timeCompletedSeconds,
-              );
-
-            if (list.length) {
-              total.push(list[0]);
-            }
-
-            return total;
-          }, []);
-
-          const score = completions.length
-            ? completions.reduce(
-                (total, com) => total + com.timeCompletedSeconds,
-                0,
-              ) / completions.length
-            : null;
-
-          return {
-            studentId,
-            score,
-            completions,
-          };
-        } else {
-          const targetCategory = filteredCategories.length
-            ? filteredCategories[0]
-            : null;
-
-          const completions = targetCompletions
-            .filter((com) => com.activityCategory.id === targetCategory.id)
-            .sort(
-              (comA, comB) =>
-                comA.timeCompletedSeconds - comB.timeCompletedSeconds,
-            )
-            .sort((comA, comB) => comB.score - comA.score);
-
-          return {
-            studentId,
-            score: completions.length ? completions[0].score : null,
-            completions,
-          };
-        }
-      }),
-    );
-
-    // Calculate student rankings
-    if (activity.game.type === ActivityCategoryType.Point) {
-      const completeStudentData = studentData
-        .filter((data) => data.score != null)
-        .sort((dataA, dataB) => dataB.score - dataA.score)
-        .map((data, index) => ({ ...data, rank: index + 1 }));
-
-      const incompleteStudentData = studentData
-        .filter((data) => data.score == null)
-        .map((data) => ({ ...data, rank: null }));
-
-      return [...completeStudentData, ...incompleteStudentData];
-    } else if (activity.game.type === ActivityCategoryType.Time) {
-      const completeStudentData = studentData
-        .filter((data) => data.score != null && data.completions.length >= 3)
-        .sort((dataA, dataB) => dataA.score - dataB.score)
-        .map((data, index) => ({ ...data, rank: index + 1 }));
-
-      const incompleteStudentData = studentData
-        .filter((data) => data.score == null || data.completions.length < 3)
-        .map((data) => ({ ...data, rank: null }));
-
-      return [...completeStudentData, ...incompleteStudentData];
-    } else {
-      const completeStudentData = studentData
-        .filter((data) => data.score != null)
-        .sort((dataA, dataB) => dataB.score - dataA.score)
-        .map((data, index) => ({ ...data, rank: index + 1 }));
-
-      const incompleteStudentData = studentData
-        .filter((data) => data.score == null)
-        .map((data) => ({ ...data, rank: null }));
-
-      return [...completeStudentData, ...incompleteStudentData];
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
     }
-  }
 
-  async getStudentActivitiesByStudentId(studentId: number, q?: string) {
-    const teacher =
-      await this.teacherUserService.getTeacherByStudentId(studentId);
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
+      studentId,
+      schoolYear.id,
+    );
 
     if (!teacher) {
       throw new BadRequestException('Student not found');
@@ -189,6 +66,7 @@ export class StudentActivityService {
       let baseWhere: FindOptionsWhere<Activity> = {
         teacher: { id: teacher.id },
         status: RecordStatus.Published,
+        schoolYear: { id: schoolYear.id },
       };
 
       if (q?.trim()) {
@@ -246,9 +124,9 @@ export class StudentActivityService {
     };
   }
 
-  async createActivityCategoryCompletionBySlugAndStudentId(
+  async createActivityCategoryCompletionByIdAndStudentId(
     body: ActivityCategoryCompletionCreateDto,
-    slug: string,
+    id: number,
     categoryId: number,
     studentId: number,
   ) {
@@ -257,7 +135,7 @@ export class StudentActivityService {
     const activityCategory = await this.activityCategoryRepo.findOne({
       where: {
         id: categoryId,
-        activity: { slug, status: RecordStatus.Published },
+        activity: { id, status: RecordStatus.Published },
       },
       relations: {
         activity: true,
@@ -330,9 +208,9 @@ export class StudentActivityService {
     return this.activityCategoryCompletionRepo.save(completion);
   }
 
-  async updateActivityCategoryCompletionBySlugAndStudentId(
+  async updateActivityCategoryCompletionByIdAndStudentId(
     body: ActivityCategoryCompletionUpdateDto,
-    slug: string,
+    id: number,
     categoryId: number,
     studentId: number,
   ) {
@@ -341,7 +219,7 @@ export class StudentActivityService {
     const activityCategory = await this.activityCategoryRepo.findOne({
       where: {
         id: categoryId,
-        activity: { slug, status: RecordStatus.Published },
+        activity: { id, status: RecordStatus.Published },
       },
       relations: {
         activity: true,

@@ -1,6 +1,7 @@
 import { Expose, Transform, plainToInstance } from 'class-transformer';
 
 import { BaseResponseDto } from '#/common/dtos/base-response.dto';
+import { SchoolYearEnrollmentResponseDto } from '#/modules/school-year/dtos/school-year-enrollment-response.dto';
 import { UserRole, UserApprovalStatus } from '../enums/user.enum';
 import { AdminUserResponseDto } from './admin-user-response.dto';
 import { TeacherUserResponseDto } from './teacher-user-response.dto';
@@ -50,4 +51,12 @@ export class UserResponseDto extends BaseResponseDto {
     | AdminUserResponseDto
     | TeacherUserResponseDto
     | StudentUserResponseDto;
+
+  @Expose()
+  @Transform(({ obj }) => {
+    const { enrollments } = obj;
+
+    return enrollments?.length ? enrollments[0] : null;
+  })
+  enrollment: SchoolYearEnrollmentResponseDto;
 }

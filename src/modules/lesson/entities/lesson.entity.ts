@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 
 import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
+import { SchoolYear } from '#/modules/school-year/entities/school-year.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
@@ -29,7 +30,7 @@ export class Lesson extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   slug: string;
 
   @Column({ type: 'varchar', length: 255 })
@@ -62,4 +63,8 @@ export class Lesson extends BaseEntity {
 
   @ManyToMany(() => Exam, (exam) => exam.coveredLessons)
   exams: Exam[];
+
+  @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.lessons)
+  @JoinColumn()
+  schoolYear: SchoolYear;
 }

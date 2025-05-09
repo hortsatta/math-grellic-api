@@ -22,7 +22,10 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
+import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { UploadService } from '#/modules/upload/upload.service';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { stripHtml } from '../helpers/exam.helper';
@@ -57,41 +60,17 @@ export class TeacherExamService {
     private readonly studentUserService: StudentUserService,
     @Inject(UploadService)
     private readonly uploadService: UploadService,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
     private configService: ConfigService,
   ) {}
-
-  async validateUpsert(
-    examDto: ExamCreateDto | ExamUpdateDto,
-    teacherId: number,
-    slug?: string,
-  ) {
-    if (!slug?.trim()) {
-      return this.validateCreateExam(examDto as ExamCreateDto, teacherId);
-    }
-
-    // Find exam, throw error if none found
-    const exam = await this.examRepo.findOne({
-      where: { slug, teacher: { id: teacherId } },
-      relations: {
-        questions: { choices: true },
-        schedules: true,
-        completions: true,
-      },
-    });
-
-    return this.validateUpdateExam(
-      examDto as ExamUpdateDto,
-      slug,
-      exam,
-      teacherId,
-    );
-  }
 
   async validateUpsertExamSchedule(
     startDate: Date,
     endDate: Date,
     studentIds: number[],
     teacherId: number,
+    schoolYearId: number,
     scheduleTitle?: string,
   ) {
     if (!scheduleTitle?.trim().length) {
@@ -103,6 +82,7 @@ export class TeacherExamService {
         startDate,
         endDate,
         teacherId,
+        schoolYearId,
         studentIds,
       );
 
@@ -120,6 +100,7 @@ export class TeacherExamService {
       startDate,
       endDate,
       studentIds,
+      schoolYearId,
       ...moreExamDto
     } = examDto;
 
@@ -136,6 +117,7 @@ export class TeacherExamService {
       where: {
         orderNumber: moreExamDto.orderNumber,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       },
     });
     if (!!orderNumberCount) {
@@ -153,6 +135,7 @@ export class TeacherExamService {
           coveredLessonIds,
           undefined,
           RecordStatus.Published,
+          schoolYearId,
           true,
         );
       if (lessons.length !== coveredLessonIds.length) {
@@ -170,13 +153,14 @@ export class TeacherExamService {
       endDate,
       studentIds,
       teacherId,
+      schoolYearId,
       scheduleTitle,
     );
   }
 
   async validateUpdateExam(
     examDto: ExamUpdateDto,
-    slug: string,
+    id: number,
     exam: Exam,
     teacherId: number,
   ) {
@@ -194,6 +178,8 @@ export class TeacherExamService {
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }
+
+    const { schoolYear } = exam;
 
     // Check if passing points is more than the exam's total points
     if (
@@ -219,8 +205,9 @@ export class TeacherExamService {
     const orderNumberCount = await this.examRepo.count({
       where: {
         orderNumber: moreExamDto.orderNumber,
-        slug: Not(slug),
+        id: Not(id),
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       },
     });
     if (!!orderNumberCount) {
@@ -238,6 +225,7 @@ export class TeacherExamService {
           coveredLessonIds,
           undefined,
           RecordStatus.Published,
+          schoolYear.id,
           true,
         );
       if (lessons.length !== coveredLessonIds.length) {
@@ -263,6 +251,7 @@ export class TeacherExamService {
       endDate,
       studentIds,
       teacherId,
+      schoolYear.id,
       scheduleTitle,
     );
   }
@@ -307,6 +296,53 @@ export class TeacherExamService {
     });
   }
 
+  async validateUpsert(
+    examDto: ExamCreateDto | ExamUpdateDto,
+    teacherId: number,
+    id?: number,
+  ) {
+    if (!id) {
+      const { schoolYearId } = examDto as ExamCreateDto;
+
+      // Get target SY or if undefined, then get current SY
+      const schoolYear =
+        schoolYearId != null
+          ? await this.schoolYearService.getOneById(schoolYearId)
+          : await this.schoolYearService.getCurrentSchoolYear();
+
+      if (!schoolYear) {
+        throw new BadRequestException('Invalid school year');
+      }
+
+      return this.validateCreateExam(
+        { ...examDto, schoolYearId: schoolYear.id } as ExamCreateDto,
+        teacherId,
+      );
+    }
+
+    // Find exam, throw error if none found
+    const exam = await this.examRepo.findOne({
+      where: { id, teacher: { id: teacherId } },
+      relations: {
+        questions: { choices: true },
+        schedules: true,
+        completions: true,
+        schoolYear: true,
+      },
+    });
+
+    if (!exam) {
+      throw new BadRequestException('Exam not found');
+    }
+
+    return this.validateUpdateExam(
+      examDto as ExamUpdateDto,
+      id,
+      exam,
+      teacherId,
+    );
+  }
+
   async getPaginationTeacherExamsByTeacherId(
     teacherId: number,
     sort: string,
@@ -314,12 +350,24 @@ export class TeacherExamService {
     skip: number = 0,
     q?: string,
     status?: string,
+    schoolYearId?: number,
   ): Promise<[Exam[], number]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const currentDateTime = dayjs().toDate();
 
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Exam> = {
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (q?.trim()) {
@@ -388,6 +436,7 @@ export class TeacherExamService {
 
   getTeacherExamsByTeacherId(
     teacherId: number,
+    schoolYearId: number,
     sort?: string,
     examIds?: number[],
     q?: string,
@@ -398,6 +447,7 @@ export class TeacherExamService {
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Exam> = {
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       };
 
       if (examIds?.length) {
@@ -439,9 +489,23 @@ export class TeacherExamService {
   async getExamSnippetsByTeacherId(
     teacherId: number,
     take = 3,
+    schoolYearId?: number,
   ): Promise<Exam[]> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const exams = await this.examRepo.find({
-      where: { teacher: { id: teacherId } },
+      where: {
+        teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
+      },
       relations: { schedules: true },
     });
 
@@ -481,6 +545,7 @@ export class TeacherExamService {
   async getExamsWithCompletionsByStudentIdAndTeacherId(
     studentId: number,
     teacherId: number,
+    schoolYearId: number,
     isStudent?: boolean,
   ): Promise<Partial<ExamResponse>[]> {
     const currentDateTime = dayjs();
@@ -489,6 +554,7 @@ export class TeacherExamService {
       const baseWhere: FindOptionsWhere<Exam> = {
         status: RecordStatus.Published,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       };
 
       if (isStudent) {
@@ -592,11 +658,23 @@ export class TeacherExamService {
     slug: string,
     teacherId: number,
     status?: string,
+    schoolYearId?: number,
   ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Exam> = {
         slug,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYear.id },
       };
 
       if (status?.trim()) {
@@ -623,7 +701,14 @@ export class TeacherExamService {
     }
 
     const totalStudentCount = (
-      await this.studentUserService.getStudentsByTeacherId(teacherId)
+      await this.studentUserService.getStudentsByTeacherId(
+        teacherId,
+        undefined,
+        undefined,
+        UserApprovalStatus.Approved,
+        schoolYear.id,
+        SchoolYearEnrollmentApprovalStatus.Approved,
+      )
     ).length;
     // Generate schedule assigned student count over total student count
     if (exam.schedules.length) {
@@ -636,36 +721,6 @@ export class TeacherExamService {
     return exam;
   }
 
-  async deleteBySlug(
-    slug: string,
-    teacherId: number,
-    publicId: string,
-  ): Promise<boolean> {
-    const exam = await this.getOneBySlugAndTeacherId(slug, teacherId);
-
-    if (!exam) {
-      throw new NotFoundException('Exam not found');
-    }
-
-    // Abort if exam had completions
-    const hasCompletion = !!(await this.examCompletionRepo.count({
-      where: { exam: { id: exam.id } },
-    }));
-    if (hasCompletion) {
-      throw new BadRequestException('Cannot delete exam');
-    }
-
-    // Define base path and delete exam images if exists
-    const basePath = `${this.configService.get<string>(
-      'SUPABASE_BASE_FOLDER_NAME',
-    )}/${publicId.toLowerCase()}/exams/e${exam.orderNumber}`;
-
-    await this.uploadService.deleteFolderRecursively(basePath);
-
-    const result = await this.examRepo.delete({ slug });
-    return !!result.affected;
-  }
-
   async create(examDto: ExamCreateDto, teacherId: number): Promise<Exam> {
     const {
       scheduleTitle,
@@ -674,10 +729,24 @@ export class TeacherExamService {
       studentIds,
       coveredLessonIds,
       questions,
+      schoolYearId,
       ...moreExamDto
     } = examDto;
 
-    await this.validateCreateExam(examDto, teacherId);
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
+    await this.validateCreateExam(
+      { ...examDto, schoolYearId: schoolYear.id },
+      teacherId,
+    );
 
     // Create covered lessons object
     const coveredLessons = coveredLessonIds
@@ -689,8 +758,10 @@ export class TeacherExamService {
       coveredLessons,
       questions,
       teacher: { id: teacherId },
+      schoolYear: { id: schoolYear.id },
     });
     const { id } = await this.examRepo.save(exam);
+
     // Manually query newly created exam since relations aren't returned on exam creation
     const newExam = await this.examRepo.findOne({
       where: { id },
@@ -723,7 +794,7 @@ export class TeacherExamService {
   }
 
   async update(
-    slug: string,
+    id: number,
     examDto: ExamUpdateDto,
     teacherId: number,
     strict?: boolean,
@@ -741,21 +812,25 @@ export class TeacherExamService {
 
     // Find exam, throw error if none found
     const exam = await this.examRepo.findOne({
-      where: { slug, teacher: { id: teacherId } },
+      where: {
+        id,
+        teacher: { id: teacherId },
+      },
       relations: {
         questions: { choices: true },
         schedules: true,
         completions: true,
+        schoolYear: true,
       },
     });
 
-    await this.validateUpdateExam(examDto, slug, exam, teacherId);
+    await this.validateUpdateExam(examDto, id, exam, teacherId);
 
     if (strict && publicId.trim().length) {
       // Define base path and delete exam images if exists
       const basePath = `${this.configService.get<string>(
         'SUPABASE_BASE_FOLDER_NAME',
-      )}/${publicId.toLowerCase()}/exams/e${exam.orderNumber}`;
+      )}/${publicId.toLowerCase()}/exams/e${exam.orderNumber}_${exam.schoolYear.id}`;
 
       await this.uploadService.deleteFolderRecursively(basePath);
     }
@@ -792,6 +867,40 @@ export class TeacherExamService {
     );
 
     return { ...updatedExam, schedules: [schedule] };
+  }
+
+  async delete(
+    id: number,
+    teacherId: number,
+    publicId: string,
+  ): Promise<boolean> {
+    // Find exam, throw error if none found
+    const exam = await this.examRepo.findOne({
+      where: { id, teacher: { id: teacherId } },
+      relations: { schoolYear: true },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    // Abort if exam had completions
+    const hasCompletion = !!(await this.examCompletionRepo.count({
+      where: { exam: { id: exam.id } },
+    }));
+    if (hasCompletion) {
+      throw new BadRequestException('Cannot delete exam');
+    }
+
+    // Define base path and delete exam images if exists
+    const basePath = `${this.configService.get<string>(
+      'SUPABASE_BASE_FOLDER_NAME',
+    )}/${publicId.toLowerCase()}/exams/e${exam.orderNumber}_${exam.schoolYear.id}`;
+
+    await this.uploadService.deleteFolderRecursively(basePath);
+
+    const result = await this.examRepo.delete({ id });
+    return !!result.affected;
   }
 
   async deleteExamQuestionsAndChoices(
@@ -840,11 +949,14 @@ export class TeacherExamService {
         status: RecordStatus.Published,
         teacher: { id: teacherId },
       },
+      relations: { schoolYear: true },
     });
 
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }
+
+    const { schoolYear } = exam;
 
     // check before creating exam to avoid conflicts, If schedule is present then validate students
     // Check start date and end date if no conflicts with other schedules/exams
@@ -853,6 +965,7 @@ export class TeacherExamService {
         startDate,
         endDate,
         teacherId,
+        schoolYear.id,
         studentIds,
         examId,
       );
@@ -877,11 +990,14 @@ export class TeacherExamService {
         teacher: { id: teacherId },
         schedules: { id: scheduleId },
       },
+      relations: { schoolYear: true },
     });
 
     if (!exam) {
       throw new NotFoundException('Exam schedule not found');
     }
+
+    const { schoolYear } = exam;
 
     // Check before creating exam to avoid conflicts, If schedule is present then validate students
     // Check start date and end date if no conflicts with other schedules/exams
@@ -890,6 +1006,7 @@ export class TeacherExamService {
         startDate,
         endDate,
         teacherId,
+        schoolYear.id,
         studentIds,
         exam.id,
         scheduleId,

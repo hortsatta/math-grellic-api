@@ -76,7 +76,9 @@ export class UserService {
     }
   }
 
-  async confirmUserRegistrationEmail(token: string): Promise<boolean> {
+  async confirmUserRegistrationEmail(
+    token: string,
+  ): Promise<{ publicId: string }> {
     const payload = this.jwtService.verify(token, {
       secret: this.configService.get<string>('JWT_SECRET'),
     });
@@ -91,16 +93,16 @@ export class UserService {
       throw new BadRequestException('Cannot confirm email');
     }
 
-    if (user.approvalStatus !== UserApprovalStatus.MailPending) {
+    if (user.approvalStatus !== UserApprovalStatus.Pending) {
       throw new BadRequestException('Email already confirmed');
     }
 
-    await this.userRepo.save({
+    const updatedUser = await this.userRepo.save({
       ...user,
-      approvalStatus: UserApprovalStatus.Pending,
+      approvalStatus: UserApprovalStatus.Approved,
     });
 
-    return true;
+    return { publicId: updatedUser.publicId };
   }
 
   async confirmUserRegistrationLastStep(
@@ -122,7 +124,7 @@ export class UserService {
       throw new BadRequestException('Cannot confirm email');
     }
 
-    if (user.approvalStatus !== UserApprovalStatus.MailPending) {
+    if (user.approvalStatus !== UserApprovalStatus.Pending) {
       throw new BadRequestException('Email already confirmed');
     }
 
@@ -158,7 +160,6 @@ export class UserService {
             await this.studentUserService.setStudentApprovalStatus(
               user.studentUserAccount?.id,
               userApprovalDto,
-              user.studentUserAccount?.teacherUser?.user?.id,
               user.id,
               password,
             );
@@ -210,7 +211,8 @@ export class UserService {
         ? {
             adminUserAccount: true,
             teacherUserAccount: true,
-            studentUserAccount: { teacherUser: { user: true } },
+            studentUserAccount: true,
+            enrollments: { teacherUser: { user: true } },
           }
         : undefined;
 

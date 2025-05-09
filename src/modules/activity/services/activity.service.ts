@@ -8,7 +8,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
+import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { StudentData } from '#/modules/performance/models/performance.model';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { ActivityCategoryType } from '../enums/activity.enum';
@@ -27,6 +30,8 @@ export class ActivityService {
     private readonly teacherUserService: TeacherUserService,
     @Inject(StudentUserService)
     private readonly studentUserService: StudentUserService,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
   ) {}
 
   calculateStudentRank(
@@ -53,8 +58,16 @@ export class ActivityService {
   }
 
   async generateActivityRankings(activity: Activity, teacherId: number) {
-    const students =
-      await this.studentUserService.getStudentsByTeacherId(teacherId);
+    const { schoolYear } = activity;
+
+    const students = await this.studentUserService.getStudentsByTeacherId(
+      teacherId,
+      undefined,
+      undefined,
+      UserApprovalStatus.Approved,
+      schoolYear.id,
+      SchoolYearEnrollmentApprovalStatus.Approved,
+    );
 
     // Remove duplicate category level
     const filteredCategories = activity.categories
@@ -361,35 +374,62 @@ export class ActivityService {
 
   async getAllByStudentId(
     studentId: number,
+    schoolYearId: number,
     withCompletions?: boolean,
   ): Promise<Activity[]> {
-    const teacher =
-      await this.teacherUserService.getTeacherByStudentId(studentId);
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
+      studentId,
+      schoolYearId,
+    );
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
     }
 
     return this.activityRepo.find({
-      where: { teacher: { id: teacher.id }, status: RecordStatus.Published },
-      relations: { categories: { completions: withCompletions } },
+      where: {
+        teacher: { id: teacher.id },
+        status: RecordStatus.Published,
+        schoolYear: { id: schoolYearId },
+      },
+      relations: {
+        categories: { completions: withCompletions },
+        schoolYear: true,
+      },
     });
   }
 
   async getOneBySlugAndStudentId(
     slug: string,
     studentId: number,
+    schoolYearId?: number,
     isStudent?: boolean,
   ) {
-    const teacher =
-      await this.teacherUserService.getTeacherByStudentId(studentId);
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
+      studentId,
+      schoolYear.id,
+    );
 
     if (!teacher) {
       throw new BadRequestException('Student not found');
     }
 
     const activity = await this.activityRepo.findOne({
-      where: { slug, teacher: { id: teacher.id } },
+      where: {
+        slug,
+        teacher: { id: teacher.id },
+        schoolYear: { id: schoolYear.id },
+      },
       relations: {
         categories: {
           questions: { choices: true },
@@ -397,6 +437,7 @@ export class ActivityService {
           typeTime: true,
           typeStage: true,
         },
+        schoolYear: true,
       },
       order: {
         categories: {
@@ -434,14 +475,17 @@ export class ActivityService {
   async getActivitiesWithCompletionsByStudentIdAndTeacherId(
     studentId: number,
     teacherId: number,
+    schoolYearId: number,
   ): Promise<Activity[]> {
     const activities = await this.activityRepo.find({
       where: {
         status: RecordStatus.Published,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       },
       relations: {
         categories: { completions: { student: true } },
+        schoolYear: true,
       },
     });
 

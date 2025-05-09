@@ -11,6 +11,7 @@ import {
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
+import { SchoolYear } from '#/modules/school-year/entities/school-year.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
 import { ExamSchedule } from './exam-schedule.entity';
 import { ExamCompletion } from './exam-completion.entity';
@@ -31,7 +32,7 @@ export class Exam extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   slug: string;
 
   @Column({ type: 'boolean', default: false })
@@ -73,4 +74,8 @@ export class Exam extends BaseEntity {
   )
   @JoinColumn()
   teacher: TeacherUserAccount;
+
+  @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.exams)
+  @JoinColumn()
+  schoolYear: SchoolYear;
 }

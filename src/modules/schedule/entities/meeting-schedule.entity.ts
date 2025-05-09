@@ -1,8 +1,16 @@
-import { Column, Entity, JoinTable, ManyToMany, ManyToOne } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+} from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
+import { SchoolYear } from '#/modules/school-year/entities/school-year.entity';
 
 @Entity()
 export class MeetingSchedule extends BaseEntity {
@@ -37,4 +45,8 @@ export class MeetingSchedule extends BaseEntity {
     },
   )
   teacher: TeacherUserAccount;
+
+  @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.meetingSchedules)
+  @JoinColumn()
+  schoolYear: SchoolYear;
 }

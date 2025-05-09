@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   forwardRef,
   Inject,
@@ -25,8 +26,10 @@ import {
   AuditFeatureType,
   AuditUserAction,
 } from '#/modules/audit-log/enums/audit-log.enum';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { MailerService } from '#/modules/mailer/mailer.service';
 import { AuditLogService } from '#/modules/audit-log/audit-log.service';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { UserApprovalStatus, UserRole } from '../enums/user.enum';
 import { User } from '../entities/user.entity';
 import { TeacherUserAccount } from '../entities/teacher-user-account.entity';
@@ -45,6 +48,8 @@ export class TeacherUserService {
     private readonly mailerService: MailerService,
     @Inject(AuditLogService)
     private readonly auditLogService: AuditLogService,
+    @Inject(forwardRef(() => SchoolYearService))
+    private readonly schoolYearService: SchoolYearService,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
   ) {}
@@ -125,14 +130,31 @@ export class TeacherUserService {
     return [teachers, results[1]];
   }
 
-  async getAssignedTeacherByStudentId(id: number): Promise<Partial<User>> {
+  async getAssignedTeacherByStudentId(
+    id: number,
+    schoolYearId?: number,
+  ): Promise<Partial<User>> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const user = await this.userRepo.findOne({
       where: {
         approvalStatus: UserApprovalStatus.Approved,
         teacherUserAccount: {
-          students: {
-            id,
-            user: { approvalStatus: UserApprovalStatus.Approved },
+          enrolledStudents: {
+            schoolYear: { id: schoolYear.id },
+            user: {
+              studentUserAccount: { id },
+              approvalStatus: UserApprovalStatus.Approved,
+            },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
           },
         },
       },
@@ -191,6 +213,48 @@ export class TeacherUserService {
     };
   }
 
+  getAllTeachers(
+    teacherIds?: number[],
+    q?: string,
+    status?: string | UserApprovalStatus.Approved,
+  ): Promise<TeacherUserAccount[]> {
+    const generateWhere = () => {
+      const baseWhere: FindOptionsWhere<TeacherUserAccount> = status
+        ? {
+            user: { approvalStatus: In(status.split(',')) },
+          }
+        : {
+            user: { approvalStatus: UserApprovalStatus.Approved },
+          };
+
+      if (teacherIds?.length) {
+        return { ...baseWhere, id: In(teacherIds) };
+      } else if (!!q?.trim()) {
+        return [
+          { firstName: ILike(`%${q}%`), ...baseWhere },
+          { lastName: ILike(`%${q}%`), ...baseWhere },
+          { middleName: ILike(`%${q}%`), ...baseWhere },
+        ];
+      }
+
+      return baseWhere;
+    };
+
+    return this.teacherUserAccountRepo.find({
+      where: generateWhere(),
+      loadEagerRelations: false,
+      relations: { user: true },
+      select: {
+        user: {
+          id: true,
+          publicId: true,
+          email: true,
+          approvalStatus: true,
+        },
+      },
+    });
+  }
+
   getTeacherCountByAdmin(status?: UserApprovalStatus): Promise<number> {
     const where: FindOptionsWhere<TeacherUserAccount> = {
       user: { approvalStatus: status || UserApprovalStatus.Approved },
@@ -199,14 +263,44 @@ export class TeacherUserService {
     return this.teacherUserAccountRepo.count({ where });
   }
 
-  getTeacherByStudentId(id: number): Promise<TeacherUserAccount> {
+  getTeacherByStudentId(
+    id: number,
+    schoolYearId: number,
+  ): Promise<TeacherUserAccount> {
     return this.teacherUserAccountRepo.findOne({
       where: {
-        students: {
-          id,
-          user: { approvalStatus: UserApprovalStatus.Approved },
+        user: {
+          approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            schoolYear: { id: schoolYearId },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
-        user: { approvalStatus: UserApprovalStatus.Approved },
+        enrolledStudents: {
+          user: {
+            studentUserAccount: { id },
+            approvalStatus: UserApprovalStatus.Approved,
+            enrollments: {
+              schoolYear: { id: schoolYearId },
+              approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+            },
+          },
+        },
+      },
+      loadEagerRelations: false,
+      relations: { user: true },
+      select: {
+        user: {
+          publicId: true,
+        },
+      },
+    });
+  }
+
+  getTeacherByPublicId(publicId: string): Promise<TeacherUserAccount> {
+    return this.teacherUserAccountRepo.findOne({
+      where: {
+        user: { publicId, approvalStatus: UserApprovalStatus.Approved },
       },
       loadEagerRelations: false,
       relations: { user: true },
@@ -320,8 +414,9 @@ export class TeacherUserService {
   ): Promise<{
     approvalStatus: User['approvalStatus'];
     approvalDate: User['approvalDate'];
+    approvalRejectedReason: User['approvalRejectedReason'];
   }> {
-    const { approvalStatus, approvalRejectReason } = userApprovalDto;
+    const { approvalStatus, approvalRejectedReason } = userApprovalDto;
 
     const user = await this.userRepo.findOne({
       where: { teacherUserAccount: { id: teacherId } },
@@ -358,11 +453,11 @@ export class TeacherUserService {
     approvalStatus === UserApprovalStatus.Approved
       ? this.mailerService.sendUserRegisterApproved(
           user.email,
-          user.teacherUserAccount.firstName,
           publicId,
+          user.teacherUserAccount.firstName,
         )
       : this.mailerService.sendUserRegisterRejected(
-          approvalRejectReason || '',
+          approvalRejectedReason || '',
           user.email,
           user.teacherUserAccount.firstName,
         );
@@ -378,7 +473,11 @@ export class TeacherUserService {
       logUserId,
     );
 
-    return { approvalStatus, approvalDate: updatedUser.approvalDate };
+    return {
+      approvalStatus,
+      approvalDate: updatedUser.approvalDate,
+      approvalRejectedReason: updatedUser.approvalRejectedReason,
+    };
   }
 
   async deleteTeacherByIdAndAdminId(

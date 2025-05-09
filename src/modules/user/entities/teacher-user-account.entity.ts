@@ -7,6 +7,7 @@ import {
   OneToOne,
 } from 'typeorm';
 
+import { SchoolYearEnrollment } from '#/modules/school-year/entities/school-year-enrollment.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Activity } from '#/modules/activity/entities/activity.entity';
@@ -14,7 +15,6 @@ import { MeetingSchedule } from '#/modules/schedule/entities/meeting-schedule.en
 import { Announcement } from '#/modules/announcement/entities/announcement.entity';
 import { User } from './user.entity';
 import { UserAccount as UserAccountEntity } from './user-account.entity';
-import { StudentUserAccount } from './student-user-account.entity';
 import { AdminUserAccount } from './admin-user-account.entity';
 
 @Entity()
@@ -56,10 +56,10 @@ export class TeacherUserAccount extends UserAccountEntity {
   adminUser: AdminUserAccount;
 
   @OneToMany(
-    () => StudentUserAccount,
-    (studentUserAccount) => studentUserAccount.teacherUser,
+    () => SchoolYearEnrollment,
+    (schoolYearEnrollment) => schoolYearEnrollment.teacherUser,
   )
-  students: StudentUserAccount[];
+  enrolledStudents: SchoolYearEnrollment[];
 
   @OneToMany(() => Lesson, (lesson) => lesson.teacher)
   lessons: Lesson[];
@@ -68,7 +68,7 @@ export class TeacherUserAccount extends UserAccountEntity {
   exams: Exam[];
 
   @OneToMany(() => Activity, (activity) => activity.teacher)
-  activity: Activity[];
+  activities: Activity[];
 
   @OneToMany(
     () => MeetingSchedule,
