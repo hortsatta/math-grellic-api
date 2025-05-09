@@ -15,7 +15,6 @@ import { MeetingSchedule } from '#/modules/schedule/entities/meeting-schedule.en
 import { Announcement } from '#/modules/announcement/entities/announcement.entity';
 import { User } from './user.entity';
 import { UserAccount as UserAccountEntity } from './user-account.entity';
-import { StudentUserAccount } from './student-user-account.entity';
 import { AdminUserAccount } from './admin-user-account.entity';
 
 @Entity()
@@ -56,16 +55,9 @@ export class TeacherUserAccount extends UserAccountEntity {
   @JoinColumn()
   adminUser: AdminUserAccount;
 
-  // TODO remove
   @OneToMany(
-    () => StudentUserAccount,
-    (studentUserAccount) => studentUserAccount.teacherUser,
-  )
-  students: StudentUserAccount[];
-
-  @OneToMany(
-    () => StudentUserAccount,
-    (studentUserAccount) => studentUserAccount.teacherUser,
+    () => SchoolYearEnrollment,
+    (schoolYearEnrollment) => schoolYearEnrollment.teacherUser,
   )
   enrolledStudents: SchoolYearEnrollment[];
 
@@ -76,7 +68,7 @@ export class TeacherUserAccount extends UserAccountEntity {
   exams: Exam[];
 
   @OneToMany(() => Activity, (activity) => activity.teacher)
-  activity: Activity[];
+  activities: Activity[];
 
   @OneToMany(
     () => MeetingSchedule,

@@ -156,14 +156,16 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentUserResponseDto)
-  getStudentByPublicIdAndTeacherId(
-    @Param('studentId') studentId: number,
+  getStudentByIdAndTeacherId(
     @CurrentUser() user: User,
+    @Param('studentId') studentId: number,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
     return this.studentUserService.getStudentByIdAndTeacherId(
       studentId,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -214,12 +216,14 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(UserResponseDto)
   deleteStudentByIdAndTeacherId(
-    @Param('studentId') studentId: number,
     @CurrentUser() user: User,
+    @Param('studentId') studentId: number,
+    @Query('sy') schoolYearId?: number,
   ) {
     return this.studentUserService.deleteStudentByIdAndTeacherId(
       studentId,
       user.id,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -244,9 +248,13 @@ export class UserController {
   @UseSerializeInterceptor(UserResponseDto)
   getAssignedTeacherByStudentId(
     @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Partial<User>> {
     const { id: studentId } = user.studentUserAccount;
-    return this.teacherUserService.getAssignedTeacherByStudentId(studentId);
+    return this.teacherUserService.getAssignedTeacherByStudentId(
+      studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
   @Post(`${STUDENT_URL}/register`)

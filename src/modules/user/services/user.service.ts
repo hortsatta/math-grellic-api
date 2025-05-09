@@ -211,7 +211,8 @@ export class UserService {
         ? {
             adminUserAccount: true,
             teacherUserAccount: true,
-            studentUserAccount: { teacherUser: { user: true } },
+            studentUserAccount: true,
+            enrollments: { teacherUser: { user: true } },
           }
         : undefined;
 

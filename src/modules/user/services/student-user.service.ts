@@ -203,17 +203,35 @@ export class StudentUserService {
     return this.studentUserAccountRepo.count({ where });
   }
 
-  async getStudentByIdAndTeacherId(studentId: number, teacherId: number) {
+  async getStudentByIdAndTeacherId(
+    studentId: number,
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
       where: {
         id: studentId,
-        teacherUser: { id: teacherId },
+        user: {
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+          },
+        },
       },
       loadEagerRelations: false,
       relations: {
-        user: true,
-        teacherUser: {
-          user: true,
+        user: {
+          enrollments: { teacherUser: { user: true } },
         },
       },
       select: {
@@ -229,11 +247,14 @@ export class StudentUserService {
       throw new NotFoundException('Student not found');
     }
 
-    const { teacherUser, ...moreStudent } = student;
+    const teacherPublicId =
+      student.user.enrollments[0].teacherUser.user.publicId;
 
     return {
-      ...moreStudent,
-      teacherUser: { publicId: teacherUser.user.publicId },
+      ...student,
+      teacherUser: {
+        publicId: teacherPublicId,
+      },
     };
   }
 
@@ -274,12 +295,29 @@ export class StudentUserService {
     });
   }
 
-  getStudentByPublicIdAndTeacherId(publicId: string, teacherId: number) {
+  async getStudentByPublicIdAndTeacherId(
+    publicId: string,
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     return this.studentUserAccountRepo.findOne({
       where: {
-        teacherUser: { id: teacherId },
         user: {
           publicId: publicId.toUpperCase(),
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { id: teacherId },
+          },
         },
       },
       loadEagerRelations: false,
@@ -489,10 +527,29 @@ export class StudentUserService {
 
   async deleteStudentByIdAndTeacherId(
     studentId: number,
-    teacherId: number,
+    teacherUserId: number,
+    schoolYearId?: number,
   ): Promise<boolean> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const student = await this.studentUserAccountRepo.findOne({
-      where: { id: studentId, teacherUser: { user: { id: teacherId } } },
+      where: {
+        id: studentId,
+        user: {
+          enrollments: {
+            schoolYear: { id: schoolYear.id },
+            teacherUser: { user: { id: teacherUserId } },
+          },
+        },
+      },
       relations: {
         user: true,
         examCompletions: true,
@@ -525,7 +582,7 @@ export class StudentUserService {
         featureId: student.user.id,
         featureType: AuditFeatureType.user,
       },
-      teacherId,
+      teacherUserId,
     );
 
     return !!result.affected;

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   forwardRef,
   Inject,
@@ -28,6 +29,7 @@ import {
 import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { MailerService } from '#/modules/mailer/mailer.service';
 import { AuditLogService } from '#/modules/audit-log/audit-log.service';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { UserApprovalStatus, UserRole } from '../enums/user.enum';
 import { User } from '../entities/user.entity';
 import { TeacherUserAccount } from '../entities/teacher-user-account.entity';
@@ -46,6 +48,8 @@ export class TeacherUserService {
     private readonly mailerService: MailerService,
     @Inject(AuditLogService)
     private readonly auditLogService: AuditLogService,
+    @Inject(forwardRef(() => SchoolYearService))
+    private readonly schoolYearService: SchoolYearService,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
   ) {}
@@ -126,14 +130,31 @@ export class TeacherUserService {
     return [teachers, results[1]];
   }
 
-  async getAssignedTeacherByStudentId(id: number): Promise<Partial<User>> {
+  async getAssignedTeacherByStudentId(
+    id: number,
+    schoolYearId?: number,
+  ): Promise<Partial<User>> {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const user = await this.userRepo.findOne({
       where: {
         approvalStatus: UserApprovalStatus.Approved,
         teacherUserAccount: {
-          students: {
-            id,
-            user: { approvalStatus: UserApprovalStatus.Approved },
+          enrolledStudents: {
+            schoolYear: { id: schoolYear.id },
+            user: {
+              studentUserAccount: { id },
+              approvalStatus: UserApprovalStatus.Approved,
+            },
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
           },
         },
       },
@@ -251,16 +272,16 @@ export class TeacherUserService {
         user: {
           approvalStatus: UserApprovalStatus.Approved,
           enrollments: {
-            id: schoolYearId,
+            schoolYear: { id: schoolYearId },
             approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
           },
         },
         enrolledStudents: {
           user: {
-            id,
+            studentUserAccount: { id },
             approvalStatus: UserApprovalStatus.Approved,
             enrollments: {
-              id: schoolYearId,
+              schoolYear: { id: schoolYearId },
               approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
             },
           },

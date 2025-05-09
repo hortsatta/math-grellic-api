@@ -70,8 +70,7 @@ export class StudentPerformanceService {
       },
       loadEagerRelations: false,
       relations: {
-        user: true,
-        teacherUser: true,
+        user: { enrollments: { teacherUser: true } },
         lessonCompletions: { lesson: { schoolYear: true } },
         activityCompletions: {
           activityCategory: { activity: { schoolYear: true } },
@@ -96,7 +95,7 @@ export class StudentPerformanceService {
         user: {
           approvalStatus: UserApprovalStatus.Approved,
           enrollments: {
-            teacherUser: { id: student.teacherUser.id },
+            teacherUser: { id: student.user.enrollments[0].teacherUser.id },
             schoolYear: { id: schoolYear.id },
             approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
           },
@@ -210,7 +209,7 @@ export class StudentPerformanceService {
           },
         },
       },
-      relations: { teacherUser: true },
+      relations: { user: { enrollments: { teacherUser: true } } },
     });
 
     if (!student) {
@@ -219,7 +218,7 @@ export class StudentPerformanceService {
 
     return this.lessonService.getLessonsWithCompletionsByStudentIdAndTeacherId(
       student.id,
-      student.teacherUser.id,
+      student.user.enrollments[0].teacherUser.id,
       schoolYear.id,
       true,
     );
@@ -250,7 +249,7 @@ export class StudentPerformanceService {
           },
         },
       },
-      relations: { teacherUser: true },
+      relations: { user: { enrollments: { teacherUser: true } } },
     });
 
     if (!student) {
@@ -260,7 +259,7 @@ export class StudentPerformanceService {
     const exams =
       await this.teacherExamService.getExamsWithCompletionsByStudentIdAndTeacherId(
         student.id,
-        student.teacherUser.id,
+        student.user.enrollments[0].teacherUser.id,
         schoolYear.id,
         true,
       );
@@ -269,7 +268,7 @@ export class StudentPerformanceService {
       exams.map(async (exam) => {
         const rankings = await this.studentExamService.generateExamRankings(
           exam as Exam,
-          student.teacherUser.id,
+          student.user.enrollments[0].teacherUser.id,
           schoolYear.id,
         );
 
@@ -307,7 +306,7 @@ export class StudentPerformanceService {
           },
         },
       },
-      relations: { teacherUser: true },
+      relations: { user: { enrollments: { teacherUser: true } } },
     });
 
     if (!student) {
@@ -317,7 +316,7 @@ export class StudentPerformanceService {
     const activities =
       await this.activityService.getActivitiesWithCompletionsByStudentIdAndTeacherId(
         student.id,
-        student.teacherUser.id,
+        student.user.enrollments[0].teacherUser.id,
         schoolYear.id,
       );
 
@@ -325,7 +324,7 @@ export class StudentPerformanceService {
       activities.map(async (activity) => {
         const rankings = await this.activityService.generateActivityRankings(
           activity,
-          student.teacherUser.id,
+          student.user.enrollments[0].teacherUser.id,
         );
 
         const { rank, completions } = rankings.find(
