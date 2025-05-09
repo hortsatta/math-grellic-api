@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   NotFoundException,
@@ -17,8 +18,9 @@ import {
 } from 'typeorm';
 
 import dayjs from '#/common/configs/dayjs.config';
-import { StudentExamScheduleService } from '#/modules/exam/services/student-exam-schedule.service';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
+import { StudentExamScheduleService } from '#/modules/exam/services/student-exam-schedule.service';
 import { LessonScheduleService } from '#/modules/lesson/services/lesson-schedule.service';
 import { MeetingSchedule } from '../entities/meeting-schedule.entity';
 
@@ -27,6 +29,8 @@ export class StudentScheduleService {
   constructor(
     @InjectRepository(MeetingSchedule)
     private readonly repo: Repository<MeetingSchedule>,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
     @Inject(TeacherUserService)
     private readonly teacherUserService: TeacherUserService,
     @Inject(LessonScheduleService)
@@ -35,11 +39,26 @@ export class StudentScheduleService {
     private readonly studentExamScheduleService: StudentExamScheduleService,
   ) {}
 
-  async getStudentMeetingSchedulesByStudentId(studentId: number) {
+  async getStudentMeetingSchedulesByStudentId(
+    studentId: number,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const currentDateTime = dayjs().toDate();
 
-    const teacher =
-      await this.teacherUserService.getTeacherByStudentId(studentId);
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
+      studentId,
+      schoolYear.id,
+    );
 
     if (!teacher) {
       throw new NotFoundException('Student not found');
@@ -51,11 +70,13 @@ export class StudentScheduleService {
           startDate: MoreThan(currentDateTime),
           teacher: { id: teacher.id },
           students: { id: studentId },
+          schoolYear: { id: schoolYear.id },
         },
         {
           startDate: MoreThan(currentDateTime),
           teacher: { id: teacher.id },
           students: { id: IsNull() },
+          schoolYear: { id: schoolYear.id },
         },
       ],
       order: { startDate: 'DESC' },
@@ -69,12 +90,14 @@ export class StudentScheduleService {
           teacher: { id: teacher.id },
           startDate: LessThanOrEqual(currentDateTime),
           students: { id: studentId },
+          schoolYear: { id: schoolYear.id },
         },
         {
           id: Not(In(upcomingMeetingSchedules.map((s) => s.id))),
           teacher: { id: teacher.id },
           startDate: LessThanOrEqual(currentDateTime),
           students: { id: IsNull() },
+          schoolYear: { id: schoolYear.id },
         },
       ],
       order: { startDate: 'DESC' },
@@ -110,9 +133,22 @@ export class StudentScheduleService {
     fromDate: Date,
     toDate: Date,
     studentId: number,
+    schoolYearId?: number,
   ) {
-    const teacher =
-      await this.teacherUserService.getTeacherByStudentId(studentId);
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
+      studentId,
+      schoolYear.id,
+    );
 
     if (!teacher) {
       throw new NotFoundException('Student not found');
@@ -124,6 +160,7 @@ export class StudentScheduleService {
         toDate,
         teacher.id,
         studentId,
+        schoolYear.id,
       );
 
     const examSchedules =
@@ -132,6 +169,7 @@ export class StudentScheduleService {
         toDate,
         teacher.id,
         studentId,
+        schoolYear.id,
       );
 
     const meetingScheduleBaseWhere: FindOptionsWhere<MeetingSchedule> = {

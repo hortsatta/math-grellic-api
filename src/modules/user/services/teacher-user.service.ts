@@ -25,6 +25,7 @@ import {
   AuditFeatureType,
   AuditUserAction,
 } from '#/modules/audit-log/enums/audit-log.enum';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { MailerService } from '#/modules/mailer/mailer.service';
 import { AuditLogService } from '#/modules/audit-log/audit-log.service';
 import { UserApprovalStatus, UserRole } from '../enums/user.enum';
@@ -241,14 +242,29 @@ export class TeacherUserService {
     return this.teacherUserAccountRepo.count({ where });
   }
 
-  getTeacherByStudentId(id: number): Promise<TeacherUserAccount> {
+  getTeacherByStudentId(
+    id: number,
+    schoolYearId: number,
+  ): Promise<TeacherUserAccount> {
     return this.teacherUserAccountRepo.findOne({
       where: {
-        students: {
-          id,
-          user: { approvalStatus: UserApprovalStatus.Approved },
+        user: {
+          approvalStatus: UserApprovalStatus.Approved,
+          enrollments: {
+            id: schoolYearId,
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          },
         },
-        user: { approvalStatus: UserApprovalStatus.Approved },
+        enrolledStudents: {
+          user: {
+            id,
+            approvalStatus: UserApprovalStatus.Approved,
+            enrollments: {
+              id: schoolYearId,
+              approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+            },
+          },
+        },
       },
       loadEagerRelations: false,
       relations: { user: true },

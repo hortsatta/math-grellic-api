@@ -4,6 +4,9 @@ import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
+import { Activity } from '#/modules/activity/entities/activity.entity';
+import { MeetingSchedule } from '#/modules/schedule/entities/meeting-schedule.entity';
+import { Announcement } from '#/modules/announcement/entities/announcement.entity';
 import { SchoolYearEnrollment } from './school-year-enrollment.entity';
 
 @Entity()
@@ -53,4 +56,16 @@ export class SchoolYear extends BaseEntity {
 
   @OneToMany(() => Exam, (exam) => exam.schoolYear)
   exams: Exam[];
+
+  @OneToMany(() => Exam, (exam) => exam.schoolYear)
+  activity: Activity[];
+
+  @OneToMany(
+    () => MeetingSchedule,
+    (meetingSchedule) => meetingSchedule.schoolYear,
+  )
+  meetingSchedules: MeetingSchedule[];
+
+  @OneToMany(() => Announcement, (announcement) => announcement.schoolYear)
+  announcements: Announcement[];
 }

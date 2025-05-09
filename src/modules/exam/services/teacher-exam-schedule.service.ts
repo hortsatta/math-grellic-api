@@ -22,6 +22,7 @@ import {
 import dayjs from '#/common/configs/dayjs.config';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { TeacherScheduleService } from '#/modules/schedule/schedules/teacher-schedule.service';
 import { ExamSchedule } from '../entities/exam-schedule.entity';
@@ -46,6 +47,7 @@ export class TeacherExamScheduleService {
     startDate: Date,
     endDate: Date,
     teacherId: number,
+    schoolYearId: number,
     studentIds?: number[],
     examId?: number,
     scheduleId?: number,
@@ -146,13 +148,17 @@ export class TeacherExamScheduleService {
         null,
         null,
         UserApprovalStatus.Approved,
+        schoolYearId,
+        SchoolYearEnrollmentApprovalStatus.Approved,
       );
       targetStudentIds = allStudents.map((student) => student.id);
     } else {
       // Check if all student ids are valid and approved
       const students = await this.studentUserService.getStudentsByIds(
         targetStudentIds,
+        schoolYearId,
         UserApprovalStatus.Approved,
+        SchoolYearEnrollmentApprovalStatus.Approved,
       );
 
       if (students.length !== targetStudentIds.length) {
@@ -270,19 +276,26 @@ export class TeacherExamScheduleService {
   }
 
   getOneById(id: number): Promise<ExamSchedule> {
-    return this.repo.findOne({ where: { id }, relations: { exam: true } });
+    return this.repo.findOne({
+      where: { id },
+      relations: { exam: { schoolYear: true } },
+    });
   }
 
   getByStartAndEndDateAndTeacherId(
     startDate: Date,
     endDate: Date,
     teacherId: number,
+    schoolYearId: number,
   ): Promise<ExamSchedule[]> {
     return this.repo.find({
       where: {
         startDate: LessThan(endDate),
         endDate: MoreThan(startDate),
-        exam: { teacher: { id: teacherId } },
+        exam: {
+          teacher: { id: teacherId },
+          schoolYear: { id: schoolYearId },
+        },
       },
       relations: {
         students: true,
@@ -291,11 +304,20 @@ export class TeacherExamScheduleService {
     });
   }
 
-  getByDateRangeAndTeacherId(fromDate: Date, toDate: Date, teacherId: number) {
+  getByDateRangeAndTeacherId(
+    fromDate: Date,
+    toDate: Date,
+    teacherId: number,
+    schoolYearId: number,
+  ) {
     return this.repo.find({
       where: {
         startDate: Between(fromDate, toDate),
-        exam: { status: RecordStatus.Published, teacher: { id: teacherId } },
+        exam: {
+          status: RecordStatus.Published,
+          teacher: { id: teacherId },
+          schoolYear: { id: schoolYearId },
+        },
       },
       relations: { exam: true },
       order: { startDate: 'ASC' },
@@ -309,6 +331,17 @@ export class TeacherExamScheduleService {
     const { examId, startDate, endDate, studentIds, ...moreExamScheduleDto } =
       examScheduleDto;
 
+    const exam = await this.examRepo.findOne({
+      where: { id: examId },
+      relations: { schoolYear: true },
+    });
+
+    if (!exam) {
+      throw new BadRequestException('Exam not found');
+    }
+
+    const { schoolYear } = exam;
+
     let students = studentIds?.length ? studentIds.map((id) => ({ id })) : [];
     if (!students.length) {
       const allStudents = await this.studentUserService.getStudentsByTeacherId(
@@ -316,6 +349,8 @@ export class TeacherExamScheduleService {
         null,
         null,
         UserApprovalStatus.Approved,
+        schoolYear.id,
+        SchoolYearEnrollmentApprovalStatus.Approved,
       );
       students = allStudents.map(({ id }) => ({ id }));
     }
@@ -324,6 +359,7 @@ export class TeacherExamScheduleService {
       startDate,
       endDate,
       teacherId,
+      schoolYear.id,
       studentIds,
       examId,
     );
@@ -356,6 +392,10 @@ export class TeacherExamScheduleService {
       throw new NotFoundException('Exam schedule not found');
     }
 
+    const {
+      exam: { schoolYear },
+    } = examSchedule;
+
     let students = studentIds?.length ? studentIds.map((id) => ({ id })) : [];
     if (!students.length) {
       const allStudents = await this.studentUserService.getStudentsByTeacherId(
@@ -363,6 +403,8 @@ export class TeacherExamScheduleService {
         null,
         null,
         UserApprovalStatus.Approved,
+        schoolYear.id,
+        SchoolYearEnrollmentApprovalStatus.Approved,
       );
       students = allStudents.map(({ id }) => ({ id }));
     }
@@ -371,6 +413,7 @@ export class TeacherExamScheduleService {
       startDate,
       endDate,
       teacherId,
+      schoolYear.id,
       studentIds,
       examSchedule.exam.id,
     );

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import dayjs from '#/common/configs/dayjs.config';
@@ -35,9 +36,16 @@ export class AnnouncementController {
   @Get(`${TEACHER_URL}/list`)
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherAnnouncementsResponseDto)
-  getAnnouncementsByTeacherId(@CurrentUser() user: User) {
+  getAnnouncementsByTeacherId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.announcementService.getAnnouncementsByTeacherId(teacherId);
+
+    return this.announcementService.getAnnouncementsByTeacherId(
+      teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
   @Get(`/:id${TEACHER_URL}`)
@@ -104,9 +112,16 @@ export class AnnouncementController {
   @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentAnnouncementsResponseDto)
   @UseFilterFieldsInterceptor()
-  getAnnouncementsByStudentId(@CurrentUser() user: User) {
+  getAnnouncementsByStudentId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.announcementService.getAnnouncementsByStudentId(studentId);
+
+    return this.announcementService.getAnnouncementsByStudentId(
+      studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
   @Get(`/:id${STUDENT_URL}`)

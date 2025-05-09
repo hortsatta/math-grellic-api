@@ -54,11 +54,20 @@ export class LessonScheduleService {
     });
   }
 
-  getByDateRangeAndTeacherId(fromDate: Date, toDate: Date, teacherId: number) {
+  getByDateRangeAndTeacherId(
+    fromDate: Date,
+    toDate: Date,
+    teacherId: number,
+    schoolYearId: number,
+  ) {
     return this.repo.find({
       where: {
         startDate: Between(fromDate, toDate),
-        lesson: { status: RecordStatus.Published, teacher: { id: teacherId } },
+        lesson: {
+          status: RecordStatus.Published,
+          teacher: { id: teacherId },
+          schoolYear: { id: schoolYearId },
+        },
       },
       relations: { lesson: true },
       order: { startDate: 'ASC' },
@@ -70,12 +79,17 @@ export class LessonScheduleService {
     toDate: Date,
     teacherId: number,
     studentId: number,
+    schoolYearId: number,
   ) {
     const currentDateTime = dayjs();
 
     const baseWhere: FindOptionsWhere<LessonSchedule> = {
       startDate: Between(fromDate, toDate),
-      lesson: { status: RecordStatus.Published, teacher: { id: teacherId } },
+      lesson: {
+        status: RecordStatus.Published,
+        teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
+      },
     };
 
     const schedules = await this.repo.find({
@@ -137,7 +151,7 @@ export class LessonScheduleService {
       relations: { schedules: true },
     });
 
-    const { error } = await this.validateScheduleCreation(studentIds, lesson);
+    const { error } = this.validateScheduleCreation(studentIds, lesson);
 
     if (error) {
       throw error;

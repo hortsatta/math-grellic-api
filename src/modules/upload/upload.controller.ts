@@ -24,10 +24,16 @@ export class UploadController {
     @UploadedFiles(new FileValidationPipe(imageValidationOptions))
     files: Express.Multer.File[],
     @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
     @Query('strict') strict?: number,
   ): Promise<string[]> {
     const { publicId } = user;
-    return this.uploadService.uploadExamImages(files, publicId, strict == 1);
+    return this.uploadService.uploadExamImages(
+      files,
+      publicId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      strict == 1,
+    );
   }
 
   @Post('/activities/images')
@@ -37,8 +43,14 @@ export class UploadController {
     @UploadedFiles(new FileValidationPipe(imageValidationOptions))
     files: Express.Multer.File[],
     @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+    // @Query('strict') strict?: number,
   ): Promise<string[]> {
     const { publicId } = user;
-    return this.uploadService.uploadActivityImages(files, publicId);
+    return this.uploadService.uploadActivityImages(
+      files,
+      publicId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 }

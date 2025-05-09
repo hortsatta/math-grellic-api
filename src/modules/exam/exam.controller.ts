@@ -53,6 +53,7 @@ export class ExamController {
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
+    @Query('sy') schoolYearId?: number,
   ): Promise<[Exam[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -63,6 +64,7 @@ export class ExamController {
       !!skip ? skip : undefined,
       q,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -73,11 +75,14 @@ export class ExamController {
   getExamSnippetsByTeacherId(
     @CurrentUser() user: User,
     @Query('take') take?: number,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Exam[]> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherExamService.getExamSnippetsByTeacherId(
       teacherId,
       take || 3,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -86,15 +91,40 @@ export class ExamController {
   @UseSerializeInterceptor(ExamResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndTeacherId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
     @Query('status') status?: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.teacherExamService.getOneBySlugAndTeacherId(
       slug,
       teacherId,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
+  }
+
+  @Post('/validate')
+  @UseJwtAuthGuard(UserRole.Teacher)
+  async validateExamUpsert(
+    @Body() body: ExamCreateDto | ExamUpdateDto,
+    @CurrentUser() user: User,
+    @Query('id') id?: number,
+  ) {
+    const { id: teacherId } = user.teacherUserAccount;
+    const { startDate, endDate, ...moreBody } = body;
+
+    const transformedBody = {
+      ...moreBody,
+      ...(startDate && { startDate: dayjs(startDate).toDate() }),
+      ...(endDate && { endDate: dayjs(endDate).toDate() }),
+    };
+
+    return this.teacherExamService.validateUpsert(
+      transformedBody,
+      teacherId,
+      id,
     );
   }
 
@@ -117,11 +147,11 @@ export class ExamController {
     return this.teacherExamService.create(transformedBody, teacherId);
   }
 
-  @Patch('/:slug')
+  @Patch('/:id')
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ExamResponseDto)
   update(
-    @Param('slug') slug: string,
+    @Param('id') id: number,
     @Body() body: ExamUpdateDto,
     @CurrentUser() user: User,
     @Query('strict') strict?: number,
@@ -132,7 +162,7 @@ export class ExamController {
     } = user;
 
     return this.teacherExamService.update(
-      slug,
+      id,
       body,
       teacherId,
       strict == 1,
@@ -140,40 +170,15 @@ export class ExamController {
     );
   }
 
-  @Post('/validate')
+  @Delete('/:id')
   @UseJwtAuthGuard(UserRole.Teacher)
-  async validateExamUpsert(
-    @Body() body: ExamCreateDto | ExamUpdateDto,
-    @CurrentUser() user: User,
-    @Query('slug') slug?: string,
-  ) {
-    const { id: teacherId } = user.teacherUserAccount;
-    const { startDate, endDate, ...moreBody } = body;
-
-    const transformedBody = {
-      ...moreBody,
-      ...(startDate && { startDate: dayjs(startDate).toDate() }),
-      ...(endDate && { endDate: dayjs(endDate).toDate() }),
-    };
-
-    return this.teacherExamService.validateUpsert(
-      transformedBody,
-      teacherId,
-      slug,
-    );
-  }
-
-  @Delete('/:slug')
-  @UseJwtAuthGuard(UserRole.Teacher)
-  delete(
-    @Param('slug') slug: string,
-    @CurrentUser() user: User,
-  ): Promise<boolean> {
+  delete(@Param('id') id: number, @CurrentUser() user: User): Promise<boolean> {
     const {
       publicId,
       teacherUserAccount: { id: teacherId },
     } = user;
-    return this.teacherExamService.deleteBySlug(slug, teacherId, publicId);
+
+    return this.teacherExamService.delete(id, teacherId, publicId);
   }
 
   // STUDENTS
@@ -184,9 +189,14 @@ export class ExamController {
   getStudentExamsByStudentId(
     @CurrentUser() user: User,
     @Query('q') q?: string,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentExamService.getStudentExamsByStudentId(studentId, q);
+    return this.studentExamService.getStudentExamsByStudentId(
+      studentId,
+      q,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
   @Get(`/:slug${STUDENT_URL}`)
@@ -194,25 +204,31 @@ export class ExamController {
   @UseSerializeInterceptor(ExamResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndStudentId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentExamService.getOneBySlugAndStudentId(slug, studentId);
+    return this.studentExamService.getOneBySlugAndStudentId(
+      slug,
+      studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
-  @Post(`/:slug${STUDENT_URL}/completion`)
+  @Post(`/:id${STUDENT_URL}/completion`)
   @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ExamCompletionResponseDto)
-  setExamCompletionBySlugAndStudentId(
+  setExamCompletionByIdAndStudentId(
     @Body() body: ExamCompletionCreateDto,
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('id') id: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentExamService.createExamCompletionBySlugAndStudentId(
+
+    return this.studentExamService.createExamCompletionByIdAndStudentId(
       body,
-      slug,
+      id,
       studentId,
     );
   }

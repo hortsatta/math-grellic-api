@@ -18,6 +18,7 @@ import {
 
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
+import { SchoolYear } from '#/modules/school-year/entities/school-year.entity';
 import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { LessonCompletion } from '../entities/lesson-completion.entity';
 import { Lesson } from '../entities/lesson.entity';
@@ -104,24 +105,28 @@ export class TeacherLessonService {
     lessonIds?: number[],
     q?: string,
     status?: string,
-    schoolYearId?: number,
+    schoolYear?: number | Partial<SchoolYear>,
     withSchedules?: boolean,
     withCompletions?: boolean,
   ): Promise<Lesson[]> {
-    // Get target SY or if undefined, then get current SY
-    const schoolYear =
-      schoolYearId != null
-        ? await this.schoolYearService.getOneById(schoolYearId)
-        : await this.schoolYearService.getCurrentSchoolYear();
+    let targetSchoolYear = schoolYear;
 
-    if (!schoolYear) {
+    if (typeof schoolYear === 'number') {
+      // Get target SY or if undefined, then get current SY
+      targetSchoolYear =
+        schoolYear != null
+          ? await this.schoolYearService.getOneById(schoolYear)
+          : await this.schoolYearService.getCurrentSchoolYear();
+    }
+
+    if (!targetSchoolYear) {
       throw new BadRequestException('Invalid school year');
     }
 
     const generateWhere = () => {
       let baseWhere: FindOptionsWhere<Lesson> = {
         teacher: { id: teacherId },
-        schoolYear: { id: schoolYear.id },
+        schoolYear: { id: (targetSchoolYear as SchoolYear).id },
       };
 
       if (lessonIds?.length) {
@@ -288,7 +293,7 @@ export class TeacherLessonService {
 
     if (startDate) {
       const { error: scheduleError } =
-        await this.lessonScheduleService.validateScheduleCreation(studentIds);
+        this.lessonScheduleService.validateScheduleCreation(studentIds);
 
       if (scheduleError) {
         throw scheduleError;
@@ -358,7 +363,7 @@ export class TeacherLessonService {
 
     if (startDate) {
       const { error: scheduleError } =
-        await this.lessonScheduleService.validateScheduleCreation(studentIds);
+        this.lessonScheduleService.validateScheduleCreation(studentIds);
 
       if (scheduleError) {
         throw scheduleError;

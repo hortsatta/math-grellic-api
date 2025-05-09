@@ -67,20 +67,29 @@ export class PerformanceController {
   @Get(`${TEACHER_URL}/exams`)
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherExamPerformanceResponseDto)
-  getExamPerformanceByTeacherId(@CurrentUser() user: User) {
+  getExamPerformanceByTeacherId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getExamPerformanceByTeacherId(
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
   @Get(`${TEACHER_URL}/activities`)
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TeacherActivityPerformanceResponseDto)
-  getActivityPerformanceByTeacherId(@CurrentUser() user: User) {
+  getActivityPerformanceByTeacherId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: teacherId } = user.teacherUserAccount;
     return this.teacherPerformanceService.getActivityPerformanceByTeacherId(
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -95,6 +104,7 @@ export class PerformanceController {
     @Query('take') take?: number,
     @Query('skip') skip?: number,
     @Query('perf') performance?: StudentPerformanceType,
+    @Query('sy') schoolYearId?: number,
   ): Promise<[Partial<StudentPerformance>[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -105,6 +115,7 @@ export class PerformanceController {
       !!skip ? skip : undefined,
       q,
       performance,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -113,13 +124,16 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
   getStudentPerformanceByPublicIdAndTeacherId(
-    @Param('publicId') publicId: string,
     @CurrentUser() user: User,
+    @Param('publicId') publicId: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<StudentPerformance> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getStudentPerformanceByPublicIdAndTeacherId(
       publicId,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -128,13 +142,16 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
   getStudentLessonByPublicIdAndTeacherId(
-    @Param('publicId') publicId: string,
     @CurrentUser() user: User,
+    @Param('publicId') publicId: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Lesson[]> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getStudentLessonsByPublicIdAndTeacherId(
       publicId,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -143,13 +160,16 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamsByPublicIdAndTeacherId(
-    @Param('publicId') publicId: string,
     @CurrentUser() user: User,
+    @Param('publicId') publicId: string,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getStudentExamsByPublicIdAndTeacherId(
       publicId,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -158,17 +178,20 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamWithCompletionsByPublicIdAndSlug(
+    @CurrentUser() user: User,
     @Param('publicId') publicId: string,
     @Param('slug') slug: string,
     @Query('scheduleId') scheduleId: number,
-    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Exam> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getStudentExamWithCompletionsByPublicIdAndSlug(
       publicId,
       slug,
       teacherId,
       scheduleId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -177,13 +200,16 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivitiesByPublicIdAndTeacherId(
-    @Param('publicId') publicId: string,
     @CurrentUser() user: User,
+    @Param('publicId') publicId: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Activity[]> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getStudentActivitiesByPublicIdAndTeacherId(
       publicId,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -192,15 +218,18 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivityWithCompletionsByPublicIdAndSlug(
+    @CurrentUser() user: User,
     @Param('publicId') publicId: string,
     @Param('slug') slug: string,
-    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Activity> {
     const { id: teacherId } = user.teacherUserAccount;
+
     return this.teacherPerformanceService.getStudentActivityWithCompletionsByPublicIdAndSlug(
       publicId,
       slug,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -212,10 +241,13 @@ export class PerformanceController {
   @UseSerializeInterceptor(StudentPerformanceResponseDto)
   getStudentPerformanceByStudentId(
     @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Partial<StudentPerformance>> {
     const { id: studentId } = user.studentUserAccount;
+
     return this.studentPerformanceService.getStudentPerformanceByStudentId(
       studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -223,10 +255,15 @@ export class PerformanceController {
   @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(LessonResponseDto)
-  getStudentLessonsByStudentId(@CurrentUser() user: User): Promise<Lesson[]> {
+  getStudentLessonsByStudentId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<Lesson[]> {
     const { id: studentId } = user.studentUserAccount;
+
     return this.studentPerformanceService.getStudentLessonsByStudentId(
       studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -234,9 +271,15 @@ export class PerformanceController {
   @UseJwtAuthGuard(UserRole.Student)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
-  getStudentExamsByStudentId(@CurrentUser() user: User) {
+  getStudentExamsByStudentId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentPerformanceService.getStudentExamsByStudentId(studentId);
+    return this.studentPerformanceService.getStudentExamsByStudentId(
+      studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
   @Get(`${STUDENT_URL}/exams/:slug`)
@@ -244,13 +287,16 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ExamResponseDto)
   getStudentExamWithCompletionsBySlugAndStudentId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Exam> {
     const { id: studentId } = user.studentUserAccount;
+
     return this.studentPerformanceService.getStudentExamWithCompletionsBySlugAndStudentId(
       slug,
       studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -260,10 +306,13 @@ export class PerformanceController {
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivitiesByStudentId(
     @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Activity[]> {
     const { id: studentId } = user.studentUserAccount;
+
     return this.studentPerformanceService.getStudentActivitiesByStudentId(
       studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -272,13 +321,15 @@ export class PerformanceController {
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(ActivityResponseDto)
   getStudentActivityWithCompletionsBySlugAndStudentId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Activity> {
     const { id: studentId } = user.studentUserAccount;
     return this.studentPerformanceService.getStudentActivityWithCompletionsBySlugAndStudentId(
       slug,
       studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 }

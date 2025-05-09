@@ -10,8 +10,11 @@ import { Brackets, In, Repository } from 'typeorm';
 import dayjs from '#/common/configs/dayjs.config';
 import { shuffleArray } from '#/common/helpers/array.helper';
 import { ExamScheduleStatus, RecordStatus } from '#/common/enums/content.enum';
+import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
+import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
+import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { Exam } from '../entities/exam.entity';
 import { ExamQuestion } from '../entities/exam-question.entity';
 import { ExamCompletion } from '../entities/exam-completion.entity';
@@ -30,18 +33,36 @@ export class StudentExamService {
     private readonly teacherUserService: TeacherUserService,
     @Inject(StudentUserService)
     private readonly studentUserService: StudentUserService,
+    @Inject(SchoolYearService)
+    private readonly schoolYearService: SchoolYearService,
   ) {}
 
-  async getStudentExamsByStudentId(studentId: number, q?: string) {
+  async getStudentExamsByStudentId(
+    studentId: number,
+    q?: string,
+    schoolYearId?: number,
+  ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const currentDateTime = dayjs().toDate();
 
     const upcomingExamQuery = this.examRepo
       .createQueryBuilder('exam')
       .leftJoinAndSelect('exam.schedules', 'schedules')
       .leftJoin('schedules.students', 'students')
+      .leftJoin('exam.schoolYear', 'schoolYear')
       .where('exam.status = :status', { status: RecordStatus.Published })
       .andWhere('students.id = :studentId', { studentId })
-      .andWhere('schedules.startDate > :currentDateTime', { currentDateTime });
+      .andWhere('schedules.startDate > :currentDateTime', { currentDateTime })
+      .andWhere('schoolYear.id = :schoolYearId', { schoolYearId });
 
     const ongoingExamsQuery = this.examRepo
       .createQueryBuilder('exam')
@@ -54,6 +75,7 @@ export class StudentExamService {
         { studentId },
       )
       .leftJoinAndSelect('completions.schedule', 'completionSchedule')
+      .leftJoin('exam.schoolYear', 'schoolYear')
       .where('exam.status = :status', { status: RecordStatus.Published })
       .andWhere('students.id = :studentId', { studentId })
       .andWhere(
@@ -65,7 +87,8 @@ export class StudentExamService {
             currentDateTime,
           });
         }),
-      );
+      )
+      .andWhere('schoolYear.id = :schoolYearId', { schoolYearId });
 
     // Get upcoming and ongoing exams first to exlcude ids in other exams query
     const upcomingExam = await upcomingExamQuery
@@ -127,9 +150,11 @@ export class StudentExamService {
         { studentId },
       )
       .leftJoinAndSelect('completions.schedule', 'completionSchedule')
+      .leftJoin('exam.schoolYear', 'schoolYear')
       .where('exam.status = :status', { status: RecordStatus.Published })
       .andWhere('students.id = :studentId', { studentId })
-      .andWhere('schedules.endDate < :currentDateTime', { currentDateTime });
+      .andWhere('schedules.endDate < :currentDateTime', { currentDateTime })
+      .andWhere('schoolYear.id = :schoolYearId', { schoolYearId });
 
     if (excludeIds.length) {
       otherExamsQuery.andWhere('exam.id NOT IN (:...excludeIds)', {
@@ -233,14 +258,16 @@ export class StudentExamService {
     }
   }
 
-  async getAllByStudentId(studentId: number): Promise<Exam[]> {
+  async getAllByStudentId(
+    studentId: number,
+    schoolYearId: number,
+  ): Promise<Exam[]> {
     const exams = await this.examRepo.find({
-      where: [
-        {
-          status: RecordStatus.Published,
-          schedules: { students: { id: studentId } },
-        },
-      ],
+      where: {
+        status: RecordStatus.Published,
+        schedules: { students: { id: studentId } },
+        schoolYear: { id: schoolYearId },
+      },
       relations: {
         schedules: { students: true },
         completions: { student: true },
@@ -267,12 +294,25 @@ export class StudentExamService {
   async getOneBySlugAndStudentId(
     slug: string,
     studentId: number,
+    schoolYearId?: number,
     noSchedules?: boolean,
   ) {
+    // Get target SY or if undefined, then get current SY
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      throw new BadRequestException('Invalid school year');
+    }
+
     const currentDateTime = dayjs();
 
-    const teacher =
-      await this.teacherUserService.getTeacherByStudentId(studentId);
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
+      studentId,
+      schoolYear.id,
+    );
 
     const exam: Partial<ExamResponse> = await this.examRepo.findOne({
       where: [
@@ -280,6 +320,7 @@ export class StudentExamService {
           slug,
           status: RecordStatus.Published,
           schedules: { students: { id: studentId } },
+          schoolYear: { id: schoolYear.id },
         },
       ],
       relations: {
@@ -394,8 +435,11 @@ export class StudentExamService {
       };
     }
 
-    const currentAvailableExams =
-      await this.getStudentExamsByStudentId(studentId);
+    const currentAvailableExams = await this.getStudentExamsByStudentId(
+      studentId,
+      undefined,
+      schoolYear.id,
+    );
 
     const upcomingDate = filteredSchedules.find((schedule) =>
       dayjs(schedule.startDate).isAfter(currentDateTime),
@@ -419,6 +463,7 @@ export class StudentExamService {
     const studentRankings = await this.generateExamRankings(
       exam as Exam,
       teacher.id,
+      schoolYear.id,
     );
 
     const { rank } = studentRankings.find(
@@ -435,12 +480,15 @@ export class StudentExamService {
   async getBasicOneWithCompletionsBySlugAndStudentId(
     slug: string,
     studentId: number,
+    schoolYearId: number,
     withAnswerKey?: boolean,
   ) {
     const currentDateTime = dayjs();
 
-    const teacher =
-      await this.teacherUserService.getTeacherByStudentId(studentId);
+    const teacher = await this.teacherUserService.getTeacherByStudentId(
+      studentId,
+      schoolYearId,
+    );
 
     const exam: Partial<ExamResponse> = await this.examRepo.findOne({
       where: [
@@ -448,6 +496,7 @@ export class StudentExamService {
           slug,
           status: RecordStatus.Published,
           schedules: { students: { id: studentId } },
+          schoolYear: { id: schoolYearId },
         },
       ],
       relations: {
@@ -543,9 +592,9 @@ export class StudentExamService {
     };
   }
 
-  async createExamCompletionBySlugAndStudentId(
+  async createExamCompletionByIdAndStudentId(
     body: ExamCompletionCreateDto,
-    slug: string,
+    id: number,
     studentId: number,
   ) {
     const { questionAnswers, scheduleId } = body;
@@ -553,7 +602,7 @@ export class StudentExamService {
 
     const exam = await this.examRepo.findOne({
       where: {
-        slug,
+        id,
         status: RecordStatus.Published,
         schedules: { id: scheduleId, students: { id: studentId } },
       },
@@ -637,23 +686,33 @@ export class StudentExamService {
   }
 
   async deleteExamCompletionBySlugAndStudentId(
-    slug: string,
+    id: number,
     studentId: number,
   ): Promise<boolean> {
     const result = await this.examCompletionRepo.delete({
-      exam: { slug },
+      exam: { id },
       student: { id: studentId },
     });
 
     return !!result.affected;
   }
 
-  async generateExamRankings(exam: Exam, teacherId: number) {
+  async generateExamRankings(
+    exam: Exam,
+    teacherId: number,
+    schoolYearId: number,
+  ) {
     let previousScore = null;
     let currentRank = null;
 
-    const students =
-      await this.studentUserService.getStudentsByTeacherId(teacherId);
+    const students = await this.studentUserService.getStudentsByTeacherId(
+      teacherId,
+      undefined,
+      undefined,
+      UserApprovalStatus.Approved,
+      schoolYearId,
+      SchoolYearEnrollmentApprovalStatus.Approved,
+    );
 
     const studentIds = students.map((student) => student.id);
 

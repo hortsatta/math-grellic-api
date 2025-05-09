@@ -57,6 +57,7 @@ export class SchoolYearEnrollmentService {
     const users = isStudent
       ? await this.studentUserService.getStudentsByIds(
           userAccountIds,
+          undefined,
           UserApprovalStatus.Approved,
         )
       : await this.teacherUserService.getAllTeachers(
@@ -248,7 +249,9 @@ export class SchoolYearEnrollmentService {
 
     const [student] = await this.studentUserService.getStudentsByIds(
       [studentId],
+      undefined,
       fromRegister ? UserApprovalStatus.Pending : UserApprovalStatus.Approved,
+      undefined,
       true,
     );
 
@@ -340,7 +343,9 @@ export class SchoolYearEnrollmentService {
 
     const students = await this.studentUserService.getStudentsByIds(
       userAccountIds,
+      undefined,
       UserApprovalStatus.Approved,
+      undefined,
       true,
     );
 

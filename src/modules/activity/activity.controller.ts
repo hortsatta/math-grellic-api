@@ -58,6 +58,7 @@ export class ActivityController {
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
+    @Query('sy') schoolYearId?: number,
   ): Promise<[Activity[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -68,6 +69,7 @@ export class ActivityController {
       !!skip ? skip : undefined,
       q,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -78,11 +80,13 @@ export class ActivityController {
   getActivitySnippetsByTeacherId(
     @CurrentUser() user: User,
     @Query('take') take?: number,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Activity[]> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.teacherActivityService.getActivitySnippetsByTeacherId(
       teacherId,
       take || 3,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -91,27 +95,29 @@ export class ActivityController {
   @UseSerializeInterceptor(ActivityResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndTeacherId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
     @Query('status') status?: string,
+    @Query('sy') schoolYearId?: number,
   ): Promise<Activity> {
     const { id: teacherId } = user.teacherUserAccount;
     return this.teacherActivityService.getOneBySlugAndTeacherId(
       slug,
       teacherId,
       status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
   @Post('/validate')
   @UseJwtAuthGuard(UserRole.Teacher)
   async validateActivityUpsert(
-    @Body() body: ActivityCreateDto | ActivityUpdateDto,
     @CurrentUser() user: User,
-    @Query('slug') slug?: string,
+    @Body() body: ActivityCreateDto | ActivityUpdateDto,
+    @Query('id') id?: number,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.teacherActivityService.validateUpsert(body, teacherId, slug);
+    return this.teacherActivityService.validateUpsert(body, teacherId, id);
   }
 
   @Post()
@@ -125,26 +131,27 @@ export class ActivityController {
     return this.teacherActivityService.create(body, teacherId);
   }
 
-  @Patch('/:slug')
+  @Patch('/:id')
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(ActivityResponseDto)
   update(
-    @Param('slug') slug: string,
+    @Param('id') id: number,
     @Body() body: ActivityUpdateDto,
     @CurrentUser() user: User,
   ): Promise<Activity> {
     const { id: teacherId } = user.teacherUserAccount;
-    return this.teacherActivityService.update(slug, body, teacherId);
+    return this.teacherActivityService.update(id, body, teacherId);
   }
 
-  @Delete('/:slug')
+  @Delete('/:id')
   @UseJwtAuthGuard(UserRole.Teacher)
-  delete(
-    @Param('slug') slug: string,
-    @CurrentUser() user: User,
-  ): Promise<boolean> {
-    const { id: teacherId } = user.teacherUserAccount;
-    return this.teacherActivityService.deleteBySlug(slug, teacherId);
+  delete(@Param('id') id: number, @CurrentUser() user: User): Promise<boolean> {
+    const {
+      publicId,
+      teacherUserAccount: { id: teacherId },
+    } = user;
+
+    return this.teacherActivityService.delete(id, teacherId, publicId);
   }
 
   // STUDENTS
@@ -155,11 +162,13 @@ export class ActivityController {
   getStudentActivitiesByStudentId(
     @CurrentUser() user: User,
     @Query('q') q?: string,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
     return this.studentActivityService.getStudentActivitiesByStudentId(
       studentId,
       q,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -168,44 +177,51 @@ export class ActivityController {
   @UseSerializeInterceptor(ActivityResponseDto)
   @UseFilterFieldsInterceptor()
   getOneBySlugAndStudentId(
-    @Param('slug') slug: string,
     @CurrentUser() user: User,
+    @Param('slug') slug: string,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.activityService.getOneBySlugAndStudentId(slug, studentId);
+    return this.activityService.getOneBySlugAndStudentId(
+      slug,
+      studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
   }
 
-  @Post(`/:slug${STUDENT_URL}/completion/:categoryId`)
+  @Post(`/:id${STUDENT_URL}/completion/:categoryId`)
   @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityCategoryCompletionResponseDto)
-  setActivityCategoryCompletionBySlugAndStudentId(
+  setActivityCategoryCompletionByIdAndStudentId(
     @Body() body: ActivityCategoryCompletionCreateDto,
-    @Param('slug') slug: string,
+    @Param('id') id: number,
     @Param('categoryId') categoryId: number,
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentActivityService.createActivityCategoryCompletionBySlugAndStudentId(
+
+    return this.studentActivityService.createActivityCategoryCompletionByIdAndStudentId(
       body,
-      slug,
+      id,
       categoryId,
       studentId,
     );
   }
 
-  @Patch(`/:slug${STUDENT_URL}/completion/:categoryId`)
+  @Patch(`/:id${STUDENT_URL}/completion/:categoryId`)
   @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(ActivityCategoryCompletionResponseDto)
-  updateActivityCategoryCompletionBySlugAndStudentId(
+  updateActivityCategoryCompletionByIdAndStudentId(
     @Body() body: ActivityCategoryCompletionUpdateDto,
-    @Param('slug') slug: string,
+    @Param('id') id: number,
     @Param('categoryId') categoryId: number,
     @CurrentUser() user: User,
   ) {
     const { id: studentId } = user.studentUserAccount;
-    return this.studentActivityService.updateActivityCategoryCompletionBySlugAndStudentId(
+
+    return this.studentActivityService.updateActivityCategoryCompletionByIdAndStudentId(
       body,
-      slug,
+      id,
       categoryId,
       studentId,
     );

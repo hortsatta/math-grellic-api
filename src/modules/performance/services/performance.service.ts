@@ -25,10 +25,16 @@ export class PerformanceService {
     private readonly teacherUserService: TeacherUserService,
   ) {}
 
-  async generateOverallLessonRankings(students: StudentUserAccount[]) {
+  async generateOverallLessonRankings(
+    students: StudentUserAccount[],
+    schoolYearId: number,
+  ) {
     const transformedStudents = await Promise.all(
       students.map(async (student) => {
-        const lessons = await this.lessonService.getAllByStudentId(student.id);
+        const lessons = await this.lessonService.getAllByStudentId(
+          student.id,
+          schoolYearId,
+        );
 
         // Remove duplicate lesson completion
         const filteredLessonCompletions = student.lessonCompletions
@@ -141,7 +147,10 @@ export class PerformanceService {
     };
   }
 
-  async generateOverallActivityRankings(students: StudentUserAccount[]) {
+  async generateOverallActivityRankings(
+    students: StudentUserAccount[],
+    schoolYearId: number,
+  ) {
     let previousScore = null;
     let currentRank = null;
     let rankedStudents = [];
@@ -153,10 +162,12 @@ export class PerformanceService {
 
     const teacher = await this.teacherUserService.getTeacherByStudentId(
       students[0].id,
+      schoolYearId,
     );
 
     const allActivities = await this.activityService.getAllByStudentId(
       students[0].id,
+      schoolYearId,
     );
 
     const activityRankings: {
@@ -265,10 +276,16 @@ export class PerformanceService {
     };
   }
 
-  async generateOverallLessonDetailedPerformance(student: StudentUserAccount) {
+  async generateOverallLessonDetailedPerformance(
+    student: StudentUserAccount,
+    schoolYearId: number,
+  ) {
     const currentDateTime = dayjs().toDate();
 
-    const allLessons = await this.lessonService.getAllByStudentId(student.id);
+    const allLessons = await this.lessonService.getAllByStudentId(
+      student.id,
+      schoolYearId,
+    );
 
     const availableLessons = allLessons.filter((lesson) =>
       lesson.schedules.some((schedule) =>
@@ -302,11 +319,13 @@ export class PerformanceService {
   async generateOverallExamDetailedPerformance(
     student: StudentUserAccount,
     otherStudents: StudentUserAccount[],
+    schoolYearId: number,
   ) {
     const currentDateTime = dayjs().toDate();
 
     const allExams = await this.studentExamService.getAllByStudentId(
       student.id,
+      schoolYearId,
     );
 
     const pastExams = allExams.filter((exam) =>
@@ -381,9 +400,11 @@ export class PerformanceService {
   async generateOverallActivityDetailedPerformance(
     student: StudentUserAccount,
     otherStudents: StudentUserAccount[],
+    schoolYearId: number,
   ) {
     const allActivities = await this.activityService.getAllByStudentId(
       student.id,
+      schoolYearId,
       true,
     );
 
@@ -392,7 +413,10 @@ export class PerformanceService {
     );
 
     const { rankedStudents, unrankedStudents } =
-      await this.generateOverallActivityRankings([student, ...otherStudents]);
+      await this.generateOverallActivityRankings(
+        [student, ...otherStudents],
+        schoolYearId,
+      );
 
     const { overallActivityScore, overallActivityRank } = [
       ...rankedStudents,

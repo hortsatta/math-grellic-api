@@ -247,12 +247,14 @@ export class StudentLessonService {
     if (body.isCompleted && !hasCompleted) {
       const data = { lesson: { id: lesson.id }, student: { id: studentId } };
       const lessonCompletion = this.lessonCompletionRepo.create(data);
+
       result = await this.lessonCompletionRepo.save(lessonCompletion);
     } else if (!body.isCompleted && hasCompleted) {
       await this.lessonCompletionRepo.delete({
         lesson: { id: lesson.id },
         student: { id: studentId },
       });
+
       result = null;
     }
 

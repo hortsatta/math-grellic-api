@@ -32,7 +32,7 @@ export class Exam extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   slug: string;
 
   @Column({ type: 'boolean', default: false })

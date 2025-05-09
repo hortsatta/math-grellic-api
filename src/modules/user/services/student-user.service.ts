@@ -128,6 +128,7 @@ export class StudentUserService {
     return [students, results[1]];
   }
 
+  // TODO CHECK ALL references for this function
   getStudentsByTeacherId(
     teacherId: number,
     studentIds?: number[],
@@ -238,12 +239,23 @@ export class StudentUserService {
 
   getStudentsByIds(
     ids: number[],
+    schoolYearId?: number,
     status?: UserApprovalStatus,
+    enrollmentStatus?: SchoolYearEnrollmentApprovalStatus,
     includeUser?: boolean,
   ): Promise<StudentUserAccount[]> {
-    const where: FindOptionsWhere<StudentUserAccount> = status
-      ? { id: In(ids), user: { approvalStatus: status } }
-      : { id: In(ids) };
+    const where: FindOptionsWhere<StudentUserAccount> = {
+      id: In(ids),
+      user: {
+        ...(status && { approvalStatus: status }),
+        ...((schoolYearId || enrollmentStatus) && {
+          enrollments: {
+            ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+            ...(enrollmentStatus && { approvalStatus: enrollmentStatus }),
+          },
+        }),
+      },
+    };
 
     return this.studentUserAccountRepo.find({
       where,

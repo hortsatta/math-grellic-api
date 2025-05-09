@@ -43,9 +43,10 @@ export class ScheduleController {
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(TimelineSchedulesResponseDto)
   getSchedulesByDateRangeAndTeacherId(
+    @CurrentUser() user: User,
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: teacherId } = user.teacherUserAccount;
     const fromDate = dayjs(from).toDate();
@@ -55,6 +56,7 @@ export class ScheduleController {
       fromDate,
       toDate,
       teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -67,6 +69,7 @@ export class ScheduleController {
     @Query('sort') sort?: string,
     @Query('take') take?: number,
     @Query('skip') skip?: number,
+    @Query('sy') schoolYearId?: number,
   ): Promise<[MeetingSchedule[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
@@ -76,6 +79,7 @@ export class ScheduleController {
       !!take ? take : undefined,
       !!skip ? skip : undefined,
       q,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
@@ -142,9 +146,10 @@ export class ScheduleController {
   @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(TimelineSchedulesResponseDto)
   getSchedulesByDateRangeAndStudentId(
+    @CurrentUser() user: User,
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
     const fromDate = dayjs(from).toDate();
@@ -154,16 +159,22 @@ export class ScheduleController {
       fromDate,
       toDate,
       studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 
   @Get(`/meetings${STUDENT_URL}`)
   @UseJwtAuthGuard(UserRole.Student)
   @UseSerializeInterceptor(StudentMeetingScheduleListResponseDto)
-  getStudentMeetingSchedulesByStudentId(@CurrentUser() user: User) {
+  getStudentMeetingSchedulesByStudentId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId?: number,
+  ) {
     const { id: studentId } = user.studentUserAccount;
+
     return this.studentScheduleService.getStudentMeetingSchedulesByStudentId(
       studentId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }
 

@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 
@@ -20,11 +25,22 @@ export class ScheduleService {
     userAccountId: number,
     isStudent?: boolean,
   ): Promise<MeetingSchedule> {
+    const meeting = await this.repo.findOne({
+      where: { id },
+      relations: { schoolYear: true },
+    });
+
+    if (!meeting) {
+      throw new BadRequestException('Invalid meeting');
+    }
+
     if (isStudent) {
       const currentDateTime = dayjs().toDate();
 
-      const teacher =
-        await this.teacherUserService.getTeacherByStudentId(userAccountId);
+      const teacher = await this.teacherUserService.getTeacherByStudentId(
+        userAccountId,
+        meeting.schoolYear.id,
+      );
 
       if (!teacher) {
         throw new NotFoundException('Student not found');

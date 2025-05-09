@@ -18,10 +18,14 @@ export class LessonService {
     @InjectRepository(Lesson) private readonly lessonRepo: Repository<Lesson>,
   ) {}
 
-  async getAllByStudentId(studentId: number): Promise<Lesson[]> {
+  async getAllByStudentId(
+    studentId: number,
+    schoolYearId: number,
+  ): Promise<Lesson[]> {
     const allLessons = await this.lessonRepo.find({
       where: {
         status: RecordStatus.Published,
+        schoolYear: { id: schoolYearId },
       },
       relations: {
         schedules: { students: true },
@@ -43,6 +47,7 @@ export class LessonService {
   async getLessonsWithCompletionsByStudentIdAndTeacherId(
     studentId: number,
     teacherId: number,
+    schoolYearId: number,
     isStudent?: boolean,
   ): Promise<Lesson[]> {
     const currentDateTime = dayjs().toDate();
@@ -51,6 +56,7 @@ export class LessonService {
       const baseWhere: FindOptionsWhere<Lesson> = {
         status: RecordStatus.Published,
         teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
       };
 
       if (isStudent) {

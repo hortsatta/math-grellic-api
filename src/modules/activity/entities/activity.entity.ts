@@ -2,6 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { RecordStatus } from '#/common/enums/content.enum';
+import { SchoolYear } from '#/modules/school-year/entities/school-year.entity';
 import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
 import { ActivityCategory } from './activity-category.entity';
 
@@ -20,7 +21,7 @@ export class Activity extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   slug: string;
 
   @Column({
@@ -49,4 +50,8 @@ export class Activity extends BaseEntity {
   )
   @JoinColumn()
   teacher: TeacherUserAccount;
+
+  @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.activity)
+  @JoinColumn()
+  schoolYear: SchoolYear;
 }

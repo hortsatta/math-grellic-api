@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UserModule } from '../user/user.module';
+import { SchoolYearModule } from '../school-year/school-year.module';
 import { ExamModule } from '../exam/exam.module';
 import { LessonModule } from '../lesson/lesson.module';
 import { ScheduleController } from './schedule.controller';
@@ -14,6 +15,7 @@ import { StudentScheduleService } from './schedules/student-schedule.service';
   imports: [
     TypeOrmModule.forFeature([MeetingSchedule]),
     UserModule,
+    SchoolYearModule,
     LessonModule,
     forwardRef(() => ExamModule),
   ],
