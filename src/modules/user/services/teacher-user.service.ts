@@ -62,24 +62,24 @@ export class TeacherUserService {
     q?: string,
     status?: UserApprovalStatus,
     own?: boolean,
+    schoolYearId?: number,
+    enrollmentStatus?: string,
   ): Promise<[TeacherUserAccount[], number]> {
     const generateWhere = () => {
       let baseWhere:
         | FindOptionsWhere<TeacherUserAccount>
-        | FindOptionsWhere<TeacherUserAccount>[] = {};
-
-      if (own) {
-        baseWhere = {
-          adminUser: { id: adminId },
-        };
-      }
-
-      if (status?.trim()) {
-        baseWhere = {
-          ...baseWhere,
-          user: { approvalStatus: In(status.split(',')) },
-        };
-      }
+        | FindOptionsWhere<TeacherUserAccount>[] = {
+        ...(own && { adminUser: { id: adminId } }),
+        user: {
+          enrollments: {
+            ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+            ...(enrollmentStatus && {
+              approvalStatus: In(enrollmentStatus.split(',')),
+            }),
+          },
+          ...(status?.trim() && { approvalStatus: In(status.split(',')) }),
+        },
+      };
 
       if (q?.trim()) {
         baseWhere = [
@@ -217,15 +217,21 @@ export class TeacherUserService {
     teacherIds?: number[],
     q?: string,
     status?: string | UserApprovalStatus.Approved,
+    schoolYearId?: number,
+    enrollmentStatus?: string,
   ): Promise<TeacherUserAccount[]> {
     const generateWhere = () => {
-      const baseWhere: FindOptionsWhere<TeacherUserAccount> = status
-        ? {
-            user: { approvalStatus: In(status.split(',')) },
-          }
-        : {
-            user: { approvalStatus: UserApprovalStatus.Approved },
-          };
+      const baseWhere: FindOptionsWhere<TeacherUserAccount> = {
+        user: {
+          enrollments: {
+            ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+            ...(enrollmentStatus && {
+              approvalStatus: In(enrollmentStatus.split(',')),
+            }),
+          },
+          ...(status?.trim() && { approvalStatus: In(status.split(',')) }),
+        },
+      };
 
       if (teacherIds?.length) {
         return { ...baseWhere, id: In(teacherIds) };
@@ -243,7 +249,7 @@ export class TeacherUserService {
     return this.teacherUserAccountRepo.find({
       where: generateWhere(),
       loadEagerRelations: false,
-      relations: { user: true },
+      relations: { user: { enrollments: true } },
       select: {
         user: {
           id: true,
@@ -255,9 +261,23 @@ export class TeacherUserService {
     });
   }
 
-  getTeacherCountByAdmin(status?: UserApprovalStatus): Promise<number> {
+  async getTeacherCountByAdmin(
+    status?: UserApprovalStatus,
+    schoolYearId?: number,
+    enrollmentStatus?: SchoolYearEnrollmentApprovalStatus,
+  ): Promise<number> {
+    const targetSchoolYearId =
+      schoolYearId ?? (await this.schoolYearService.getCurrentSchoolYear())?.id;
+
     const where: FindOptionsWhere<TeacherUserAccount> = {
-      user: { approvalStatus: status || UserApprovalStatus.Approved },
+      user: {
+        approvalStatus: status || UserApprovalStatus.Approved,
+        enrollments: {
+          schoolYear: { id: targetSchoolYearId },
+          approvalStatus:
+            enrollmentStatus ?? SchoolYearEnrollmentApprovalStatus.Approved,
+        },
+      },
     };
 
     return this.teacherUserAccountRepo.count({ where });

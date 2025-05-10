@@ -334,6 +334,8 @@ export class UserController {
     @Query('take') take?: number,
     @Query('skip') skip?: number,
     @Query('own') own?: number,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus') enrollmentStatus?: string,
   ): Promise<[TeacherUserAccount[], number]> {
     const { id: adminId } = user.adminUserAccount;
 
@@ -345,6 +347,8 @@ export class UserController {
       q,
       status,
       own === 1,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      enrollmentStatus,
     );
   }
 
@@ -356,15 +360,32 @@ export class UserController {
     @Query('ids') ids: string,
     @Query('q') q: string,
     @Query('status') status?: string | UserApprovalStatus,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus')
+    enrollmentStatus?: string,
   ) {
     const transformedIds = ids?.split(',').map((id) => +id);
-    return this.teacherUserService.getAllTeachers(transformedIds, q, status);
+    return this.teacherUserService.getAllTeachers(
+      transformedIds,
+      q,
+      status,
+      schoolYearId,
+      enrollmentStatus,
+    );
   }
 
   @Get(`${ADMIN_URL}${TEACHER_URL}/count`)
   @UseJwtAuthGuard(UserRole.Admin)
-  getTeacherCountByAdmin(@Query('status') status?: UserApprovalStatus) {
-    return this.teacherUserService.getTeacherCountByAdmin(status);
+  getTeacherCountByAdmin(
+    @Query('status') status?: UserApprovalStatus,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus') enrollmentStatus?: SchoolYearEnrollmentApprovalStatus,
+  ) {
+    return this.teacherUserService.getTeacherCountByAdmin(
+      status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      enrollmentStatus,
+    );
   }
 
   @Patch(`${ADMIN_URL}${TEACHER_URL}/approve/:teacherId`)
