@@ -97,12 +97,53 @@ export class UserService {
       throw new BadRequestException('Email already confirmed');
     }
 
-    const updatedUser = await this.userRepo.save({
-      ...user,
-      approvalStatus: UserApprovalStatus.Approved,
-    });
+    try {
+      let approvalStatusResult = null;
+      const userApprovalDto = {
+        approvalStatus: UserApprovalStatus.Approved,
+      } as UserApprovalDto;
 
-    return { publicId: updatedUser.publicId };
+      switch (user.role) {
+        case UserRole.Admin: {
+          approvalStatusResult =
+            await this.adminUserService.setAdminApprovalStatus(
+              user.adminUserAccount?.id,
+              userApprovalDto,
+              user.id,
+            );
+          break;
+        }
+        case UserRole.Teacher: {
+          approvalStatusResult =
+            await this.teacherUserService.setTeacherApprovalStatus(
+              user.teacherUserAccount?.id,
+              userApprovalDto,
+              user.id,
+            );
+          break;
+        }
+        case UserRole.Student: {
+          approvalStatusResult =
+            await this.studentUserService.setStudentApprovalStatus(
+              user.studentUserAccount?.id,
+              userApprovalDto,
+              user.id,
+            );
+          break;
+        }
+      }
+
+      if (
+        approvalStatusResult?.approvalStatus !== UserApprovalStatus.Approved
+      ) {
+        throw new BadRequestException('Cannot approve user');
+      }
+
+      const updatedUser = await this.findOneByEmail(payload.email);
+      return { publicId: updatedUser.publicId };
+    } catch (error) {
+      throw new BadRequestException('Cannot proceed. An error occured');
+    }
   }
 
   async confirmUserRegistrationLastStep(

@@ -123,9 +123,7 @@ export class SchoolYearService {
     const endMonth = (dayjs(endDate).month() + 1).toString().padStart(2, '0');
 
     const transformedTitle =
-      startYear === endYear
-        ? `SY ${startYear}`
-        : `SY ${startYear} — ${endYear}`;
+      startYear === endYear ? `SY ${startYear}` : `SY ${startYear}—${endYear}`;
 
     const slug =
       startYear === endYear
