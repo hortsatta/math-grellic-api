@@ -116,17 +116,17 @@ export class ExamGateway {
   @SubscribeMessage('exam-take')
   async takeExam(
     @MessageBody()
-    data: { slug: string; questions: ExamQuestion[]; studentId: number },
+    data: { id: number; questions: ExamQuestion[]; studentId: number },
     @ConnectedSocket() client: Socket,
   ) {
-    const { slug, questions, studentId } = data;
+    const { id, questions, studentId } = data;
 
     // Get exam by slug with schedules and completions
     // Throw error if exam not found
     const exam = await this.examRepo.findOne({
       where: [
         {
-          slug,
+          id,
           status: RecordStatus.Published,
           schedules: { students: { id: studentId } },
         },
