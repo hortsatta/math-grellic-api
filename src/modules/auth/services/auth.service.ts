@@ -36,7 +36,7 @@ export class AuthService {
     refreshToken: string;
   }> {
     // Generate access (for login) and refresh token
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '1d' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     // Store refresh token in Redis for 7 days
     await this.redisService.set(
