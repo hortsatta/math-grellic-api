@@ -593,7 +593,7 @@ export class TeacherActivityService {
     // Find exam, throw error if none found
     const activity = await this.activityRepo.findOne({
       where: { id, teacher: { id: teacherId } },
-      relations: { schoolYear: true },
+      relations: { schoolYear: true, categories: true },
     });
 
     if (!activity) {
