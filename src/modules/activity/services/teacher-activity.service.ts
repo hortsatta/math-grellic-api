@@ -186,6 +186,7 @@ export class TeacherActivityService {
           typeTime: true,
           typeStage: true,
         },
+        schoolYear: true,
       },
     });
 
