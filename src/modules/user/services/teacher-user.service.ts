@@ -112,18 +112,18 @@ export class TeacherUserService {
 
     const results = await this.teacherUserAccountRepo.findAndCount({
       where: generateWhere(),
-      relations: { user: true },
+      relations: { user: { enrollments: true } },
       order: generateOrder(),
       skip,
       take,
     });
 
     const teachers = results[0].map((teacher) => {
-      const { publicId, email, approvalStatus } = teacher.user;
+      const { publicId, email, approvalStatus, enrollments } = teacher.user;
 
       return {
         ...teacher,
-        user: { publicId, email, approvalStatus },
+        user: { publicId, email, approvalStatus, enrollments },
       };
     }) as TeacherUserAccount[];
 

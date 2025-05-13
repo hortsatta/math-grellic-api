@@ -356,7 +356,7 @@ export class UserController {
   @UseJwtAuthGuard(UserRole.Admin)
   @UseFilterFieldsInterceptor(true)
   @UseSerializeInterceptor(TeacherUserResponseDto)
-  getAllTeachersByAdminId(
+  getAllTeachersByAdmin(
     @Query('ids') ids: string,
     @Query('q') q: string,
     @Query('status') status?: string | UserApprovalStatus,
@@ -370,6 +370,29 @@ export class UserController {
       q,
       status,
       schoolYearId,
+      enrollmentStatus,
+    );
+  }
+
+  @Get(`${ADMIN_URL}${STUDENT_URL}/list/all`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(TeacherUserResponseDto)
+  getAllStudentsByAdmin(
+    @Query('ids') ids: string,
+    @Query('q') q: string,
+    @Query('status') status?: string | UserApprovalStatus,
+    @Query('sy') schoolYearId?: number,
+    @Query('estatus')
+    enrollmentStatus?: string,
+  ) {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.studentUserService.getStudentsByTeacherId(
+      undefined,
+      transformedIds,
+      q,
+      status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
       enrollmentStatus,
     );
   }

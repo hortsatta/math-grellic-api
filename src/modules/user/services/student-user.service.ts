@@ -130,7 +130,7 @@ export class StudentUserService {
 
   // TODO CHECK ALL references for this function
   getStudentsByTeacherId(
-    teacherId: number,
+    teacherId?: number,
     studentIds?: number[],
     q?: string,
     status?: string,
@@ -141,7 +141,7 @@ export class StudentUserService {
       const baseWhere: FindOptionsWhere<StudentUserAccount> = {
         user: {
           enrollments: {
-            teacherUser: { id: teacherId },
+            ...(teacherId && { teacherUser: { id: teacherId } }),
             ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
             ...(enrollmentStatus && {
               approvalStatus: In(enrollmentStatus.split(',')),
