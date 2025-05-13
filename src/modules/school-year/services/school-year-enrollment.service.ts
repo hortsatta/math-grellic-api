@@ -499,4 +499,65 @@ export class SchoolYearEnrollmentService {
       approvalRejectedReason: updatedEnrollment.approvalRejectedReason,
     };
   }
+
+  async setTeacherApprovalStatus(
+    enrollmentId: number,
+    enrollmentApprovalDto: SchoolYearEnrollmentApprovalDto,
+    logUserId: number,
+  ): Promise<{
+    approvalStatus: SchoolYearEnrollment['approvalStatus'];
+    approvalDate: SchoolYearEnrollment['approvalDate'];
+    approvalRejectedReason: SchoolYearEnrollment['approvalRejectedReason'];
+  }> {
+    const { approvalStatus, approvalRejectedReason } = enrollmentApprovalDto;
+
+    const enrollment = await this.repo.findOne({
+      where: {
+        id: enrollmentId,
+      },
+      relations: { user: { teacherUserAccount: true }, schoolYear: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    const { user: teacherUser, schoolYear, ...moreEnrollment } = enrollment;
+
+    const updatedEnrollment = await this.repo.save({
+      ...moreEnrollment,
+      ...enrollmentApprovalDto,
+    });
+
+    // Send a notification email to user
+    approvalStatus === SchoolYearEnrollmentApprovalStatus.Approved
+      ? this.mailerService.sendUserEnrollmentApproved(
+          schoolYear.title,
+          teacherUser.email,
+          teacherUser.teacherUserAccount.firstName,
+        )
+      : this.mailerService.sendUserEnrollmentRejected(
+          approvalRejectedReason || '',
+          schoolYear.title,
+          teacherUser.email,
+          teacherUser.teacherUserAccount.firstName,
+        );
+
+    // Log approval status
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.setEnrollmentApprovalStatus,
+        actionValue: approvalStatus,
+        featureId: teacherUser.id,
+        featureType: AuditFeatureType.schoolYearEnrollment,
+      },
+      logUserId,
+    );
+
+    return {
+      approvalStatus,
+      approvalDate: updatedEnrollment.approvalDate,
+      approvalRejectedReason: updatedEnrollment.approvalRejectedReason,
+    };
+  }
 }

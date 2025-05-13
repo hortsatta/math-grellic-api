@@ -108,6 +108,24 @@ export class SchoolYearEnrollmentController {
     return this.schoolYearEnrollmentService.enrollTeachers(body);
   }
 
+  @Patch(`${ADMIN_URL}${TEACHER_URL}/approve/:enrollmentId`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  approveTeacherByIdAndAdmin(
+    @CurrentUser() user: User,
+    @Param('enrollmentId') enrollmentId: number,
+    @Body() body: SchoolYearEnrollmentApprovalDto,
+  ): Promise<{
+    approvalStatus: SchoolYearEnrollment['approvalStatus'];
+    approvalDate: SchoolYearEnrollment['approvalDate'];
+    approvalRejectedReason: SchoolYearEnrollment['approvalRejectedReason'];
+  }> {
+    return this.schoolYearEnrollmentService.setTeacherApprovalStatus(
+      enrollmentId,
+      body,
+      user.id,
+    );
+  }
+
   // TEACHERS
 
   @Post(`${TEACHER_URL}/enroll${STUDENT_URL}`)
