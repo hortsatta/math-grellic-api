@@ -28,6 +28,7 @@ import { ActivityService } from './services/activity.service';
 import { TeacherActivityService } from './services/teacher-activity.service';
 import { StudentActivityService } from './services/student-activity.service';
 
+const ADMIN_URL = '/admins';
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 
@@ -39,13 +40,48 @@ export class ActivityController {
     private readonly studentActivityService: StudentActivityService,
   ) {}
 
+  // ADMINS
+
+  @Get(`${ADMIN_URL}${TEACHER_URL}/:teacherId/count`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  getTeacherActivityCountByAdmin(
+    @Param('teacherId') teacherId: number,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<number> {
+    return this.teacherActivityService.getTeacherActivityCountByTeacherId(
+      teacherId,
+      schoolYearId,
+    );
+  }
+
+  @Get(`${ADMIN_URL}${TEACHER_URL}/:teacherId/list/all`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ActivityResponseDto)
+  getTeacherActivitiesByTeacherIdAndAdmin(
+    @Param('teacherId') teacherId: number,
+    @Query('ids') ids?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<Activity[]> {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.teacherActivityService.getTeacherActivitiesByTeacherId(
+      teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      transformedIds,
+      q,
+      status,
+    );
+  }
+
+  // TEACHERS
+
   @Get('/games')
   @UseJwtAuthGuard(UserRole.Teacher)
   getActivityGames() {
     return activityGameType;
   }
-
-  // TEACHERS
 
   @Get(`${TEACHER_URL}/list`)
   @UseJwtAuthGuard(UserRole.Teacher)

@@ -26,8 +26,7 @@ export class TeacherUserResponseDto extends UserAccountResponseDto {
 
   @Expose()
   emails: string[];
-}
 
-// @Expose()
-// @Type(() => LessonScheduleResponseDto)
-// schedules: LessonScheduleResponseDto[];
+  @Expose()
+  studentCount: number;
+}

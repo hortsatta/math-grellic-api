@@ -16,6 +16,7 @@ export class TeacherUserCreateDto extends UserCreateDto {
   @IsString()
   @MinLength(8)
   @MaxLength(100)
+  @IsOptional()
   password: string;
 
   @IsEnum(UserRole)

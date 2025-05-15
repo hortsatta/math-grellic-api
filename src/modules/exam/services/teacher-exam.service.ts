@@ -486,6 +486,18 @@ export class TeacherExamService {
     });
   }
 
+  getTeacherExamCountByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ): Promise<number> {
+    return this.examRepo.count({
+      where: {
+        teacher: { id: teacherId },
+        ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+      },
+    });
+  }
+
   async getExamSnippetsByTeacherId(
     teacherId: number,
     take = 3,

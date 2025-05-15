@@ -332,6 +332,55 @@ export class TeacherUserService {
     });
   }
 
+  async getTeacherById(
+    teacherId: number,
+    schoolYearId?: number,
+    withStats?: boolean,
+  ) {
+    const teacher = await this.teacherUserAccountRepo.findOne({
+      where: {
+        id: teacherId,
+      },
+      loadEagerRelations: false,
+      relations: { user: { enrollments: { schoolYear: true } } },
+      select: {
+        user: {
+          publicId: true,
+          email: true,
+          approvalStatus: true,
+        },
+      },
+    });
+
+    if (!teacher) {
+      throw new BadRequestException('Teacher not found');
+    }
+
+    // Filter enrollment to target school year if present
+    if (schoolYearId) {
+      const enrollments = teacher.user.enrollments.filter(
+        (enrollment) => enrollment.schoolYear.id === schoolYearId,
+      );
+
+      teacher.user.enrollments = enrollments;
+    }
+
+    if (!withStats) return teacher;
+
+    // Get teacher's enrolled student count
+    const studentCount = await this.userRepo.count({
+      where: {
+        enrollments: {
+          approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+          teacherUser: { id: teacherId },
+          schoolYear: { id: schoolYearId },
+        },
+      },
+    });
+
+    return { ...teacher, studentCount };
+  }
+
   async updateTeacherUser(
     id: number,
     userDto: TeacherUserUpdateDto,
@@ -378,15 +427,19 @@ export class TeacherUserService {
     userDto: TeacherUserCreateDto,
     approvalStatus: UserApprovalStatus,
     currentUserId?: number,
+    noEmail?: boolean,
   ): Promise<User> {
     const { email, password, profileImageUrl, ...moreUserDto } = userDto;
+
     // Check if email is existing, if true then cancel creation
     const existingUser = await this.userRepo.findOne({ where: { email } });
     if (!!existingUser) throw new ConflictException('Email is already taken');
+
     // Encrypt password, use temp password if is registered by admin -- check using currentUserId
     const encryptedPassword = await encryptPassword(
       currentUserId != null ? 't3mp0r4ry_p4ssw0rd' : password,
     );
+
     // Create and save user base details
     const user = await this.userService.create(
       {
@@ -398,18 +451,23 @@ export class TeacherUserService {
       UserRole.Teacher,
       approvalStatus === UserApprovalStatus.Approved,
     );
+
     // Create and save teacher user account
     const teacherUser = this.teacherUserAccountRepo.create({
       ...moreUserDto,
       user: { id: user.id },
     });
+
     const newTeacherUser = await this.teacherUserAccountRepo.save(teacherUser);
+
     // Send email confirmation to user
-    await this.userService.sendUserRegisterEmailConfirmation(
-      user.email,
-      teacherUser.firstName,
-      currentUserId != null,
-    );
+    if (!noEmail) {
+      await this.userService.sendUserRegisterEmailConfirmation(
+        user.email,
+        teacherUser.firstName,
+        currentUserId != null,
+      );
+    }
 
     // Log creation
     if (currentUserId) {

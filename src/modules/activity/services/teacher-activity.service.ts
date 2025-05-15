@@ -202,42 +202,6 @@ export class TeacherActivityService {
     );
   }
 
-  async getTeacherActivitiesByTeacherId(
-    teacherId: number,
-    schoolYearId: number,
-    activityIds?: number[],
-    q?: string,
-    status?: string,
-    withCompletions?: boolean,
-  ) {
-    const generateWhere = () => {
-      let baseWhere: FindOptionsWhere<Activity> = {
-        teacher: { id: teacherId },
-        schoolYear: { id: schoolYearId },
-      };
-
-      if (activityIds?.length) {
-        baseWhere = { ...baseWhere, id: In(activityIds) };
-      }
-
-      if (q?.trim()) {
-        baseWhere = { ...baseWhere, title: ILike(`%${q}%`) };
-      }
-
-      if (status?.trim()) {
-        baseWhere = { ...baseWhere, status: In(status.split(',')) };
-      }
-
-      return baseWhere;
-    };
-
-    return this.activityRepo.find({
-      where: generateWhere(),
-      order: { orderNumber: 'ASC' },
-      relations: { categories: { completions: withCompletions } },
-    });
-  }
-
   async getPaginationTeacherActivitiesByTeacherId(
     teacherId: number,
     sort: string,
@@ -311,6 +275,54 @@ export class TeacherActivityService {
     });
 
     return [sortedActivities, result[1]];
+  }
+
+  async getTeacherActivitiesByTeacherId(
+    teacherId: number,
+    schoolYearId: number,
+    activityIds?: number[],
+    q?: string,
+    status?: string,
+    withCompletions?: boolean,
+  ) {
+    const generateWhere = () => {
+      let baseWhere: FindOptionsWhere<Activity> = {
+        teacher: { id: teacherId },
+        schoolYear: { id: schoolYearId },
+      };
+
+      if (activityIds?.length) {
+        baseWhere = { ...baseWhere, id: In(activityIds) };
+      }
+
+      if (q?.trim()) {
+        baseWhere = { ...baseWhere, title: ILike(`%${q}%`) };
+      }
+
+      if (status?.trim()) {
+        baseWhere = { ...baseWhere, status: In(status.split(',')) };
+      }
+
+      return baseWhere;
+    };
+
+    return this.activityRepo.find({
+      where: generateWhere(),
+      order: { orderNumber: 'ASC' },
+      relations: { categories: { completions: withCompletions } },
+    });
+  }
+
+  getTeacherActivityCountByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ): Promise<number> {
+    return this.activityRepo.count({
+      where: {
+        teacher: { id: teacherId },
+        ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+      },
+    });
   }
 
   async getActivitySnippetsByTeacherId(

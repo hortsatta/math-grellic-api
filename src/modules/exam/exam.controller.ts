@@ -29,6 +29,7 @@ import { ExamCompletionCreateDto } from './dtos/exam-completion-create.dto';
 import { StudentExamService } from './services/student-exam.service';
 import { TeacherExamService } from './services/teacher-exam.service';
 
+const ADMIN_URL = '/admins';
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 const SCHEDULE_URL = '/schedules';
@@ -39,6 +40,43 @@ export class ExamController {
     private readonly teacherExamService: TeacherExamService,
     private readonly studentExamService: StudentExamService,
   ) {}
+
+  // ADMINS
+
+  @Get(`${ADMIN_URL}${TEACHER_URL}/:teacherId/count`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  getTeacherExamCountByAdmin(
+    @Param('teacherId') teacherId: number,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<number> {
+    return this.teacherExamService.getTeacherExamCountByTeacherId(
+      teacherId,
+      schoolYearId,
+    );
+  }
+
+  @Get(`${ADMIN_URL}${TEACHER_URL}/:teacherId/list/all`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(ExamResponseDto)
+  getTeacherExamsByTeacherIdAndAdmin(
+    @Param('teacherId') teacherId: number,
+    @Query('ids') ids?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('sort') sort?: string,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<Exam[]> {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.teacherExamService.getTeacherExamsByTeacherId(
+      teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+      sort,
+      transformedIds,
+      q,
+      status,
+    );
+  }
 
   // TEACHERS
 

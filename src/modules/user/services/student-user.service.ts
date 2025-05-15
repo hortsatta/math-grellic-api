@@ -345,22 +345,15 @@ export class StudentUserService {
   ): Promise<User> {
     const { email, password, profileImageUrl, ...moreUserDto } = userDto;
 
-    const isUserExisting = !!(await this.userRepo.findOne({
-      where: { email },
-    }));
-
-    // Check if email is valid, else throw error
-    if (isUserExisting) {
-      throw new ConflictException('Email is already taken');
-    }
-
     // Check if email is existing, if true then cancel creation
     const existingUser = await this.userRepo.findOne({ where: { email } });
     if (!!existingUser) throw new ConflictException('Email is already taken');
+
     // Encrypt password, use temp password if is registered by teacher -- check using currentUserId
     const encryptedPassword = await encryptPassword(
       currentUserId != null ? 't3mp0r4ry_p4ssw0rd' : password,
     );
+
     // Create and save user base details
     const user = await this.userService.create(
       {
@@ -372,6 +365,7 @@ export class StudentUserService {
       UserRole.Student,
       approvalStatus === UserApprovalStatus.Approved,
     );
+
     // Create and save student user account
     const studentUser = this.studentUserAccountRepo.create({
       ...moreUserDto,

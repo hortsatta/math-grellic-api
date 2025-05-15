@@ -288,6 +288,22 @@ export class UserController {
 
   // ADMINS
 
+  @Get(`${ADMIN_URL}${TEACHER_URL}/:teacherId`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(TeacherUserResponseDto)
+  getTeacherById(
+    @Param('teacherId') teacherId: number,
+    @Query('sy') schoolYearId?: number,
+    @Query('stats') withStats?: number,
+  ) {
+    return this.teacherUserService.getTeacherById(
+      teacherId,
+      schoolYearId,
+      withStats == 1,
+    );
+  }
+
   @Patch(`${ADMIN_URL}`)
   @UseJwtAuthGuard(UserRole.Admin)
   @UseSerializeInterceptor(UserResponseDto)
@@ -382,13 +398,14 @@ export class UserController {
     @Query('ids') ids: string,
     @Query('q') q: string,
     @Query('status') status?: string | UserApprovalStatus,
+    @Query('teaid') teacherId?: number,
     @Query('sy') schoolYearId?: number,
     @Query('estatus')
     enrollmentStatus?: string,
   ) {
     const transformedIds = ids?.split(',').map((id) => +id);
     return this.studentUserService.getStudentsByTeacherId(
-      undefined,
+      teacherId,
       transformedIds,
       q,
       status,

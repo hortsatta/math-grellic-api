@@ -165,6 +165,18 @@ export class TeacherLessonService {
     });
   }
 
+  getTeacherLessonCountByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ): Promise<number> {
+    return this.lessonRepo.count({
+      where: {
+        teacher: { id: teacherId },
+        ...(schoolYearId && { schoolYear: { id: schoolYearId } }),
+      },
+    });
+  }
+
   async getLessonSnippetsByTeacherId(
     teacherId: number,
     take = 3,

@@ -30,6 +30,7 @@ import { TeacherLessonService } from './services/teacher-lesson.service';
 import { StudentLessonService } from './services/student-lesson.service';
 import { LessonScheduleService } from './services/lesson-schedule.service';
 
+const ADMIN_URL = '/admins';
 const TEACHER_URL = '/teachers';
 const STUDENT_URL = '/students';
 const SCHEDULE_URL = '/schedules';
@@ -41,6 +42,43 @@ export class LessonController {
     private readonly studentLessonService: StudentLessonService,
     private readonly lessonScheduleService: LessonScheduleService,
   ) {}
+
+  // ADMINS
+
+  @Get(`${ADMIN_URL}${TEACHER_URL}/:teacherId/count`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  getTeacherLessonCountByAdmin(
+    @Param('teacherId') teacherId: number,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<number> {
+    return this.teacherLessonService.getTeacherLessonCountByTeacherId(
+      teacherId,
+      schoolYearId,
+    );
+  }
+
+  @Get(`${ADMIN_URL}${TEACHER_URL}/:teacherId/list/all`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseFilterFieldsInterceptor(true)
+  @UseSerializeInterceptor(LessonResponseDto)
+  getTeacherLessonsByTeacherIdAndAdmin(
+    @Param('teacherId') teacherId: number,
+    @Query('ids') ids?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('sort') sort?: string,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<Lesson[]> {
+    const transformedIds = ids?.split(',').map((id) => +id);
+    return this.teacherLessonService.getTeacherLessonsByTeacherId(
+      teacherId,
+      sort,
+      transformedIds,
+      q,
+      status,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
+  }
 
   // TEACHERS
 

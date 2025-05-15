@@ -31,6 +31,8 @@ import { SchoolYearBatchEnrollmentCreateDto } from '../dtos/school-year-batch-en
 import { SchoolYearEnrollmentApprovalDto } from '../dtos/school-year-enrollment-approval.dto';
 import { SchoolYearStudentEnrollmentNewStudentCreateDto } from '../dtos/school-year-student-enrollment-new-student-create.dto';
 import { SchoolYearService } from './school-year.service';
+import { SchoolYearTeacherEnrollmentNewTeacherCreateDto } from '../dtos/school-year-teacher-enrollment-new-teacher-create.dto';
+import { TeacherUserCreateDto } from '#/modules/user/dtos/teacher-user-create.dto';
 
 @Injectable()
 export class SchoolYearEnrollmentService {
@@ -126,21 +128,30 @@ export class SchoolYearEnrollmentService {
         throw new BadRequestException('User already enrolled');
       }
 
-      const { id: userId, role: userRole, studentUserAccount } = user;
+      const { id: userId, role: userRole } = user;
 
       if (userRole === UserRole.Student) {
         await this.studentUserService.setStudentApprovalStatus(
-          studentUserAccount.id,
+          user.studentUserAccount.id,
           {
             approvalStatus: UserApprovalStatus.Approved,
             approvalRejectedReason: undefined,
           },
           userId,
           password,
+        );
+
+        await this.setStudentApprovalStatus(
+          enrollment.id,
+          {
+            approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
+            approvalRejectedReason: undefined,
+          },
+          user.id,
         );
       } else {
         await this.teacherUserService.setTeacherApprovalStatus(
-          userId,
+          user.teacherUserAccount.id,
           {
             approvalStatus: UserApprovalStatus.Approved,
             approvalRejectedReason: undefined,
@@ -148,10 +159,8 @@ export class SchoolYearEnrollmentService {
           userId,
           password,
         );
-      }
 
-      if (userRole === UserRole.Student) {
-        await this.setStudentApprovalStatus(
+        await this.setTeacherApprovalStatus(
           enrollment.id,
           {
             approvalStatus: SchoolYearEnrollmentApprovalStatus.Approved,
@@ -199,16 +208,17 @@ export class SchoolYearEnrollmentService {
     const schoolYear = await this.schoolYearService.getCurrentSchoolYear();
 
     // Check if teacher and school year are valid and within enrollment date range
-    if (
-      (!teacher || schoolYearId !== schoolYear.id,
+    if (!teacher || schoolYearId !== schoolYear.id) {
+      throw new BadRequestException('Cannot enroll teacher');
+    } else if (
       !dayjs().isBetween(
         schoolYear?.enrollmentStartDate,
         schoolYear?.gracePeriodEndDate,
         null,
         '[]',
-      ))
+      )
     ) {
-      throw new BadRequestException('Cannot enroll teacher');
+      throw new BadRequestException('Enrollment has ended');
     }
 
     const isEnrolled = await this.repo.count({
@@ -258,16 +268,17 @@ export class SchoolYearEnrollmentService {
     const schoolYear = await this.schoolYearService.getCurrentSchoolYear();
 
     // Check if teacher, student, and school year are valid and within enrollment date range
-    if (
-      (!teacher || !student || schoolYearId !== schoolYear.id,
+    if (!teacher || !student || schoolYearId !== schoolYear.id) {
+      throw new BadRequestException('Cannot enroll student');
+    } else if (
       !dayjs().isBetween(
         schoolYear?.enrollmentStartDate,
         schoolYear?.gracePeriodEndDate,
         null,
         '[]',
-      ))
+      )
     ) {
-      throw new BadRequestException('Cannot enroll student');
+      throw new BadRequestException('Enrollment has ended');
     }
 
     const isEnrolled = await this.repo.count({
@@ -351,16 +362,17 @@ export class SchoolYearEnrollmentService {
 
     const schoolYear = await this.schoolYearService.getCurrentSchoolYear();
 
-    if (
-      (!students.length || schoolYearId !== schoolYear.id,
+    if (!students.length || schoolYearId !== schoolYear.id) {
+      throw new BadRequestException('Cannot enroll students');
+    } else if (
       !dayjs().isBetween(
         schoolYear?.enrollmentStartDate,
         schoolYear?.gracePeriodEndDate,
         null,
         '[]',
-      ))
+      )
     ) {
-      throw new BadRequestException('Cannot enroll students');
+      throw new BadRequestException('Enrollment has ended');
     }
 
     const enrollmentDtos = students.map((student) => ({
@@ -395,6 +407,44 @@ export class SchoolYearEnrollmentService {
 
     const enrollments = this.repo.create(transformedEnrollmentDtos);
     return this.repo.save(enrollments);
+  }
+
+  // ADMINS
+
+  async enrollNewTeacher(
+    teacherUserDto: TeacherUserCreateDto,
+    teacherEnrollmentDto: SchoolYearTeacherEnrollmentNewTeacherCreateDto,
+    userId: number,
+  ) {
+    try {
+      const newTeacher = await this.teacherUserService.createTeacherUser(
+        teacherUserDto,
+        UserApprovalStatus.Pending,
+        userId,
+        true,
+      );
+
+      const newEnrollment = await this.enrollTeacher(
+        {
+          ...teacherEnrollmentDto,
+          teacherId: newTeacher.teacherUserAccount.id,
+        },
+        true,
+      );
+
+      await this.mailerService.sendUserEnrollmentNewConfirmation(
+        newEnrollment.id,
+        newTeacher.email,
+        newTeacher.teacherUserAccount.firstName,
+      );
+
+      return {
+        user: newTeacher,
+        enrollment: newEnrollment,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 
   // TEACHERS

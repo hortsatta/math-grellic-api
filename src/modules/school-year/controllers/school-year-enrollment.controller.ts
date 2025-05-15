@@ -19,6 +19,7 @@ import { SchoolYearEnrollmentResponseDto } from '../dtos/school-year-enrollment-
 import { SchoolYearTeacherEnrollmentCreateDto } from '../dtos/school-year-teacher-enrollment-create.dto';
 import { SchoolYearStudentEnrollmentCreateDto } from '../dtos/school-year-student-enrollment-create.dto';
 import { SchoolYearStudentEnrollmentNewCreateDto } from '../dtos/school-year-student-enrollment-new-create.dto';
+import { SchoolYearTeacherEnrollmentNewCreateDto } from '../dtos/school-year-teacher-enrollment-new-create.dto';
 import { SchoolYearBatchEnrollmentCreateDto } from '../dtos/school-year-batch-enrollment-create.dto';
 import { SchoolYearEnrollmentNewResponseDto } from '../dtos/school-year-enrollment-new-response.dto';
 import { SchoolYearEnrollmentApprovalDto } from '../dtos/school-year-enrollment-approval.dto';
@@ -106,6 +107,22 @@ export class SchoolYearEnrollmentController {
     @Body() body: SchoolYearBatchEnrollmentCreateDto,
   ): Promise<SchoolYearEnrollment[]> {
     return this.schoolYearEnrollmentService.enrollTeachers(body);
+  }
+
+  @Post(`${ADMIN_URL}/enroll-new${TEACHER_URL}`)
+  @UseJwtAuthGuard(UserRole.Admin)
+  @UseSerializeInterceptor(SchoolYearEnrollmentNewResponseDto)
+  enrollNewTeacher(
+    @Body() body: SchoolYearTeacherEnrollmentNewCreateDto,
+    @CurrentUser() user: User,
+  ): Promise<{ user: User; enrollment: SchoolYearEnrollment }> {
+    const { teacherUser, teacherEnrollment } = body;
+
+    return this.schoolYearEnrollmentService.enrollNewTeacher(
+      teacherUser,
+      teacherEnrollment,
+      user.id,
+    );
   }
 
   @Patch(`${ADMIN_URL}${TEACHER_URL}/approve/:enrollmentId`)

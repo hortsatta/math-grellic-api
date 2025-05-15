@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, In, Not, Repository } from 'typeorm';
 
+import { convertMsToSeconds } from '#/common/helpers/time.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
 import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
@@ -197,7 +198,10 @@ export class StudentActivityService {
     );
 
     const completion = this.activityCategoryCompletionRepo.create({
-      score,
+      score:
+        activityCategory.activity.game.type === ActivityCategoryType.Time
+          ? convertMsToSeconds(score)
+          : score,
       timeCompletedSeconds,
       submittedAt: new Date(),
       activityCategory,
@@ -272,7 +276,10 @@ export class StudentActivityService {
     );
 
     return this.activityCategoryCompletionRepo.save({
-      score,
+      score:
+        activityCategory.activity.game.type === ActivityCategoryType.Time
+          ? convertMsToSeconds(score)
+          : score,
       timeCompletedSeconds,
       submittedAt: new Date(),
       activityCategory,
