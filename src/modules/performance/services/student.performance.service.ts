@@ -70,7 +70,7 @@ export class StudentPerformanceService {
       },
       loadEagerRelations: false,
       relations: {
-        user: { enrollments: { teacherUser: true } },
+        user: { enrollments: { schoolYear: true, teacherUser: true } },
         lessonCompletions: { lesson: { schoolYear: true } },
         activityCompletions: {
           activityCategory: { activity: { schoolYear: true } },
@@ -88,6 +88,14 @@ export class StudentPerformanceService {
     if (!student) {
       throw new NotFoundException('Student not found');
     }
+
+    // TODO remove question mark
+    // Filter enrollment based on target school years
+    const filteredEnrollments = student.user.enrollments.filter(
+      (enrollment) => enrollment.schoolYear?.id === schoolYear.id,
+    );
+
+    student.user.enrollments = filteredEnrollments;
 
     const otherStudents = await this.studentUserAccountRepo.find({
       where: {
@@ -115,29 +123,29 @@ export class StudentPerformanceService {
     const filteredStudent: StudentUserAccount = {
       ...student,
       lessonCompletions: student.lessonCompletions.filter(
-        (com) => com.lesson.schoolYear.id === schoolYear.id,
+        (com) => com.lesson.schoolYear?.id === schoolYear.id,
       ),
       examCompletions: student.examCompletions.filter(
-        (com) => com.exam.schoolYear.id === schoolYear.id,
+        (com) => com.exam.schoolYear?.id === schoolYear.id,
       ),
       activityCompletions: student.activityCompletions.filter(
-        (com) => com.activityCategory.activity.schoolYear.id === schoolYear.id,
+        (com) => com.activityCategory.activity.schoolYear?.id === schoolYear.id,
       ),
     };
 
     const filteredOtherStudents: StudentUserAccount[] = otherStudents.map(
       (student) => {
         const lessonCompletions = student.lessonCompletions.filter(
-          (com) => com.lesson.schoolYear.id === schoolYear.id,
+          (com) => com.lesson.schoolYear?.id === schoolYear.id,
         );
 
         const examCompletions = student.examCompletions.filter(
-          (com) => com.exam.schoolYear.id === schoolYear.id,
+          (com) => com.exam.schoolYear?.id === schoolYear.id,
         );
 
         const activityCompletions = student.activityCompletions.filter(
           (com) =>
-            com.activityCategory.activity.schoolYear.id === schoolYear.id,
+            com.activityCategory.activity.schoolYear?.id === schoolYear.id,
         );
 
         return {

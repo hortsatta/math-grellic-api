@@ -129,7 +129,7 @@ export class StudentUserService {
   }
 
   // TODO CHECK ALL references for this function
-  getStudentsByTeacherId(
+  async getStudentsByTeacherId(
     teacherId?: number,
     studentIds?: number[],
     q?: string,
@@ -164,18 +164,41 @@ export class StudentUserService {
       return baseWhere;
     };
 
-    return this.studentUserAccountRepo.find({
+    const students = await this.studentUserAccountRepo.find({
       where: generateWhere(),
       loadEagerRelations: false,
-      relations: { user: { enrollments: true } },
+      relations: { user: { enrollments: { schoolYear: true } } },
       select: {
         user: {
           publicId: true,
           email: true,
           approvalStatus: true,
-          enrollments: true,
+          enrollments: {
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+            deletedAt: true,
+            approvalStatus: true,
+            approvalDate: true,
+            approvalRejectedReason: true,
+            academicProgress: true,
+            academicProgressRemarks: true,
+            schoolYear: { id: true },
+          },
         },
       },
+    });
+
+    if (!schoolYearId) {
+      return students;
+    }
+
+    return students.map((student) => {
+      const enrollments = student.user.enrollments.filter(
+        (enrollment) => enrollment.schoolYear?.id === schoolYearId,
+      );
+
+      return { ...student, user: { ...student.user, enrollments } };
     });
   }
 

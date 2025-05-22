@@ -17,13 +17,17 @@ import dayjs from '#/common/configs/dayjs.config';
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
 import { generateFullName } from '#/common/helpers/string.helper';
 import { RecordStatus } from '#/common/enums/content.enum';
-import { SchoolYearEnrollmentApprovalStatus } from '#/modules/school-year/enums/school-year-enrollment.enum';
+import {
+  SchoolYearAcademicProgress,
+  SchoolYearEnrollmentApprovalStatus,
+} from '#/modules/school-year/enums/school-year-enrollment.enum';
 import { ExamResponse } from '#/modules/exam/models/exam.model';
 import { StudentUserAccount } from '#/modules/user/entities/student-user-account.entity';
 import { ActivityCategory } from '#/modules/activity/entities/activity-category.entity';
 import { Activity } from '#/modules/activity/entities/activity.entity';
 import { Exam } from '#/modules/exam/entities/exam.entity';
 import { Lesson } from '#/modules/lesson/entities/lesson.entity';
+import { SchoolYearEnrollment } from '#/modules/school-year/entities/school-year-enrollment.entity';
 import { UserApprovalStatus } from '#/modules/user/enums/user.enum';
 import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { LessonService } from '#/modules/lesson/services/lesson.service';
@@ -335,9 +339,11 @@ export class TeacherPerformanceService {
     take: number = DEFAULT_TAKE,
     skip: number = 0,
     q?: string,
-    performance = StudentPerformanceType.Exam,
+    performance = StudentPerformanceType.Exam as string,
     schoolYearId?: number,
   ): Promise<[Partial<StudentPerformance>[], number]> {
+    const AP_PERF_TYPE = 'academic-progress';
+
     // Get target SY or if undefined, then get current SY
     const schoolYear =
       schoolYearId != null
@@ -374,10 +380,13 @@ export class TeacherPerformanceService {
     // Get completion base on target performance (lesson, exam, activity)
     const generateRelations = () => {
       const baseRelations: FindOptionsRelations<StudentUserAccount> = {
-        user: true,
+        user: { enrollments: { schoolYear: true } },
       };
 
-      if (performance === StudentPerformanceType.Exam) {
+      if (
+        performance === StudentPerformanceType.Exam ||
+        performance === AP_PERF_TYPE
+      ) {
         return {
           ...baseRelations,
           examCompletions: { exam: { schoolYear: true } },
@@ -406,6 +415,14 @@ export class TeacherPerformanceService {
           user: {
             publicId: true,
             email: true,
+            enrollments: {
+              approvalStatus: true,
+              approvalDate: true,
+              approvalRejectedReason: true,
+              academicProgress: true,
+              academicProgressRemarks: true,
+              schoolYear: { id: true },
+            },
           },
         },
       });
@@ -413,15 +430,16 @@ export class TeacherPerformanceService {
     // Get completions from target school year only
     const filteredStudents: StudentUserAccount[] = students.map((student) => {
       const lessonCompletions = student.lessonCompletions?.filter(
-        (com) => com.lesson.schoolYear.id === schoolYear.id,
+        (com) => com.lesson.schoolYear?.id === schoolYear?.id,
       );
 
       const examCompletions = student.examCompletions?.filter(
-        (com) => com.exam.schoolYear.id === schoolYear.id,
+        (com) => com.exam.schoolYear?.id === schoolYear?.id,
       );
 
       const activityCompletions = student.activityCompletions?.filter(
-        (com) => com.activityCategory.activity.schoolYear.id === schoolYear.id,
+        (com) =>
+          com.activityCategory.activity.schoolYear?.id === schoolYear?.id,
       );
 
       return {
@@ -435,7 +453,10 @@ export class TeacherPerformanceService {
     let rankedStudents: any[],
       unrankedStudents = [];
 
-    if (performance === StudentPerformanceType.Exam) {
+    if (
+      performance === StudentPerformanceType.Exam ||
+      performance === AP_PERF_TYPE
+    ) {
       const examRankings =
         await this.performanceService.generateOverallExamRankings(
           filteredStudents,
@@ -443,6 +464,35 @@ export class TeacherPerformanceService {
 
       rankedStudents = examRankings.rankedStudents;
       unrankedStudents = examRankings.unrankedStudents;
+
+      // If academic progress then filter enrollemt values to target school year
+      if (performance === AP_PERF_TYPE) {
+        rankedStudents = rankedStudents.map((student) => {
+          // TODO remove question mark
+          const filteredEnrollments = student.user.enrollments.filter(
+            (enrollment: SchoolYearEnrollment) =>
+              enrollment.schoolYear?.id === schoolYear.id,
+          );
+
+          return {
+            ...student,
+            user: { ...student.user, enrollments: filteredEnrollments },
+          };
+        });
+
+        unrankedStudents = unrankedStudents.map((student) => {
+          // TODO remove question mark
+          const filteredEnrollments = student.user.enrollments.filter(
+            (enrollment: SchoolYearEnrollment) =>
+              enrollment.schoolYear?.id === schoolYear.id,
+          );
+
+          return {
+            ...student,
+            user: { ...student.user, enrollments: filteredEnrollments },
+          };
+        });
+      }
     } else if (performance === StudentPerformanceType.Activity) {
       const activityRankings =
         await this.performanceService.generateOverallActivityRankings(
@@ -486,11 +536,44 @@ export class TeacherPerformanceService {
         }
       });
     } else if (sortBy === 'rank') {
-      if (sortOrder === 'desc') {
+      if (performance !== AP_PERF_TYPE) {
+        if (sortOrder === 'desc') {
+          targetStudents = [
+            ...unrankedStudents,
+            ...[...rankedStudents].reverse(),
+          ];
+        }
+      } else {
+        // For academic progress
+        const passedStudents = targetStudents.filter(
+          (student: any) =>
+            student.user.enrollments[0]?.academicProgress ===
+            SchoolYearAcademicProgress.Passed,
+        );
+
+        const failedStudents = targetStudents.filter(
+          (student: any) =>
+            student.user.enrollments[0]?.academicProgress ===
+            SchoolYearAcademicProgress.Failed,
+        );
+
+        const ongoingStudents = targetStudents.filter(
+          (student: any) =>
+            student.user.enrollments[0]?.academicProgress ===
+              SchoolYearAcademicProgress.Ongoing ||
+            (student.user.enrollments[0] &&
+              student.user.enrollments[0].academicProgress == null),
+        );
+
         targetStudents = [
-          ...unrankedStudents,
-          ...[...rankedStudents].reverse(),
+          ...passedStudents,
+          ...failedStudents,
+          ...ongoingStudents,
         ];
+
+        if (sortOrder === 'desc') {
+          targetStudents.reverse();
+        }
       }
     }
 
@@ -528,7 +611,7 @@ export class TeacherPerformanceService {
       },
       loadEagerRelations: false,
       relations: {
-        user: true,
+        user: { enrollments: { schoolYear: true } },
         lessonCompletions: { lesson: { schoolYear: true } },
         activityCompletions: {
           activityCategory: { activity: { schoolYear: true } },
@@ -546,6 +629,13 @@ export class TeacherPerformanceService {
     if (!student) {
       throw new NotFoundException('Student not found');
     }
+
+    // TODO remove question mark
+    const filteredEnrollments = student.user.enrollments.filter(
+      (enrollment) => enrollment.schoolYear?.id === schoolYear.id,
+    );
+
+    student.user.enrollments = filteredEnrollments;
 
     const otherStudents = await this.studentUserAccountRepo.find({
       where: {
@@ -573,29 +663,30 @@ export class TeacherPerformanceService {
     const filteredStudent: StudentUserAccount = {
       ...student,
       lessonCompletions: student.lessonCompletions?.filter(
-        (com) => com.lesson.schoolYear.id === schoolYear.id,
+        (com) => com.lesson.schoolYear?.id === schoolYear?.id,
       ),
       examCompletions: student.examCompletions?.filter(
-        (com) => com.exam.schoolYear.id === schoolYear.id,
+        (com) => com.exam.schoolYear?.id === schoolYear?.id,
       ),
       activityCompletions: student.activityCompletions?.filter(
-        (com) => com.activityCategory.activity.schoolYear.id === schoolYear.id,
+        (com) =>
+          com.activityCategory.activity.schoolYear?.id === schoolYear?.id,
       ),
     };
 
     const filteredOtherStudents: StudentUserAccount[] = otherStudents.map(
       (student) => {
         const lessonCompletions = student.lessonCompletions?.filter(
-          (com) => com.lesson.schoolYear.id === schoolYear.id,
+          (com) => com.lesson.schoolYear?.id === schoolYear?.id,
         );
 
         const examCompletions = student.examCompletions?.filter(
-          (com) => com.exam.schoolYear.id === schoolYear.id,
+          (com) => com.exam.schoolYear?.id === schoolYear?.id,
         );
 
         const activityCompletions = student.activityCompletions?.filter(
           (com) =>
-            com.activityCategory.activity.schoolYear.id === schoolYear.id,
+            com.activityCategory.activity.schoolYear?.id === schoolYear?.id,
         );
 
         return {

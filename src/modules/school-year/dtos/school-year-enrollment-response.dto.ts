@@ -2,7 +2,10 @@ import { Expose, Transform } from 'class-transformer';
 
 import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { User } from '#/modules/user/entities/user.entity';
-import { SchoolYearEnrollmentApprovalStatus } from '../enums/school-year-enrollment.enum';
+import {
+  SchoolYearAcademicProgress,
+  SchoolYearEnrollmentApprovalStatus,
+} from '../enums/school-year-enrollment.enum';
 import { SchoolYear } from '../entities/school-year.entity';
 
 export class SchoolYearEnrollmentResponseDto extends BaseResponseDto {
@@ -14,6 +17,12 @@ export class SchoolYearEnrollmentResponseDto extends BaseResponseDto {
 
   @Expose()
   approvalRejectedReason: string;
+
+  @Expose()
+  academicProgress: SchoolYearAcademicProgress;
+
+  @Expose()
+  academicProgressRemarks: string;
 
   @Expose()
   schoolYear: SchoolYear;

@@ -16,6 +16,7 @@ import {
   AuditFeatureType,
   AuditUserAction,
 } from '#/modules/audit-log/enums/audit-log.enum';
+import { TeacherUserCreateDto } from '#/modules/user/dtos/teacher-user-create.dto';
 import { StudentUserCreateDto } from '#/modules/user/dtos/student-user-create.dto';
 import { UserLastStepRegisterDto } from '#/modules/user/dtos/user-last-step-register.dto';
 import { MailerService } from '#/modules/mailer/mailer.service';
@@ -23,16 +24,19 @@ import { AuditLogService } from '#/modules/audit-log/audit-log.service';
 import { UserService } from '#/modules/user/services/user.service';
 import { StudentUserService } from '#/modules/user/services/student-user.service';
 import { TeacherUserService } from '#/modules/user/services/teacher-user.service';
-import { SchoolYearEnrollmentApprovalStatus } from '../enums/school-year-enrollment.enum';
+import {
+  SchoolYearAcademicProgress,
+  SchoolYearEnrollmentApprovalStatus,
+} from '../enums/school-year-enrollment.enum';
 import { SchoolYearEnrollment } from '../entities/school-year-enrollment.entity';
 import { SchoolYearTeacherEnrollmentCreateDto } from '../dtos/school-year-teacher-enrollment-create.dto';
 import { SchoolYearStudentEnrollmentCreateDto } from '../dtos/school-year-student-enrollment-create.dto';
 import { SchoolYearBatchEnrollmentCreateDto } from '../dtos/school-year-batch-enrollment-create.dto';
 import { SchoolYearEnrollmentApprovalDto } from '../dtos/school-year-enrollment-approval.dto';
 import { SchoolYearStudentEnrollmentNewStudentCreateDto } from '../dtos/school-year-student-enrollment-new-student-create.dto';
-import { SchoolYearService } from './school-year.service';
 import { SchoolYearTeacherEnrollmentNewTeacherCreateDto } from '../dtos/school-year-teacher-enrollment-new-teacher-create.dto';
-import { TeacherUserCreateDto } from '#/modules/user/dtos/teacher-user-create.dto';
+import { SchoolYearEnrollmentAcademicProgressDto } from '../dtos/school-year-enrollment-academic-progress.dto';
+import { SchoolYearService } from './school-year.service';
 
 @Injectable()
 export class SchoolYearEnrollmentService {
@@ -193,6 +197,75 @@ export class SchoolYearEnrollmentService {
     });
   }
 
+  async getStudentEnrollmentByPublicIdAndTeacherId(
+    publicId: string,
+    teacherId: number,
+    schoolYearId: number,
+  ) {
+    return this.repo.findOne({
+      where: {
+        user: { publicId },
+        teacherUser: { id: teacherId },
+        schoolYear: { id: schoolYearId },
+      },
+    });
+  }
+
+  async getStudentsAcademicProgressByTeacherId(
+    teacherId: number,
+    schoolYearId?: number,
+  ) {
+    const schoolYear =
+      schoolYearId != null
+        ? await this.schoolYearService.getOneById(schoolYearId)
+        : await this.schoolYearService.getCurrentSchoolYear();
+
+    if (!schoolYear) {
+      return null;
+    }
+
+    const students = await this.studentUserService.getStudentsByTeacherId(
+      teacherId,
+      undefined,
+      undefined,
+      UserApprovalStatus.Approved,
+      schoolYear.id,
+      SchoolYearEnrollmentApprovalStatus.Approved,
+    );
+
+    const passedCount = students.filter(
+      (student) =>
+        student.user.enrollments[0]?.academicProgress ===
+        SchoolYearAcademicProgress.Passed,
+    ).length;
+
+    const failedCount = students.filter(
+      (student) =>
+        student.user.enrollments[0]?.academicProgress ===
+        SchoolYearAcademicProgress.Failed,
+    ).length;
+
+    const ongoingCount = students.filter(
+      (student) =>
+        student.user.enrollments[0]?.academicProgress ===
+          SchoolYearAcademicProgress.Ongoing ||
+        (student.user.enrollments[0] &&
+          student.user.enrollments[0].academicProgress == null),
+    ).length;
+
+    const totalStudentCount = students.length;
+
+    return {
+      passedCount,
+      failedCount,
+      ongoingCount,
+      passedPercent: Math.round((passedCount / totalStudentCount) * 100),
+      failedPercent: Math.round((failedCount / totalStudentCount) * 100),
+      ongoingPercent: Math.round((ongoingCount / totalStudentCount) * 100),
+      totalStudentCount,
+    };
+  }
+
   async enrollTeacher(
     enrollmentDto: SchoolYearTeacherEnrollmentCreateDto,
     fromRegister?: boolean,
@@ -300,6 +373,7 @@ export class SchoolYearEnrollmentService {
       user: { id: student.user.id },
       teacherUser: { id: teacher.id },
       approvalStatus: SchoolYearEnrollmentApprovalStatus.Pending,
+      academicProgress: SchoolYearAcademicProgress.Ongoing,
     });
 
     return this.repo.save(enrollment);
@@ -400,6 +474,7 @@ export class SchoolYearEnrollmentService {
           schoolYear: { id: schoolYearId },
           user,
           approvalStatus: status,
+          academicProgress: SchoolYearAcademicProgress.Ongoing,
           ...(teacherId && { teacherId }),
         };
       },
@@ -445,6 +520,67 @@ export class SchoolYearEnrollmentService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async setTeacherApprovalStatus(
+    enrollmentId: number,
+    enrollmentApprovalDto: SchoolYearEnrollmentApprovalDto,
+    logUserId: number,
+  ): Promise<{
+    approvalStatus: SchoolYearEnrollment['approvalStatus'];
+    approvalDate: SchoolYearEnrollment['approvalDate'];
+    approvalRejectedReason: SchoolYearEnrollment['approvalRejectedReason'];
+  }> {
+    const { approvalStatus, approvalRejectedReason } = enrollmentApprovalDto;
+
+    const enrollment = await this.repo.findOne({
+      where: {
+        id: enrollmentId,
+      },
+      relations: { user: { teacherUserAccount: true }, schoolYear: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    const { user: teacherUser, schoolYear, ...moreEnrollment } = enrollment;
+
+    const updatedEnrollment = await this.repo.save({
+      ...moreEnrollment,
+      ...enrollmentApprovalDto,
+    });
+
+    // Send a notification email to user
+    approvalStatus === SchoolYearEnrollmentApprovalStatus.Approved
+      ? this.mailerService.sendUserEnrollmentApproved(
+          schoolYear.title,
+          teacherUser.email,
+          teacherUser.teacherUserAccount.firstName,
+        )
+      : this.mailerService.sendUserEnrollmentRejected(
+          approvalRejectedReason || '',
+          schoolYear.title,
+          teacherUser.email,
+          teacherUser.teacherUserAccount.firstName,
+        );
+
+    // Log approval status
+    this.auditLogService.create(
+      {
+        actionName: AuditUserAction.setEnrollmentApprovalStatus,
+        actionValue: approvalStatus,
+        featureId: teacherUser.id,
+        featureType: AuditFeatureType.schoolYearEnrollment,
+      },
+      logUserId,
+    );
+
+    return {
+      approvalStatus,
+      approvalDate: updatedEnrollment.approvalDate,
+      approvalRejectedReason: updatedEnrollment.approvalRejectedReason,
+    };
   }
 
   // TEACHERS
@@ -550,64 +686,51 @@ export class SchoolYearEnrollmentService {
     };
   }
 
-  async setTeacherApprovalStatus(
-    enrollmentId: number,
-    enrollmentApprovalDto: SchoolYearEnrollmentApprovalDto,
+  async setStudentAcademicProgress(
+    academicProgressDto: SchoolYearEnrollmentAcademicProgressDto,
+    publicId: string,
+    teacherId: number,
     logUserId: number,
   ): Promise<{
-    approvalStatus: SchoolYearEnrollment['approvalStatus'];
-    approvalDate: SchoolYearEnrollment['approvalDate'];
-    approvalRejectedReason: SchoolYearEnrollment['approvalRejectedReason'];
+    academicProgress: SchoolYearEnrollment['academicProgress'];
+    academicProgressRemarks: SchoolYearEnrollment['academicProgressRemarks'];
   }> {
-    const { approvalStatus, approvalRejectedReason } = enrollmentApprovalDto;
+    const { schoolYearId } = academicProgressDto;
 
     const enrollment = await this.repo.findOne({
       where: {
-        id: enrollmentId,
+        schoolYear: { id: schoolYearId },
+        user: { publicId },
+        teacherUser: { id: teacherId },
       },
-      relations: { user: { teacherUserAccount: true }, schoolYear: true },
+      relations: { user: { studentUserAccount: true }, schoolYear: true },
     });
 
     if (!enrollment) {
       throw new NotFoundException('Enrollment not found');
     }
 
-    const { user: teacherUser, schoolYear, ...moreEnrollment } = enrollment;
+    const { user: studentUser, ...moreEnrollment } = enrollment;
 
-    const updatedEnrollment = await this.repo.save({
+    const { academicProgress, academicProgressRemarks } = await this.repo.save({
       ...moreEnrollment,
-      ...enrollmentApprovalDto,
+      ...academicProgressDto,
     });
-
-    // Send a notification email to user
-    approvalStatus === SchoolYearEnrollmentApprovalStatus.Approved
-      ? this.mailerService.sendUserEnrollmentApproved(
-          schoolYear.title,
-          teacherUser.email,
-          teacherUser.teacherUserAccount.firstName,
-        )
-      : this.mailerService.sendUserEnrollmentRejected(
-          approvalRejectedReason || '',
-          schoolYear.title,
-          teacherUser.email,
-          teacherUser.teacherUserAccount.firstName,
-        );
 
     // Log approval status
     this.auditLogService.create(
       {
-        actionName: AuditUserAction.setEnrollmentApprovalStatus,
-        actionValue: approvalStatus,
-        featureId: teacherUser.id,
-        featureType: AuditFeatureType.schoolYearEnrollment,
+        actionName: AuditUserAction.setAcademicProgress,
+        actionValue: academicProgress,
+        featureId: studentUser.id,
+        featureType: AuditFeatureType.academicProgress,
       },
       logUserId,
     );
 
     return {
-      approvalStatus,
-      approvalDate: updatedEnrollment.approvalDate,
-      approvalRejectedReason: updatedEnrollment.approvalRejectedReason,
+      academicProgress: academicProgress,
+      academicProgressRemarks: academicProgressRemarks,
     };
   }
 }

@@ -5,7 +5,10 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { User } from '#/modules/user/entities/user.entity';
 import { TeacherUserAccount } from '#/modules/user/entities/teacher-user-account.entity';
-import { SchoolYearEnrollmentApprovalStatus } from '../enums/school-year-enrollment.enum';
+import {
+  SchoolYearAcademicProgress,
+  SchoolYearEnrollmentApprovalStatus,
+} from '../enums/school-year-enrollment.enum';
 import { SchoolYear } from './school-year.entity';
 
 @Entity()
@@ -22,6 +25,16 @@ export class SchoolYearEnrollment extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   approvalRejectedReason: string;
+
+  @Column({
+    type: 'enum',
+    enum: SchoolYearAcademicProgress,
+    nullable: true,
+  })
+  academicProgress: SchoolYearAcademicProgress;
+
+  @Column({ type: 'text', nullable: true })
+  academicProgressRemarks: string;
 
   @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.enrollments, {
     onDelete: 'CASCADE',

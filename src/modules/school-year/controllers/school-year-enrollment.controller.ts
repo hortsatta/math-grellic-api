@@ -14,6 +14,7 @@ import { CurrentUser } from '#/modules/user/decorators/current-user.decorator';
 import { UseJwtAuthGuard } from '#/modules/auth/auth.guard';
 import { User } from '#/modules/user/entities/user.entity';
 import { UserLastStepRegisterDto } from '#/modules/user/dtos/user-last-step-register.dto';
+import { SchoolYearStudentsAcademicProgress } from '../models/school-year.model';
 import { SchoolYearEnrollment } from '../entities/school-year-enrollment.entity';
 import { SchoolYearEnrollmentResponseDto } from '../dtos/school-year-enrollment-response.dto';
 import { SchoolYearTeacherEnrollmentCreateDto } from '../dtos/school-year-teacher-enrollment-create.dto';
@@ -23,6 +24,8 @@ import { SchoolYearTeacherEnrollmentNewCreateDto } from '../dtos/school-year-tea
 import { SchoolYearBatchEnrollmentCreateDto } from '../dtos/school-year-batch-enrollment-create.dto';
 import { SchoolYearEnrollmentNewResponseDto } from '../dtos/school-year-enrollment-new-response.dto';
 import { SchoolYearEnrollmentApprovalDto } from '../dtos/school-year-enrollment-approval.dto';
+import { SchoolYearEnrollmentAcademicProgressDto } from '../dtos/school-year-enrollment-academic-progress.dto';
+import { SchoolYearStudentsAcademicProgressResponseDto } from '../dtos/school-year-students-academic-progress-response.dto';
 import { SchoolYearEnrollmentService } from '../services/school-year-enrollment.service';
 
 const ADMIN_URL = '/admins';
@@ -145,6 +148,36 @@ export class SchoolYearEnrollmentController {
 
   // TEACHERS
 
+  @Get(`${TEACHER_URL}${STUDENT_URL}/:publicId`)
+  @UseJwtAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(SchoolYearEnrollmentResponseDto)
+  getStudentEnrollmentByPublicIdAndTeacherId(
+    @CurrentUser() user: User,
+    @Param('publicId') publicId: string,
+    @Query('sy') schoolYearId: number,
+  ): Promise<SchoolYearEnrollment> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.schoolYearEnrollmentService.getStudentEnrollmentByPublicIdAndTeacherId(
+      publicId,
+      teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
+  }
+
+  @Get(`${TEACHER_URL}${STUDENT_URL}/academic-progress`)
+  @UseJwtAuthGuard(UserRole.Teacher)
+  @UseSerializeInterceptor(SchoolYearStudentsAcademicProgressResponseDto)
+  getStudentsAcademicProgressByTeacherId(
+    @CurrentUser() user: User,
+    @Query('sy') schoolYearId: number,
+  ): Promise<SchoolYearStudentsAcademicProgress> {
+    const { id: teacherId } = user.teacherUserAccount;
+    return this.schoolYearEnrollmentService.getStudentsAcademicProgressByTeacherId(
+      teacherId,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
+  }
+
   @Post(`${TEACHER_URL}/enroll${STUDENT_URL}`)
   @UseJwtAuthGuard(UserRole.Teacher)
   @UseSerializeInterceptor(SchoolYearEnrollmentResponseDto)
@@ -190,6 +223,26 @@ export class SchoolYearEnrollmentController {
       enrollmentId,
       body,
       user.id,
+      user.id,
+    );
+  }
+
+  @Patch(`${TEACHER_URL}${STUDENT_URL}/:publicId/set-progress`)
+  @UseJwtAuthGuard(UserRole.Teacher)
+  setStudentAcademicProgressByPublicIdAndTeacherId(
+    @CurrentUser() user: User,
+    @Body() body: SchoolYearEnrollmentAcademicProgressDto,
+    @Param('publicId') publicId: string,
+  ): Promise<{
+    academicProgress: SchoolYearEnrollment['academicProgress'];
+    academicProgressRemarks: SchoolYearEnrollment['academicProgressRemarks'];
+  }> {
+    const { id: teacherId } = user.teacherUserAccount;
+
+    return this.schoolYearEnrollmentService.setStudentAcademicProgress(
+      body,
+      publicId,
+      teacherId,
       user.id,
     );
   }

@@ -3,3 +3,9 @@ export enum SchoolYearEnrollmentApprovalStatus {
   Approved = 'approved',
   Rejected = 'rejected',
 }
+
+export enum SchoolYearAcademicProgress {
+  Ongoing = 'ongoing',
+  Passed = 'passed',
+  Failed = 'failed',
+}
