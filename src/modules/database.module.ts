@@ -36,13 +36,13 @@ import { AuditLog } from './audit-log/entities/audit-log.entity';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
-        let ssl: object | boolean = false;
+        // let ssl: object | boolean = false;
 
-        if (process.env.NODE_ENV === 'production') {
-          ssl = {
-            rejectUnauthorized: false,
-          };
-        }
+        // if (process.env.NODE_ENV === 'production') {
+        //   ssl = {
+        //     rejectUnauthorized: false,
+        //   };
+        // }
 
         return {
           type: 'postgres',
@@ -83,7 +83,8 @@ import { AuditLog } from './audit-log/entities/audit-log.entity';
             AuditLog,
           ],
           synchronize: process.env.NODE_ENV !== 'production',
-          ssl,
+          ssl: false,
+          // ssl,
         };
       },
     }),
