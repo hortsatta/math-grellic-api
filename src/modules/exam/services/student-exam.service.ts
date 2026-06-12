@@ -366,14 +366,14 @@ export class StudentExamService {
       });
     }
 
-    if (examResponse.completions.length) {
-      // Filter completions and that belong to current student and remove all questionAnswers
-      // unless explicitly specified by teacher to show
-      examResponse.completions = examResponse.completions
-        .filter((com) => com.student.id === studentId)
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        .map(({ questionAnswers, ...moreCom }) => moreCom);
+    // Filter completions and that belong to current student and remove all questionAnswers
+    // unless explicitly specified by teacher to show
+    examResponse.completions = examResponse.completions
+      .filter((com) => com.student.id === studentId)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .map(({ questionAnswers, ...moreCom }) => moreCom);
 
+    if (examResponse.completions.length) {
       // If completions is more than 1 then sort by recent
       // and set completion with highest and recent scores
       if (examResponse.completions.length > 1) {

@@ -158,6 +158,10 @@ export class PerformanceService {
 
     if (!students.length) {
       // return ranked and unranked students empty array
+      return {
+        rankedStudents,
+        unrankedStudents,
+      };
     }
 
     const teacher = await this.teacherUserService.getTeacherByStudentId(
