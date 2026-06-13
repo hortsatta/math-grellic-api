@@ -5,9 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Brackets, In, Repository } from 'typeorm';
-import { Cache } from 'cache-manager';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { shuffleArray } from '#/common/helpers/array.helper';
@@ -26,7 +24,6 @@ import { ExamResponse } from '../models/exam.model';
 @Injectable()
 export class StudentExamService {
   constructor(
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @InjectRepository(Exam) private readonly examRepo: Repository<Exam>,
     @InjectRepository(ExamQuestion)
     private readonly examQuestionRepo: Repository<ExamQuestion>,
@@ -328,7 +325,7 @@ export class StudentExamService {
         questions: { choices: true },
         schedules: { students: true },
         completions: {
-          questionAnswers: { question: true, selectedQuestionChoice: true },
+          // questionAnswers: { question: true, selectedQuestionChoice: true },
           schedule: true,
           student: true,
         },
@@ -702,17 +699,6 @@ export class StudentExamService {
     teacherId: number,
     schoolYearId: number,
   ) {
-    const cacheKey = `exam-rankings:${exam.id}:${schoolYearId}`;
-
-    // Return cached result if available
-    const cached = await this.cacheManager.get(cacheKey);
-    if (cached)
-      return cached as {
-        rank: any;
-        studentId: number;
-        completions: ExamCompletion[];
-      }[];
-
     let previousScore = null;
     let currentRank = null;
 
@@ -769,12 +755,6 @@ export class StudentExamService {
     const pendingStudentData = studentData
       .filter((data) => !data.completions.length)
       .map((data) => ({ ...data, rank: null }));
-
-    await this.cacheManager.set(
-      cacheKey,
-      [...completeStudentData, ...pendingStudentData],
-      300000,
-    );
 
     return [...completeStudentData, ...pendingStudentData];
   }

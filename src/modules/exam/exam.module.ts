@@ -1,6 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CacheModule } from '@nestjs/cache-manager';
 
 import { UploadModule } from '../upload/upload.module';
 import { UserModule } from '../user/user.module';
@@ -23,10 +22,6 @@ import { TeacherExamScheduleService } from './services/teacher-exam-schedule.ser
 
 @Module({
   imports: [
-    CacheModule.register({
-      ttl: 60000, // milliseconds
-      max: 100, // max items in cache
-    }),
     TypeOrmModule.forFeature([
       Exam,
       ExamQuestion,
