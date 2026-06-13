@@ -5,7 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Brackets, In, Repository } from 'typeorm';
+import { Cache } from 'cache-manager';
 
 import dayjs from '#/common/configs/dayjs.config';
 import { shuffleArray } from '#/common/helpers/array.helper';
@@ -24,6 +26,7 @@ import { ExamResponse } from '../models/exam.model';
 @Injectable()
 export class StudentExamService {
   constructor(
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @InjectRepository(Exam) private readonly examRepo: Repository<Exam>,
     @InjectRepository(ExamQuestion)
     private readonly examQuestionRepo: Repository<ExamQuestion>,
@@ -91,49 +94,50 @@ export class StudentExamService {
       .andWhere('schoolYear.id = :schoolYearId', { schoolYearId });
 
     // Get upcoming and ongoing exams first to exlcude ids in other exams query
-    const upcomingExam = await upcomingExamQuery
-      .select([
-        'exam.id',
-        'exam.createdAt',
-        'exam.updatedAt',
-        'exam.status',
-        'exam.orderNumber',
-        'exam.title',
-        'exam.slug',
-        'exam.excerpt',
-        'exam.randomizeQuestions',
-        'exam.visibleQuestionsCount',
-        'exam.pointsPerQuestion',
-        'exam.passingPoints',
-        'schedules',
-      ])
-      .orderBy('schedules.startDate', 'ASC')
-      .getOne();
-
-    const ongoingExams = await ongoingExamsQuery
-      .select([
-        'exam.id',
-        'exam.createdAt',
-        'exam.updatedAt',
-        'exam.status',
-        'exam.orderNumber',
-        'exam.title',
-        'exam.slug',
-        'exam.excerpt',
-        'exam.randomizeQuestions',
-        'exam.visibleQuestionsCount',
-        'exam.pointsPerQuestion',
-        'exam.passingPoints',
-        'schedules',
-        'completions.id',
-        'completions.updatedAt',
-        'completions.createdAt',
-        'completions.score',
-        'completions.schedule',
-        'completionSchedule.id',
-      ])
-      .orderBy('schedules.startDate', 'ASC')
-      .getMany();
+    const [upcomingExam, ongoingExams] = await Promise.all([
+      upcomingExamQuery
+        .select([
+          'exam.id',
+          'exam.createdAt',
+          'exam.updatedAt',
+          'exam.status',
+          'exam.orderNumber',
+          'exam.title',
+          'exam.slug',
+          'exam.excerpt',
+          'exam.randomizeQuestions',
+          'exam.visibleQuestionsCount',
+          'exam.pointsPerQuestion',
+          'exam.passingPoints',
+          'schedules',
+        ])
+        .orderBy('schedules.startDate', 'ASC')
+        .getOne(),
+      ongoingExamsQuery
+        .select([
+          'exam.id',
+          'exam.createdAt',
+          'exam.updatedAt',
+          'exam.status',
+          'exam.orderNumber',
+          'exam.title',
+          'exam.slug',
+          'exam.excerpt',
+          'exam.randomizeQuestions',
+          'exam.visibleQuestionsCount',
+          'exam.pointsPerQuestion',
+          'exam.passingPoints',
+          'schedules',
+          'completions.id',
+          'completions.updatedAt',
+          'completions.createdAt',
+          'completions.score',
+          'completions.schedule',
+          'completionSchedule.id',
+        ])
+        .orderBy('schedules.startDate', 'ASC')
+        .getMany(),
+    ]);
 
     const excludeIds = [upcomingExam, ...ongoingExams]
       .filter((e) => !!e)
@@ -297,22 +301,18 @@ export class StudentExamService {
     schoolYearId?: number,
     noSchedules?: boolean,
   ) {
-    // Get target SY or if undefined, then get current SY
-    const schoolYear =
+    const [schoolYear, teacher] = await Promise.all([
       schoolYearId != null
-        ? await this.schoolYearService.getOneById(schoolYearId)
-        : await this.schoolYearService.getCurrentSchoolYear();
+        ? this.schoolYearService.getOneById(schoolYearId)
+        : this.schoolYearService.getCurrentSchoolYear(),
+      this.teacherUserService.getTeacherByStudentId(studentId, schoolYearId),
+    ]);
 
     if (!schoolYear) {
       throw new BadRequestException('Invalid school year');
     }
 
     const currentDateTime = dayjs();
-
-    const teacher = await this.teacherUserService.getTeacherByStudentId(
-      studentId,
-      schoolYear.id,
-    );
 
     const exam: Partial<ExamResponse> = await this.examRepo.findOne({
       where: [
@@ -702,6 +702,17 @@ export class StudentExamService {
     teacherId: number,
     schoolYearId: number,
   ) {
+    const cacheKey = `exam-rankings:${exam.id}:${schoolYearId}`;
+
+    // Return cached result if available
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached)
+      return cached as {
+        rank: any;
+        studentId: number;
+        completions: ExamCompletion[];
+      }[];
+
     let previousScore = null;
     let currentRank = null;
 
@@ -758,6 +769,12 @@ export class StudentExamService {
     const pendingStudentData = studentData
       .filter((data) => !data.completions.length)
       .map((data) => ({ ...data, rank: null }));
+
+    await this.cacheManager.set(
+      cacheKey,
+      [...completeStudentData, ...pendingStudentData],
+      300000,
+    );
 
     return [...completeStudentData, ...pendingStudentData];
   }

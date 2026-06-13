@@ -132,10 +132,7 @@ export class ExamGateway {
         },
       ],
       relations: {
-        coveredLessons: true,
-        questions: { choices: true },
         schedules: { students: true },
-        completions: { questionAnswers: true, student: true, schedule: true },
       },
     });
     if (!exam) {
@@ -143,17 +140,20 @@ export class ExamGateway {
     }
 
     // Check and get the ongoing exam schedule, if none then return null
-    // Or if schedule has completion then return null
+    // or if schedule has completion then return null
     const ongoingSchedule = exam.schedules.find((schedule) => {
       const startDate = dayjs(schedule.startDate);
       const endDate = dayjs(schedule.endDate);
       return dayjs().isBetween(startDate, endDate, null, '[]');
     });
 
-    const hasCompletion = exam.completions.some(
-      (com) =>
-        com.student.id === studentId && com.schedule.id === ongoingSchedule.id,
-    );
+    const hasCompletion = await this.examCompletionRepo.exist({
+      where: {
+        student: { id: studentId },
+        schedule: { id: ongoingSchedule.id },
+        exam: { id },
+      },
+    });
 
     if (!ongoingSchedule || hasCompletion) {
       return null;
