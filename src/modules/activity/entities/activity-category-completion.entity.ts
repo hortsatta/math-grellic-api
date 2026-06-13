@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -20,9 +21,11 @@ export class ActivityCategoryCompletion extends BaseEntity {
   @Column({ type: 'int', nullable: true })
   timeCompletedSeconds: number;
 
+  @Index()
   @CreateDateColumn({ type: 'timestamp' })
   submittedAt: Date;
 
+  @Index()
   @ManyToOne(
     () => ActivityCategory,
     (activityCategory) => activityCategory.completions,
@@ -41,6 +44,7 @@ export class ActivityCategoryCompletion extends BaseEntity {
   )
   questionAnswers: ActivityCategoryCompletionQuestionAnswer[];
 
+  @Index()
   @ManyToOne(
     () => StudentUserAccount,
     (studentUserAccount) => studentUserAccount.activityCompletions,

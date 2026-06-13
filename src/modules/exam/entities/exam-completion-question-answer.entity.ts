@@ -1,4 +1,4 @@
-import { Entity, ManyToOne } from 'typeorm';
+import { Entity, Index, ManyToOne } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { ExamCompletion } from './exam-completion.entity';
@@ -7,6 +7,7 @@ import { ExamQuestionChoice } from './exam-question-choice.entity';
 
 @Entity()
 export class ExamCompletionQuestionAnswer extends BaseEntity {
+  @Index()
   @ManyToOne(
     () => ExamCompletion,
     (examCompletion) => examCompletion.questionAnswers,
@@ -16,12 +17,14 @@ export class ExamCompletionQuestionAnswer extends BaseEntity {
   )
   completion: ExamCompletion;
 
+  @Index()
   @ManyToOne(
     () => ExamQuestion,
     (examQuestion) => examQuestion.completionAnswer,
   )
   question: ExamQuestion;
 
+  @Index()
   @ManyToOne(
     () => ExamQuestionChoice,
     (examQuestionChoice) => examQuestionChoice.questionAnswers,

@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, Index, OneToMany, OneToOne } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { UserApprovalStatus, UserRole } from '#/modules/user/enums/user.enum';
@@ -10,9 +10,11 @@ import { StudentUserAccount } from './student-user-account.entity';
 
 @Entity()
 export class User extends BaseEntity {
+  @Index()
   @Column({ type: 'varchar', length: 11, unique: true, nullable: true })
   publicId: string;
 
+  @Index()
   @Column({
     type: 'enum',
     enum: UserRole,
@@ -28,6 +30,7 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true })
   profileImageUrl: string;
 
+  @Index()
   @Column({
     type: 'enum',
     enum: UserApprovalStatus,

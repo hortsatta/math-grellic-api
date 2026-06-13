@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -20,6 +21,7 @@ export class Announcement extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Index()
   @Column({ type: 'timestamp' })
   startDate: Date;
 
@@ -31,6 +33,7 @@ export class Announcement extends BaseEntity {
   @JoinTable({ name: 'announcement_students' })
   students: StudentUserAccount[];
 
+  @Index()
   @ManyToOne(
     () => TeacherUserAccount,
     (teacherUserAccount) => teacherUserAccount.announcements,
@@ -40,6 +43,7 @@ export class Announcement extends BaseEntity {
   )
   teacher: TeacherUserAccount;
 
+  @Index()
   @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.announcements)
   @JoinColumn()
   schoolYear: SchoolYear;

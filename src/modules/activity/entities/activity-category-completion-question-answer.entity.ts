@@ -1,4 +1,4 @@
-import { Entity, ManyToOne } from 'typeorm';
+import { Entity, Index, ManyToOne } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { ActivityCategoryCompletion } from './activity-category-completion.entity';
@@ -7,6 +7,7 @@ import { ActivityCategoryQuestionChoice } from './activity-category-question-cho
 
 @Entity()
 export class ActivityCategoryCompletionQuestionAnswer extends BaseEntity {
+  @Index()
   @ManyToOne(
     () => ActivityCategoryCompletion,
     (activityCategoryCompletion) => activityCategoryCompletion.questionAnswers,
@@ -16,12 +17,14 @@ export class ActivityCategoryCompletionQuestionAnswer extends BaseEntity {
   )
   completion: ActivityCategoryCompletion;
 
+  @Index()
   @ManyToOne(
     () => ActivityCategoryQuestion,
     (activityCategoryQuestion) => activityCategoryQuestion.completionAnswer,
   )
   question: ActivityCategoryQuestion;
 
+  @Index()
   @ManyToOne(
     () => ActivityCategoryQuestionChoice,
     (activityCategoryQuestionChoice) =>

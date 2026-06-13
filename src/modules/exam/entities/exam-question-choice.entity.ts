@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { ExamQuestion } from './exam-question.entity';
@@ -6,6 +6,7 @@ import { ExamCompletionQuestionAnswer } from './exam-completion-question-answer.
 
 @Entity()
 export class ExamQuestionChoice extends BaseEntity {
+  @Index()
   @Column({ type: 'int' })
   orderNumber: number;
 
@@ -15,6 +16,7 @@ export class ExamQuestionChoice extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   isCorrect: boolean;
 
+  @Index()
   @ManyToOne(() => ExamQuestion, (examQuestion) => examQuestion.choices, {
     onDelete: 'CASCADE',
   })

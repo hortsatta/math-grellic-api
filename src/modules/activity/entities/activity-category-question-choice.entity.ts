@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { ActivityTextType } from '../enums/activity.enum';
@@ -7,6 +7,7 @@ import { ActivityCategoryCompletionQuestionAnswer } from './activity-category-co
 
 @Entity()
 export class ActivityCategoryQuestionChoice extends BaseEntity {
+  @Index()
   @Column({ type: 'int' })
   orderNumber: number;
 
@@ -23,6 +24,7 @@ export class ActivityCategoryQuestionChoice extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   isCorrect: boolean;
 
+  @Index()
   @ManyToOne(
     () => ActivityCategoryQuestion,
     (activityCategoryQuestion) => activityCategoryQuestion.choices,

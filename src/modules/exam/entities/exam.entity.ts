@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -19,6 +20,7 @@ import { ExamQuestion } from './exam-question.entity';
 
 @Entity()
 export class Exam extends BaseEntity {
+  @Index()
   @Column({
     type: 'enum',
     enum: RecordStatus,
@@ -26,12 +28,15 @@ export class Exam extends BaseEntity {
   })
   status: RecordStatus;
 
+  @Index()
   @Column({ type: 'int' })
   orderNumber: number;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   slug: string;
 
@@ -68,6 +73,7 @@ export class Exam extends BaseEntity {
   @OneToMany(() => ExamSchedule, (examSchedule) => examSchedule.exam)
   schedules: ExamSchedule[];
 
+  @Index()
   @ManyToOne(
     () => TeacherUserAccount,
     (teacherUserAccount) => teacherUserAccount.exams,
@@ -75,6 +81,7 @@ export class Exam extends BaseEntity {
   @JoinColumn()
   teacher: TeacherUserAccount;
 
+  @Index()
   @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.exams)
   @JoinColumn()
   schoolYear: SchoolYear;

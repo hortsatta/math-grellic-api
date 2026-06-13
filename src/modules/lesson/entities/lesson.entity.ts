@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToMany,
   ManyToOne,
@@ -17,6 +18,7 @@ import { LessonCompletion } from './lesson-completion.entity';
 
 @Entity()
 export class Lesson extends BaseEntity {
+  @Index()
   @Column({
     type: 'enum',
     enum: RecordStatus,
@@ -24,12 +26,15 @@ export class Lesson extends BaseEntity {
   })
   status: RecordStatus;
 
+  @Index()
   @Column({ type: 'int' })
   orderNumber: number;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   slug: string;
 
@@ -54,6 +59,7 @@ export class Lesson extends BaseEntity {
   )
   completions: LessonCompletion[];
 
+  @Index()
   @ManyToOne(
     () => TeacherUserAccount,
     (teacherUserAccount) => teacherUserAccount.lessons,
@@ -64,6 +70,7 @@ export class Lesson extends BaseEntity {
   @ManyToMany(() => Exam, (exam) => exam.coveredLessons)
   exams: Exam[];
 
+  @Index()
   @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.lessons)
   @JoinColumn()
   schoolYear: SchoolYear;

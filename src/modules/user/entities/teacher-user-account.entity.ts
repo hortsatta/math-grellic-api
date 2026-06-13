@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -43,10 +44,12 @@ export class TeacherUserAccount extends UserAccountEntity {
   @Column({ type: 'varchar', length: 255, array: true, default: [] })
   emails: string[];
 
+  @Index()
   @OneToOne(() => User, (user) => user.teacherUserAccount)
   @JoinColumn()
   user: User;
 
+  @Index()
   @ManyToOne(
     () => AdminUserAccount,
     (adminUserAccount) => adminUserAccount.teachers,

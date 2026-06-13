@@ -1,4 +1,4 @@
-import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn, Index } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { ActivityCategory } from './activity-category.entity';
@@ -8,6 +8,7 @@ export class ActivityCategoryTypeTime extends BaseEntity {
   @Column({ type: 'int' })
   correctAnswerCount: number;
 
+  @Index()
   @OneToOne(
     () => ActivityCategory,
     (activityCategory) => activityCategory.typeTime,

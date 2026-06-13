@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinTable,
   ManyToMany,
   ManyToOne,
@@ -17,12 +18,15 @@ export class ExamSchedule extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
+  @Index()
   @Column({ type: 'timestamp' })
   startDate: Date;
 
+  @Index()
   @Column({ type: 'timestamp' })
   endDate: Date;
 
+  @Index()
   @ManyToOne(() => Exam, (exam) => exam.schedules, {
     onDelete: 'CASCADE',
   })

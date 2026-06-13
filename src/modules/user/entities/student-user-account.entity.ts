@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToMany,
   OneToMany,
@@ -25,6 +26,7 @@ export class StudentUserAccount extends UserAccountEntity {
   @Column({ type: 'varchar', length: 50, nullable: true })
   messengerLink: string;
 
+  @Index()
   @OneToOne(() => User, (user) => user.studentUserAccount)
   @JoinColumn()
   user: User;

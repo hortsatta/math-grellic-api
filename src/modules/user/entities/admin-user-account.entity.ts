@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 
 import { User } from './user.entity';
 import { UserAccount as UserAccountEntity } from './user-account.entity';
@@ -15,6 +22,7 @@ export class AdminUserAccount extends UserAccountEntity {
   @Column({ type: 'varchar', length: 255, array: true, default: [] })
   emails: string[];
 
+  @Index()
   @OneToOne(() => User, (user) => user.studentUserAccount)
   @JoinColumn()
   user: User;

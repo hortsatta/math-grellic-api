@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, Index, OneToMany } from 'typeorm';
 
 import { RecordStatus } from '#/common/enums/content.enum';
 import { Base as BaseEntity } from '#/common/entities/base.entity';
@@ -11,6 +11,7 @@ import { SchoolYearEnrollment } from './school-year-enrollment.entity';
 
 @Entity()
 export class SchoolYear extends BaseEntity {
+  @Index()
   @Column({
     type: 'enum',
     enum: RecordStatus,
@@ -18,6 +19,7 @@ export class SchoolYear extends BaseEntity {
   })
   status: RecordStatus;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
@@ -27,9 +29,11 @@ export class SchoolYear extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Index()
   @Column({ type: 'timestamp' })
   startDate: Date;
 
+  @Index()
   @Column({ type: 'timestamp' })
   endDate: Date;
 

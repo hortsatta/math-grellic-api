@@ -5,6 +5,7 @@ import {
   OneToMany,
   OneToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
@@ -18,6 +19,7 @@ import { ActivityCategoryCompletion } from './activity-category-completion.entit
 
 @Entity()
 export class ActivityCategory extends BaseEntity {
+  @Index()
   @Column({
     type: 'enum',
     enum: ActivityCategoryLevel,
@@ -30,6 +32,7 @@ export class ActivityCategory extends BaseEntity {
   @Column({ type: 'int' })
   visibleQuestionsCount: number;
 
+  @Index()
   @ManyToOne(() => Activity, (activity) => activity.categories, {
     onDelete: 'CASCADE',
   })

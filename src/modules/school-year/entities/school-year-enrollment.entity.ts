@@ -1,6 +1,4 @@
-// - teacher  FK -- for students only
-
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { User } from '#/modules/user/entities/user.entity';
@@ -13,6 +11,7 @@ import { SchoolYear } from './school-year.entity';
 
 @Entity()
 export class SchoolYearEnrollment extends BaseEntity {
+  @Index()
   @Column({
     type: 'enum',
     enum: SchoolYearEnrollmentApprovalStatus,
@@ -36,17 +35,21 @@ export class SchoolYearEnrollment extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   academicProgressRemarks: string;
 
+  @Index()
   @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.enrollments, {
     onDelete: 'CASCADE',
   })
   schoolYear: SchoolYear;
 
+  @Index()
   @ManyToOne(() => User, (user) => user.enrollments, {
     onDelete: 'CASCADE',
   })
   user: User;
 
+  // - teacher  FK -- for students only
   // For students only
+  @Index()
   @ManyToOne(
     () => TeacherUserAccount,
     (teacherUserAccount) => teacherUserAccount.enrolledStudents,

@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { User } from '#/modules/user/entities/user.entity';
@@ -21,6 +21,7 @@ export class AuditLog extends BaseEntity {
   })
   featureType: AuditFeatureType;
 
+  @Index()
   @ManyToOne(() => User, (user) => user.auditLogs, { onDelete: 'CASCADE' })
   @JoinColumn()
   user: User;

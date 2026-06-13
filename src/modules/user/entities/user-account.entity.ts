@@ -1,15 +1,18 @@
 import { Base as BaseEntity } from '#/common/entities/base.entity';
-import { Column } from 'typeorm';
+import { Column, Index } from 'typeorm';
 
 import { UserGender } from '../enums/user.enum';
 
 export abstract class UserAccount extends BaseEntity {
+  @Index()
   @Column({ type: 'varchar', length: 50 })
   firstName: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 50 })
   lastName: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 50, nullable: true })
   middleName: string;
 

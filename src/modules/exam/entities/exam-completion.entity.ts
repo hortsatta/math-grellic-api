@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   OneToMany,
 } from 'typeorm';
@@ -17,14 +18,17 @@ export class ExamCompletion extends BaseEntity {
   @Column({ type: 'int', nullable: true, default: null })
   score: number;
 
+  @Index()
   @CreateDateColumn({ type: 'timestamp' })
   submittedAt: Date;
 
+  @Index()
   @ManyToOne(() => Exam, (exam) => exam.completions, {
     onDelete: 'CASCADE',
   })
   exam: Exam;
 
+  @Index()
   @ManyToOne(() => ExamSchedule, (examSchedule) => examSchedule.completions)
   schedule: ExamSchedule;
 
@@ -35,6 +39,7 @@ export class ExamCompletion extends BaseEntity {
   )
   questionAnswers: ExamCompletionQuestionAnswer[];
 
+  @Index()
   @ManyToOne(
     () => StudentUserAccount,
     (studentUserAccount) => studentUserAccount.examCompletions,

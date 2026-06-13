@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 
 import { Base as BaseEntity } from '#/common/entities/base.entity';
 import { RecordStatus } from '#/common/enums/content.enum';
@@ -8,6 +15,7 @@ import { ActivityCategory } from './activity-category.entity';
 
 @Entity()
 export class Activity extends BaseEntity {
+  @Index()
   @Column({
     type: 'enum',
     enum: RecordStatus,
@@ -15,12 +23,15 @@ export class Activity extends BaseEntity {
   })
   status: RecordStatus;
 
+  @Index()
   @Column({ type: 'int' })
   orderNumber: number;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   slug: string;
 
@@ -44,6 +55,7 @@ export class Activity extends BaseEntity {
   )
   categories: ActivityCategory[];
 
+  @Index()
   @ManyToOne(
     () => TeacherUserAccount,
     (teacherUserAccount) => teacherUserAccount.activities,
@@ -51,6 +63,7 @@ export class Activity extends BaseEntity {
   @JoinColumn()
   teacher: TeacherUserAccount;
 
+  @Index()
   @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.activity)
   @JoinColumn()
   schoolYear: SchoolYear;

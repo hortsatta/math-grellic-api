@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -23,9 +24,11 @@ export class MeetingSchedule extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Index()
   @Column({ type: 'timestamp' })
   startDate: Date;
 
+  @Index()
   @Column({ type: 'timestamp' })
   endDate: Date;
 
@@ -37,6 +40,7 @@ export class MeetingSchedule extends BaseEntity {
   @JoinTable({ name: 'meeting_schedule_students' })
   students: StudentUserAccount[];
 
+  @Index()
   @ManyToOne(
     () => TeacherUserAccount,
     (teacherUserAccount) => teacherUserAccount.meetingSchedules,
@@ -46,6 +50,7 @@ export class MeetingSchedule extends BaseEntity {
   )
   teacher: TeacherUserAccount;
 
+  @Index()
   @ManyToOne(() => SchoolYear, (schoolYear) => schoolYear.meetingSchedules)
   @JoinColumn()
   schoolYear: SchoolYear;
