@@ -3,4 +3,5 @@ export enum GlobalSearchFilter {
   Exam = 'exam',
   Activity = 'activity',
   Student = 'student',
+  MeetingSchedule = 'meeting-schedule',
 }

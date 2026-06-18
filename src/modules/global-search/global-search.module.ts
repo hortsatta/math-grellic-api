@@ -4,6 +4,7 @@ import { LessonModule } from '../lesson/lesson.module';
 import { ExamModule } from '../exam/exam.module';
 import { ActivityModule } from '../activity/activity.module';
 import { PerformanceModule } from '../performance/performance.module';
+import { ScheduleModule } from '../schedule/schedule.module';
 import { SchoolYearModule } from '../school-year/school-year.module';
 import { GlobalSearchController } from './global-search.controller';
 import { GlobalSearchService } from './services/global-search.service';
@@ -14,6 +15,7 @@ import { GlobalSearchService } from './services/global-search.service';
     ExamModule,
     ActivityModule,
     PerformanceModule,
+    ScheduleModule,
     SchoolYearModule,
   ],
   controllers: [GlobalSearchController],

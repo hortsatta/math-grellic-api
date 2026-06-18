@@ -1,14 +1,15 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
 import { DEFAULT_TAKE } from '#/common/helpers/pagination.helper';
+import { StudentPerformance } from '#/modules/performance/models/performance.model';
 import { SchoolYearService } from '#/modules/school-year/services/school-year.service';
 import { TeacherLessonService } from '#/modules/lesson/services/teacher-lesson.service';
 import { TeacherExamService } from '#/modules/exam/services/teacher-exam.service';
 import { TeacherActivityService } from '#/modules/activity/services/teacher-activity.service';
 import { TeacherPerformanceService } from '#/modules/performance/services/teacher-performance.service';
+import { TeacherScheduleService } from '#/modules/schedule/schedules/teacher-schedule.service';
 import { SearchResults } from '../models/search-results.model';
 import { GlobalSearchFilter } from '../enums/global-search.enum';
-import { StudentPerformance } from '#/modules/performance/models/performance.model';
 
 @Injectable()
 export class GlobalSearchService {
@@ -21,6 +22,8 @@ export class GlobalSearchService {
     private readonly teacherActivityService: TeacherActivityService,
     @Inject(TeacherPerformanceService)
     private readonly teacherPerformanceService: TeacherPerformanceService,
+    @Inject(TeacherScheduleService)
+    private readonly teacherScheduleService: TeacherScheduleService,
     @Inject(SchoolYearService)
     private readonly schoolYearService: SchoolYearService,
   ) {}
@@ -35,7 +38,13 @@ export class GlobalSearchService {
   ): Promise<[SearchResults, number]> {
     if (!q?.trim().length || !filters) {
       return [
-        { lessons: [], exams: [], activities: [], studentPerformances: [] },
+        {
+          lessons: [],
+          exams: [],
+          activities: [],
+          studentPerformances: [],
+          meetingSchedules: [],
+        },
         0,
       ];
     }
@@ -55,6 +64,7 @@ export class GlobalSearchService {
       [exams, examCount],
       [activities, activityCount],
       [studentPerformances, studentCount],
+      [meetingSchedules, meetingCount],
     ] = await Promise.all([
       filters.includes(GlobalSearchFilter.Lesson)
         ? this.teacherLessonService.getPaginatedTeacherLessonsByTeacherId(
@@ -100,9 +110,20 @@ export class GlobalSearchService {
             schoolYearId,
           )
         : [[], 0]) as [StudentPerformance[], number],
+      filters.includes(GlobalSearchFilter.MeetingSchedule)
+        ? this.teacherScheduleService.getPaginatedTeacherMeetingSchedulesByTeacherId(
+            teacherId,
+            sort,
+            take,
+            undefined,
+            q,
+            schoolYearId,
+          )
+        : [[], 0],
     ]);
 
-    const totalCount = lessonCount + examCount + activityCount + studentCount;
+    const totalCount =
+      lessonCount + examCount + activityCount + studentCount + meetingCount;
 
     return [
       {
@@ -110,6 +131,7 @@ export class GlobalSearchService {
         exams,
         activities,
         studentPerformances,
+        meetingSchedules,
       },
       totalCount,
     ];
