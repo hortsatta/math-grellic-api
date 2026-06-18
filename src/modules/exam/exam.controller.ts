@@ -95,7 +95,7 @@ export class ExamController {
   ): Promise<[Exam[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.teacherExamService.getPaginationTeacherExamsByTeacherId(
+    return this.teacherExamService.getPaginatedTeacherExamsByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,

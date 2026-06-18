@@ -27,5 +27,6 @@ import { StudentPerformanceService } from './services/student.performance.servic
     TeacherPerformanceService,
     StudentPerformanceService,
   ],
+  exports: [TeacherPerformanceService, StudentPerformanceService],
 })
 export class PerformanceModule {}

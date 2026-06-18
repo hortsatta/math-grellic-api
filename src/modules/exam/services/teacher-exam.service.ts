@@ -343,7 +343,7 @@ export class TeacherExamService {
     );
   }
 
-  async getPaginationTeacherExamsByTeacherId(
+  async getPaginatedTeacherExamsByTeacherId(
     teacherId: number,
     sort: string,
     take: number = DEFAULT_TAKE,

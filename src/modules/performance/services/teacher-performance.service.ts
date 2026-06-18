@@ -333,7 +333,7 @@ export class TeacherPerformanceService {
     };
   }
 
-  async getPaginationStudentPerformancesByTeacherId(
+  async getPaginatedStudentPerformancesByTeacherId(
     teacherId: number,
     sort: string,
     take: number = DEFAULT_TAKE,
