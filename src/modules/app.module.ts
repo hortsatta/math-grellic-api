@@ -16,6 +16,7 @@ import { AnnouncementModule } from './announcement/announcement.module';
 import { UploadModule } from './upload/upload.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { SchoolYearModule } from './school-year/school-year.module';
+import { GlobalSearchModule } from './global-search/global-search.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { SchoolYearModule } from './school-year/school-year.module';
     UploadModule,
     AuditLogModule,
     SchoolYearModule,
+    GlobalSearchModule,
   ],
   controllers: [],
 })
