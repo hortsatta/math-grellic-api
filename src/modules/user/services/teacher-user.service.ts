@@ -54,7 +54,7 @@ export class TeacherUserService {
     private readonly userService: UserService,
   ) {}
 
-  async getPaginationTeachersByAdminId(
+  async getPaginatedTeachersByAdminId(
     adminId: number,
     sort: string,
     take: number = DEFAULT_TAKE,

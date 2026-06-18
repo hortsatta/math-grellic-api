@@ -97,7 +97,7 @@ export class UserController {
   ): Promise<[StudentUserAccount[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.studentUserService.getPaginationStudentsByTeacherId(
+    return this.studentUserService.getPaginatedStudentsByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
@@ -355,7 +355,7 @@ export class UserController {
   ): Promise<[TeacherUserAccount[], number]> {
     const { id: adminId } = user.adminUserAccount;
 
-    return this.teacherUserService.getPaginationTeachersByAdminId(
+    return this.teacherUserService.getPaginatedTeachersByAdminId(
       adminId,
       sort,
       !!take ? take : undefined,
@@ -458,7 +458,7 @@ export class UserController {
     @Query('take') take?: number,
     @Query('skip') skip?: number,
   ): Promise<[AdminUserAccount[], number]> {
-    return this.adminUserService.getPaginationAdmins(
+    return this.adminUserService.getPaginatedAdmins(
       sort,
       !!take ? take : undefined,
       !!skip ? skip : undefined,

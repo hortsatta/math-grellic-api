@@ -98,7 +98,7 @@ export class ActivityController {
   ): Promise<[Activity[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.teacherActivityService.getPaginationTeacherActivitiesByTeacherId(
+    return this.teacherActivityService.getPaginatedTeacherActivitiesByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,

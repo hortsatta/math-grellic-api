@@ -73,7 +73,7 @@ export class ScheduleController {
   ): Promise<[MeetingSchedule[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.teacherScheduleService.getPaginationTeacherMeetingSchedulesByTeacherId(
+    return this.teacherScheduleService.getPaginatedTeacherMeetingSchedulesByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,

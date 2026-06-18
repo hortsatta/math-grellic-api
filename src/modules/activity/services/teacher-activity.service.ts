@@ -202,7 +202,7 @@ export class TeacherActivityService {
     );
   }
 
-  async getPaginationTeacherActivitiesByTeacherId(
+  async getPaginatedTeacherActivitiesByTeacherId(
     teacherId: number,
     sort: string,
     take: number = DEFAULT_TAKE,

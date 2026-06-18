@@ -46,7 +46,7 @@ export class AdminUserService {
     private readonly userService: UserService,
   ) {}
 
-  async getPaginationAdmins(
+  async getPaginatedAdmins(
     sort: string,
     take: number = DEFAULT_TAKE,
     skip: number = 0,

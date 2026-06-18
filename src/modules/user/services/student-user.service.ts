@@ -53,7 +53,7 @@ export class StudentUserService {
     private readonly userService: UserService,
   ) {}
 
-  async getPaginationStudentsByTeacherId(
+  async getPaginatedStudentsByTeacherId(
     teacherId: number,
     sort: string,
     take: number = DEFAULT_TAKE,

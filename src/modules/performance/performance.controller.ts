@@ -108,7 +108,7 @@ export class PerformanceController {
   ): Promise<[Partial<StudentPerformance>[], number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
-    return this.teacherPerformanceService.getPaginationStudentPerformancesByTeacherId(
+    return this.teacherPerformanceService.getPaginatedStudentPerformancesByTeacherId(
       teacherId,
       sort,
       !!take ? take : undefined,
