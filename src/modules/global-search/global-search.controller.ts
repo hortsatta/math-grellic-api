@@ -39,7 +39,7 @@ export class GlobalSearchController {
 
     return this.globalSearchService.searchByTeacherId(
       teacherId,
-      filters,
+      sort,
       undefined,
       q,
       filters,
