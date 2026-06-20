@@ -164,8 +164,12 @@ export class StudentExamService {
     }
 
     if (q) {
-      upcomingExamQuery.andWhere('exam.title ILIKE :q', { q });
-      otherExamsQuery.andWhere('exam.title ILIKE :q', { q });
+      upcomingExamQuery.andWhere('exam.title ILIKE :keyword', {
+        keyword: `%${q}%`,
+      });
+      otherExamsQuery.andWhere('exam.title ILIKE :keyword', {
+        keyword: `%${q}%`,
+      });
     }
 
     const otherExams = await otherExamsQuery

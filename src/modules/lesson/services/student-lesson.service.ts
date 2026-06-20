@@ -78,8 +78,12 @@ export class StudentLessonService {
       .andWhere('schoolYear.id = :schoolYearId', { schoolYearId });
 
     if (q) {
-      upcomingLessonQuery.andWhere('lesson.title ILIKE :q', { q });
-      otherLessonsQuery.andWhere('lesson.title ILIKE :q', { q });
+      upcomingLessonQuery.andWhere('lesson.title ILIKE :keyword', {
+        keyword: `%${q}%`,
+      });
+      otherLessonsQuery.andWhere('lesson.title ILIKE :keyword', {
+        keyword: `%${q}%`,
+      });
     }
 
     const upcomingLesson = await upcomingLessonQuery
