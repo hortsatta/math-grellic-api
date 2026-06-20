@@ -8,3 +8,10 @@ export function shuffleArray<T>(array: T[]): T[] {
 
   return arrayCopy;
 }
+
+export function countNonNull(value) {
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+  return value != null ? 1 : 0;
+}
