@@ -1,9 +1,7 @@
 import { Expose, Type } from 'class-transformer';
-
-import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { ExamResponseDto } from './exam-response.dto';
 
-export class StudentExamListResponseDto extends BaseResponseDto {
+export class StudentExamListResponseDto {
   @Expose()
   @Type(() => ExamResponseDto)
   latestExam: ExamResponseDto | null;
