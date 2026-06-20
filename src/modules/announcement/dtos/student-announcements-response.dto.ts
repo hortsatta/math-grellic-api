@@ -1,9 +1,7 @@
 import { Expose, Type } from 'class-transformer';
-
-import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { AnnouncementResponseDto } from './announcement-response.dto';
 
-export class StudentAnnouncementsResponseDto extends BaseResponseDto {
+export class StudentAnnouncementsResponseDto {
   @Expose()
   @Type(() => AnnouncementResponseDto)
   currentAnnouncements: AnnouncementResponseDto[];

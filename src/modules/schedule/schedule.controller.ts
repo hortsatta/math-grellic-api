@@ -168,12 +168,14 @@ export class ScheduleController {
   @UseSerializeInterceptor(StudentMeetingScheduleListResponseDto)
   getStudentMeetingSchedulesByStudentId(
     @CurrentUser() user: User,
+    @Query('q') q?: string,
     @Query('sy') schoolYearId?: number,
   ) {
     const { id: studentId } = user.studentUserAccount;
 
     return this.studentScheduleService.getStudentMeetingSchedulesByStudentId(
       studentId,
+      q,
       isNaN(schoolYearId) ? undefined : schoolYearId,
     );
   }

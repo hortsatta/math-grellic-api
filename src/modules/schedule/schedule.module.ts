@@ -21,6 +21,6 @@ import { StudentScheduleService } from './schedules/student-schedule.service';
   ],
   controllers: [ScheduleController],
   providers: [ScheduleService, TeacherScheduleService, StudentScheduleService],
-  exports: [ScheduleService, TeacherScheduleService],
+  exports: [ScheduleService, TeacherScheduleService, StudentScheduleService],
 })
 export class ScheduleModule {}

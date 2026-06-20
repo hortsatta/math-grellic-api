@@ -6,7 +6,7 @@ import { ActivityResponseDto } from '#/modules/activity/dtos/activity-response.d
 import { StudentPerformanceResponseDto } from '#/modules/performance/dtos/student-performance-response.dto';
 import { MeetingScheduleResponseDto } from '#/modules/schedule/dtos/meeting-schedule-response.dto';
 
-export class GlobalSearchResponseDto {
+export class TeacherGlobalSearchResponseDto {
   @Expose()
   @Type(() => LessonResponseDto)
   lessons: LessonResponseDto[];

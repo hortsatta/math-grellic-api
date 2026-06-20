@@ -5,8 +5,12 @@ import { UseJwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../user/decorators/current-user.decorator';
 import { UserRole } from '../user/enums/user.enum';
 import { User } from '../user/entities/user.entity';
-import { SearchResults } from './models/search-results.model';
-import { GlobalSearchResponseDto } from './dtos/global-search-response.dto';
+import {
+  StudentSearchResults,
+  TeacherSearchResults,
+} from './models/search-results.model';
+import { TeacherGlobalSearchResponseDto } from './dtos/teacher-global-search-response.dto';
+import { StudentGlobalSearchResponseDto } from './dtos/student-global-search-response.dto';
 import { GlobalSearchService } from './services/global-search.service';
 
 const ADMIN_URL = '/admins';
@@ -23,19 +27,19 @@ export class GlobalSearchController {
 
   @Get(`${TEACHER_URL}`)
   @UseJwtAuthGuard(UserRole.Teacher)
-  @UseSerializeInterceptor(GlobalSearchResponseDto)
+  @UseSerializeInterceptor(TeacherGlobalSearchResponseDto)
   searchByTeacherId(
     @CurrentUser() user: User,
     @Query('q') q?: string,
     @Query('filters') filters?: string,
     @Query('sort') sort?: string,
     @Query('sy') schoolYearId?: number,
-  ): Promise<[SearchResults, number]> {
+  ): Promise<[TeacherSearchResults, number]> {
     const { id: teacherId } = user.teacherUserAccount;
 
     return this.globalSearchService.searchByTeacherId(
       teacherId,
-      sort,
+      filters,
       undefined,
       q,
       filters,
@@ -44,4 +48,24 @@ export class GlobalSearchController {
   }
 
   // STUDENTS
+  @Get(`${STUDENT_URL}`)
+  @UseJwtAuthGuard(UserRole.Student)
+  @UseSerializeInterceptor(StudentGlobalSearchResponseDto)
+  searchByStudentId(
+    @CurrentUser() user: User,
+    @Query('q') q?: string,
+    @Query('filters') filters?: string,
+    @Query('sort') sort?: string,
+    @Query('sy') schoolYearId?: number,
+  ): Promise<[StudentSearchResults, number]> {
+    const { id: studentId } = user.studentUserAccount;
+
+    return this.globalSearchService.searchByStudentId(
+      studentId,
+      sort,
+      q,
+      filters,
+      isNaN(schoolYearId) ? undefined : schoolYearId,
+    );
+  }
 }

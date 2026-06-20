@@ -1,9 +1,7 @@
 import { Expose, Type } from 'class-transformer';
-
-import { BaseResponseDto } from '#/common/dtos/base-response.dto';
 import { ActivityResponseDto } from './activity-response.dto';
 
-export class StudentActivityListResponseDto extends BaseResponseDto {
+export class StudentActivityListResponseDto {
   @Expose()
   @Type(() => ActivityResponseDto)
   featuredActivities: ActivityResponseDto[];

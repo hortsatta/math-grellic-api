@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
   FindOptionsWhere,
+  ILike,
   In,
   IsNull,
   LessThanOrEqual,
@@ -41,6 +42,7 @@ export class StudentScheduleService {
 
   async getStudentMeetingSchedulesByStudentId(
     studentId: number,
+    q?: string,
     schoolYearId?: number,
   ) {
     // Get target SY or if undefined, then get current SY
@@ -71,12 +73,14 @@ export class StudentScheduleService {
           teacher: { id: teacher.id },
           students: { id: studentId },
           schoolYear: { id: schoolYear.id },
+          ...(!!q?.trim().length && { title: ILike(`%${q}%`) }),
         },
         {
           startDate: MoreThan(currentDateTime),
           teacher: { id: teacher.id },
           students: { id: IsNull() },
           schoolYear: { id: schoolYear.id },
+          ...(!!q?.trim().length && { title: ILike(`%${q}%`) }),
         },
       ],
       order: { startDate: 'DESC' },
@@ -91,6 +95,7 @@ export class StudentScheduleService {
           startDate: LessThanOrEqual(currentDateTime),
           students: { id: studentId },
           schoolYear: { id: schoolYear.id },
+          ...(!!q?.trim().length && { title: ILike(`%${q}%`) }),
         },
         {
           id: Not(In(upcomingMeetingSchedules.map((s) => s.id))),
@@ -98,6 +103,7 @@ export class StudentScheduleService {
           startDate: LessThanOrEqual(currentDateTime),
           students: { id: IsNull() },
           schoolYear: { id: schoolYear.id },
+          ...(!!q?.trim().length && { title: ILike(`%${q}%`) }),
         },
       ],
       order: { startDate: 'DESC' },
